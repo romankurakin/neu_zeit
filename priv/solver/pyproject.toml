@@ -1,0 +1,11 @@
+[project]
+name = "neu-zeit-solver"
+version = "0.1.0"
+description = "OR-Tools CP-SAT solver adapter for NeuZeit timetable plans"
+requires-python = "==3.14.*"
+dependencies = [
+  "ortools>=9.15",
+]
+
+[tool.uv]
+package = false
