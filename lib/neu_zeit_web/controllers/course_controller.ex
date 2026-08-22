@@ -6,6 +6,10 @@ defmodule NeuZeitWeb.CourseController do
 
   action_fallback NeuZeitWeb.FallbackController
 
+  def index(conn, %{"locale" => locale}) when is_binary(locale) do
+    json(conn, %{data: ApiJSON.data(Catalog.list_courses(locale))})
+  end
+
   def index(conn, _params) do
     json(conn, %{data: ApiJSON.data(Catalog.list_courses())})
   end
@@ -39,6 +43,20 @@ defmodule NeuZeitWeb.CourseController do
          {:ok, course} <- RequestParams.fetch_not_found(fn -> Catalog.get_course!(id) end),
          {:ok, _course} <- delete_course(course) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def create_translation(conn, %{"course_id" => course_id}) do
+    attrs =
+      (conn.body_params["course_translation"] || conn.body_params)
+      |> Map.put("course_id", course_id)
+
+    with :ok <- RequestParams.require_uuid(course_id, "course_id"),
+         {:ok, _course} <- RequestParams.fetch_not_found(fn -> Catalog.get_course!(course_id) end),
+         {:ok, translation} <- Catalog.create_course_translation(attrs) do
+      conn
+      |> put_status(:created)
+      |> json(%{data: ApiJSON.data(translation)})
     end
   end
 

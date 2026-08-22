@@ -57,4 +57,26 @@ defmodule NeuZeitWeb.ScheduleControllerTest do
     conn = build_conn() |> get(~p"/api/terms/#{term.id}/occurrences")
     assert %{"meta" => %{"unplaced_session_ids" => []}} = json_response(conn, 200)
   end
+
+  test "occurrences for a term without an active plan return an empty projection", %{conn: conn} do
+    term = term_fixture()
+    session = session_fixture(term: term)
+
+    conn = get(conn, ~p"/api/terms/#{term.id}/occurrences")
+
+    assert %{
+             "data" => [],
+             "meta" => %{
+               "unplaced_session_ids" => [unplaced_id],
+               "active_plan_id" => nil
+             }
+           } = json_response(conn, 200)
+
+    assert unplaced_id == session.id
+  end
+
+  test "occurrences for an unknown term return 404", %{conn: conn} do
+    conn = get(conn, ~p"/api/terms/#{Ecto.UUID.generate()}/occurrences")
+    assert json_response(conn, 404)
+  end
 end

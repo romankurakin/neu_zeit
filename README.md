@@ -45,6 +45,7 @@ Generic JSON CRUD resources:
 /api/buildings
 /api/rooms
 /api/courses
+/api/courses/:course_id/translations
 /api/course_components
 /api/teachers
 /api/cohorts
@@ -71,6 +72,18 @@ PUT  /api/terms/:term_id/teachers/:teacher_id/availability
 ```
 
 Payloads may be wrapped by singular key, for example `{ "term": { ... } }`, or sent as a flat JSON object.
+
+`GET /api/courses?locale=ru` returns localized course titles, falling back to
+the base title for locales without a translation.
+
+`GET /api/terms/:term_id/occurrences` responds for any existing term: with no
+active plan it returns an empty projection, and `meta.active_plan_id` tells
+clients whether a plan is published at all.
+
+Term `excluded_dates` are hard non-teaching days. Template occurrences are not
+projected on them, and `move`/`add` exceptions may not target them (moving an
+occurrence *off* an excluded date stays allowed). Excluding a date that an
+active exception targets is rejected the same way.
 
 ## Solver
 

@@ -386,10 +386,22 @@ defmodule NeuZeit.Catalog do
               join: plan in assoc(p, :plan),
               where: p.session_id == ^locked_session.id and plan.status == "active"
 
-          if Repo.exists?(placed_in_active_plan) do
-            {:error, {:conflict, "session is placed in the active published plan"}}
-          else
-            Repo.delete(locked_session)
+          # Deleting the session would cascade its exceptions away and silently
+          # drop announced one-off occurrences from the published schedule.
+          has_active_exceptions =
+            from e in ScheduleException,
+              where: e.session_id == ^locked_session.id and e.status == "active"
+
+          cond do
+            Repo.exists?(placed_in_active_plan) ->
+              {:error, {:conflict, "session is placed in the active published plan"}}
+
+            Repo.exists?(has_active_exceptions) ->
+              {:error,
+               {:conflict, "session has active schedule exceptions; revert or delete them first"}}
+
+            true ->
+              Repo.delete(locked_session)
           end
       end
     end)

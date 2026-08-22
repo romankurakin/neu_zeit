@@ -981,6 +981,154 @@ defmodule NeuZeit.PlanningTest do
     assert exception.new_slot == 5
   end
 
+  test "move and add exceptions cannot target an excluded date" do
+    room = room_fixture()
+    # 2026-09-01 is the Tuesday of week 1.
+    term =
+      term_fixture(
+        starts_on: ~D[2026-08-31],
+        ends_on: ~D[2026-12-19],
+        excluded_dates: [~D[2026-09-01]]
+      )
+
+    component = component_fixture(rooms: [room])
+    session = session_fixture(term: term, component: component, week_mask: [1, 2])
+    plan = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: plan.id,
+      session_id: session.id,
+      room_id: room.id,
+      day: 1,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = Planning.publish_plan(plan.id)
+
+    assert {:error, %{errors: errors}} =
+             Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "move",
+               occurrence_date: ~D[2026-08-31],
+               new_date: ~D[2026-09-01],
+               new_slot: 1,
+               new_room_id: room.id,
+               reason: "test"
+             })
+
+    assert Enum.any?(errors, &(&1.type == "exception_on_excluded_date"))
+
+    assert {:error, %{errors: errors}} =
+             Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "add",
+               occurrence_date: ~D[2026-09-01],
+               new_slot: 2,
+               new_room_id: room.id,
+               reason: "test"
+             })
+
+    assert Enum.any?(errors, &(&1.type == "exception_on_excluded_date"))
+  end
+
+  test "moves may still relocate an occurrence off an excluded date" do
+    room = room_fixture()
+
+    term =
+      term_fixture(
+        starts_on: ~D[2026-08-31],
+        ends_on: ~D[2026-12-19],
+        excluded_dates: [~D[2026-09-01]]
+      )
+
+    component = component_fixture(rooms: [room])
+    # Placed on Tuesdays, so week 1 falls on the excluded 2026-09-01.
+    session = session_fixture(term: term, component: component, week_mask: [1, 2])
+    plan = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: plan.id,
+      session_id: session.id,
+      room_id: room.id,
+      day: 2,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = Planning.publish_plan(plan.id)
+
+    assert {:ok, _exception} =
+             Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "move",
+               occurrence_date: ~D[2026-09-01],
+               new_date: ~D[2026-09-02],
+               new_slot: 1,
+               new_room_id: room.id,
+               reason: "makeup for the holiday"
+             })
+  end
+
+  test "cancelling an occurrence on an excluded date is rejected as vacuous" do
+    room = room_fixture()
+
+    term =
+      term_fixture(
+        starts_on: ~D[2026-08-31],
+        ends_on: ~D[2026-12-19],
+        excluded_dates: [~D[2026-09-01]]
+      )
+
+    component = component_fixture(rooms: [room])
+    session = session_fixture(term: term, component: component, week_mask: [1, 2])
+    plan = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: plan.id,
+      session_id: session.id,
+      room_id: room.id,
+      day: 2,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = Planning.publish_plan(plan.id)
+
+    assert {:error, changeset} =
+             Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "cancel",
+               occurrence_date: ~D[2026-09-01],
+               reason: "test"
+             })
+
+    assert %{occurrence_date: [message]} = errors_on(changeset)
+    assert message =~ "excluded date"
+  end
+
+  test "placements with missing fields return validation errors, not constraint noise" do
+    term = term_fixture()
+    room = room_fixture()
+    component = component_fixture(rooms: [room])
+    session = session_fixture(term: term, component: component)
+    plan = plan_fixture(term: term)
+
+    assert {:error, %Ecto.Changeset{} = changeset} =
+             Planning.create_placement(%{plan_id: plan.id, session_id: session.id})
+
+    assert %{room_id: ["can't be blank"], day: ["can't be blank"], slot: ["can't be blank"]} =
+             errors_on(changeset)
+  end
+
+  test "project_active_term returns an empty projection when nothing is published" do
+    term = term_fixture()
+    session = session_fixture(term: term)
+
+    projection = Planning.project_active_term(term.id)
+
+    assert projection.occurrences == []
+    assert projection.unplaced_session_ids == [session.id]
+    assert projection.active_plan_id == nil
+  end
+
   defp placements_for(plan) do
     Enum.filter(Planning.list_placements(), &(&1.plan_id == plan.id))
   end

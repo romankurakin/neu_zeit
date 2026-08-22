@@ -13,7 +13,10 @@ defmodule NeuZeitWeb.ScheduleController do
            RequestParams.fetch_not_found(fn -> Planning.project_active_term(term_id) end) do
       json(conn, %{
         data: ApiJSON.data(projection.occurrences),
-        meta: %{unplaced_session_ids: projection.unplaced_session_ids}
+        meta: %{
+          unplaced_session_ids: projection.unplaced_session_ids,
+          active_plan_id: projection.active_plan_id
+        }
       })
     end
   end

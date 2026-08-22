@@ -53,7 +53,9 @@ defmodule NeuZeit.Catalog.Term do
       placement_masks =
         changeset.repo.all(
           from p in NeuZeit.Planning.Placement,
-            where: p.term_id == ^term_id,
+            join: plan in NeuZeit.Planning.Plan,
+            on: plan.id == p.plan_id,
+            where: p.term_id == ^term_id and plan.status in ["draft", "active"],
             select: p.week_mask
         )
 

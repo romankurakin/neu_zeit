@@ -574,7 +574,7 @@ defmodule NeuZeit.CatalogTest do
     assert Catalog.get_term!(term.id).starts_on == ~D[2026-08-31]
   end
 
-  test "removing an excluded date rejects conflicts from restored templates" do
+  test "excluded dates never carry occurrences: adds are blocked while excluded and conflict-checked after restore" do
     date = ~D[2026-08-31]
     term = term_fixture(excluded_dates: [date])
     room = room_fixture()
@@ -601,19 +601,26 @@ defmodule NeuZeit.CatalogTest do
 
     assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
 
-    assert {:ok, _addition} =
-             NeuZeit.Planning.create_schedule_exception(%{
-               session_id: session_b.id,
-               kind: "add",
-               occurrence_date: date,
-               new_slot: 1,
-               new_room_id: room.id,
-               reason: "holiday makeup"
-             })
+    addition = %{
+      session_id: session_b.id,
+      kind: "add",
+      occurrence_date: date,
+      new_slot: 1,
+      new_room_id: room.id,
+      reason: "makeup"
+    }
 
-    assert {:error, %{errors: errors}} = Catalog.remove_excluded_date(term, date)
+    # While the date is excluded no exception may target it, so removing the
+    # excluded date can never uncover a hidden conflict.
+    assert {:error, %{errors: errors}} = NeuZeit.Planning.create_schedule_exception(addition)
+    assert Enum.any?(errors, &(&1.type == "exception_on_excluded_date"))
+
+    assert {:ok, _term} = Catalog.remove_excluded_date(term, date)
+
+    # Once the date is a normal teaching day again, the restored template
+    # occurrence protects its cell through the ordinary conflict checks.
+    assert {:error, %{errors: errors}} = NeuZeit.Planning.create_schedule_exception(addition)
     assert Enum.any?(errors, &(&1.type == "room_conflict"))
-    assert Catalog.get_term!(term.id).excluded_dates == [date]
   end
 
   test "sessions placed in the active plan cannot be deleted" do
@@ -653,5 +660,129 @@ defmodule NeuZeit.CatalogTest do
     })
 
     assert {:ok, _session} = Catalog.delete_session(session)
+  end
+
+  test "excluding a date targeted by an active move is rejected" do
+    room = room_fixture()
+    term = term_fixture(starts_on: ~D[2026-08-31], ends_on: ~D[2026-12-19])
+    component = component_fixture(rooms: [room])
+    session = session_fixture(term: term, component: component, week_mask: [1, 2])
+    plan = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: plan.id,
+      session_id: session.id,
+      room_id: room.id,
+      day: 1,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
+
+    assert {:ok, _exception} =
+             NeuZeit.Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "move",
+               occurrence_date: ~D[2026-08-31],
+               new_date: ~D[2026-09-08],
+               new_slot: 1,
+               new_room_id: room.id,
+               reason: "test"
+             })
+
+    assert {:error, %{errors: errors}} = Catalog.add_excluded_date(term, ~D[2026-09-08])
+    assert Enum.any?(errors, &(&1.type == "exception_on_excluded_date"))
+
+    # A date whose occurrence is merely cancelled may still become excluded:
+    # the cancellation is redundant but not contradictory.
+    assert {:ok, _exception} =
+             NeuZeit.Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "cancel",
+               occurrence_date: ~D[2026-09-07],
+               reason: "test"
+             })
+
+    assert {:ok, term} = Catalog.add_excluded_date(term, ~D[2026-09-07])
+    assert ~D[2026-09-07] in term.excluded_dates
+  end
+
+  test "sessions with active schedule exceptions cannot be deleted" do
+    room = room_fixture()
+    term = term_fixture(starts_on: ~D[2026-08-31], ends_on: ~D[2026-12-19])
+    component = component_fixture(rooms: [room])
+    placed_session = session_fixture(term: term, component: component)
+    plan = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: plan.id,
+      session_id: placed_session.id,
+      room_id: room.id,
+      day: 1,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
+
+    # A session created after publish is not in the active plan, but its
+    # one-off additions are part of the published dated schedule.
+    late_session = session_fixture(term: term, component: component)
+
+    assert {:ok, exception} =
+             NeuZeit.Planning.create_schedule_exception(%{
+               session_id: late_session.id,
+               kind: "add",
+               occurrence_date: ~D[2026-09-01],
+               new_slot: 3,
+               new_room_id: room.id,
+               reason: "one-off intro meeting"
+             })
+
+    assert {:error, {:conflict, message}} = Catalog.delete_session(late_session)
+    assert message =~ "active schedule exceptions"
+
+    assert {:ok, _exception} =
+             NeuZeit.Planning.update_schedule_exception(exception, %{status: "reverted"})
+
+    assert {:ok, _session} = Catalog.delete_session(late_session)
+  end
+
+  test "terms can shrink past weeks used only by archived plans" do
+    room = room_fixture()
+    term = term_fixture(starts_on: ~D[2026-08-31], ends_on: ~D[2026-12-19])
+    component = component_fixture(rooms: [room])
+    session = session_fixture(term: term, component: component, week_mask: [1, 10])
+
+    first = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: first.id,
+      session_id: session.id,
+      room_id: room.id,
+      day: 1,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = NeuZeit.Planning.publish_plan(first.id)
+
+    second = plan_fixture(term: term)
+
+    placement_fixture(%{
+      plan_id: second.id,
+      session_id: session.id,
+      room_id: room.id,
+      day: 1,
+      slot: 1
+    })
+
+    assert {:ok, _plan} = NeuZeit.Planning.publish_plan(second.id)
+
+    # The archived plan keeps the stale [1, 10] mask by design; only the
+    # session and the draft/active placements should constrain the term.
+    assert {:ok, session} = Catalog.update_session(session, %{week_mask: [1]})
+    assert session.week_mask == [1]
+
+    assert {:ok, term} = Catalog.update_term(term, %{ends_on: ~D[2026-09-12]})
+    assert term.weeks_count == 2
   end
 end

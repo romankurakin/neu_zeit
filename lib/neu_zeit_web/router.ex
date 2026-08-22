@@ -22,7 +22,9 @@ defmodule NeuZeitWeb.Router do
 
     resources "/rooms", RoomController, except: [:new, :edit]
 
-    resources "/courses", CourseController, except: [:new, :edit]
+    resources "/courses", CourseController, except: [:new, :edit] do
+      post "/translations", CourseController, :create_translation
+    end
 
     resources "/course_components", CourseComponentController, except: [:new, :edit]
 

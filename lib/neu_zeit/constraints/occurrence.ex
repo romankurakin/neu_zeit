@@ -50,6 +50,7 @@ defmodule NeuZeit.Constraints.Occurrence do
   defp exception_date_errors(term, exceptions, sessions_by_id) do
     days_count = length(NeuZeit.Config.grid!().days)
     slots_count = length(NeuZeit.Config.grid!().slots)
+    excluded_dates = MapSet.new(term.excluded_dates || [])
 
     Enum.flat_map(exceptions, fn exception ->
       date_errors =
@@ -82,6 +83,26 @@ defmodule NeuZeit.Constraints.Occurrence do
           end
         end)
 
+      excluded_target_errors =
+        if exception.kind in ["move", "add"] do
+          target = exception.new_date || exception.occurrence_date
+
+          if target && MapSet.member?(excluded_dates, target) do
+            [
+              exception_error(
+                "exception_on_excluded_date",
+                "active exception targets an excluded non-teaching date",
+                exception,
+                target
+              )
+            ]
+          else
+            []
+          end
+        else
+          []
+        end
+
       duration =
         case Map.get(sessions_by_id, exception.session_id) do
           %{duration_slots: duration} -> duration
@@ -104,7 +125,7 @@ defmodule NeuZeit.Constraints.Occurrence do
           []
         end
 
-      date_errors ++ slot_errors
+      date_errors ++ excluded_target_errors ++ slot_errors
     end)
   end
 

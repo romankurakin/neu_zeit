@@ -273,12 +273,13 @@ defmodule NeuZeit.Planning do
   end
 
   def project_active_term(term_id) do
+    term = Repo.get!(Term, term_id)
+
     plan =
-      Repo.one!(
+      Repo.one(
         from p in Plan,
           where: p.term_id == ^term_id and p.status == "active",
           preload: [
-            :term,
             placements: [
               :room,
               session: [
@@ -298,15 +299,17 @@ defmodule NeuZeit.Planning do
           preload: [:session]
       )
 
-    placed_session_ids = MapSet.new(plan.placements, & &1.session_id)
+    placements = if plan, do: plan.placements, else: []
+    placed_session_ids = MapSet.new(placements, & &1.session_id)
 
     unplaced_session_ids =
       Repo.all(from s in Session, where: s.term_id == ^term_id, order_by: s.id, select: s.id)
       |> Enum.reject(&MapSet.member?(placed_session_ids, &1))
 
     %{
-      occurrences: Projection.project(plan.term, plan.placements, exceptions),
-      unplaced_session_ids: unplaced_session_ids
+      occurrences: Projection.project(term, placements, exceptions),
+      unplaced_session_ids: unplaced_session_ids,
+      active_plan_id: plan && plan.id
     }
   end
 
@@ -429,21 +432,36 @@ defmodule NeuZeit.Planning do
   end
 
   defp validate_candidate_origin(changeset, term, placements, candidate) do
-    if candidate.status == "active" and candidate.kind in ["move", "cancel"] and
-         not Projection.template_occurrence?(
-           term,
-           placements,
-           candidate.session_id,
-           candidate.occurrence_date
-         ) do
-      {:error,
-       Ecto.Changeset.add_error(
-         changeset,
-         :occurrence_date,
-         "does not match any scheduled occurrence"
-       )}
-    else
-      :ok
+    excluded_dates = MapSet.new(term.excluded_dates || [])
+
+    cond do
+      candidate.status != "active" ->
+        :ok
+
+      candidate.kind in ["move", "cancel"] and
+          not Projection.template_occurrence?(
+            term,
+            placements,
+            candidate.session_id,
+            candidate.occurrence_date
+          ) ->
+        {:error,
+         Ecto.Changeset.add_error(
+           changeset,
+           :occurrence_date,
+           "does not match any scheduled occurrence"
+         )}
+
+      candidate.kind == "cancel" and MapSet.member?(excluded_dates, candidate.occurrence_date) ->
+        {:error,
+         Ecto.Changeset.add_error(
+           changeset,
+           :occurrence_date,
+           "is already removed from the schedule by an excluded date"
+         )}
+
+      true ->
+        :ok
     end
   end
 
@@ -546,6 +564,16 @@ defmodule NeuZeit.Planning do
   end
 
   defp validate_candidate(attrs, self_id \\ nil) do
+    changeset = Placement.changeset(%Placement{}, attrs)
+
+    if changeset.valid? do
+      validate_candidate_constraints(changeset, attrs, self_id)
+    else
+      {:error, changeset}
+    end
+  end
+
+  defp validate_candidate_constraints(changeset, attrs, self_id) do
     plan_id = attr(attrs, :plan_id)
 
     existing_query =
@@ -571,8 +599,7 @@ defmodule NeuZeit.Planning do
     existing = Repo.all(existing_query)
 
     candidate =
-      %Placement{}
-      |> Placement.changeset(attrs)
+      changeset
       |> Ecto.Changeset.apply_changes()
       |> Repo.preload([
         :room,
