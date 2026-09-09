@@ -416,6 +416,7 @@ defmodule NeuZeit.CatalogTest do
                new_date: ~D[2026-09-01],
                new_slot: 2,
                new_room_id: exception_room.id,
+               created_by: "Test administrator",
                reason: "move"
              })
 
@@ -483,6 +484,7 @@ defmodule NeuZeit.CatalogTest do
                new_date: ~D[2026-09-01],
                new_slot: 1,
                new_room_id: room_a.id,
+               created_by: "Test administrator",
                reason: "move"
              })
 
@@ -518,6 +520,7 @@ defmodule NeuZeit.CatalogTest do
                new_date: ~D[2026-09-08],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "makeup"
              })
 
@@ -560,6 +563,7 @@ defmodule NeuZeit.CatalogTest do
                new_date: ~D[2026-09-01],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "move"
              })
 
@@ -607,11 +611,11 @@ defmodule NeuZeit.CatalogTest do
       occurrence_date: date,
       new_slot: 1,
       new_room_id: room.id,
+      created_by: "Test administrator",
       reason: "makeup"
     }
 
-    # While the date is excluded no exception may target it, so removing the
-    # excluded date can never uncover a hidden conflict.
+    # After restoring this teaching date, revalidate the newly included meetings.
     assert {:error, %{errors: errors}} = NeuZeit.Planning.create_schedule_exception(addition)
     assert Enum.any?(errors, &(&1.type == "exception_on_excluded_date"))
 
@@ -687,6 +691,7 @@ defmodule NeuZeit.CatalogTest do
                new_date: ~D[2026-09-08],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "test"
              })
 
@@ -700,6 +705,7 @@ defmodule NeuZeit.CatalogTest do
                session_id: session.id,
                kind: "cancel",
                occurrence_date: ~D[2026-09-07],
+               created_by: "Test administrator",
                reason: "test"
              })
 
@@ -735,6 +741,7 @@ defmodule NeuZeit.CatalogTest do
                occurrence_date: ~D[2026-09-01],
                new_slot: 3,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "one-off intro meeting"
              })
 

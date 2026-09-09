@@ -8,13 +8,13 @@ defmodule NeuZeitWeb.SlotProfileControllerTest do
 
     conn = post(conn, "/api/terms/#{term.id}/slot_profiles/defaults")
     assert %{"data" => profiles} = json_response(conn, 201)
-    assert Enum.any?(profiles, &(&1["name"] == "DE_EARLY"))
+    assert [%{"name" => "Weekdays, daytime"}] = profiles
 
     conn = get(build_conn(), "/api/slot_profiles?term_id=#{term.id}")
     assert %{"data" => listed} = json_response(conn, 200)
 
-    de_early = Enum.find(listed, &(&1["name"] == "DE_EARLY"))
-    assert length(de_early["cells"]) == 6
+    [daytime] = listed
+    assert length(daytime["cells"]) == 20
   end
 
   test "creates and updates an administrator-defined profile", %{conn: conn} do

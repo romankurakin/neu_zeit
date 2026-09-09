@@ -279,6 +279,76 @@ defmodule NeuZeit.PlanningTest do
     end)
   end
 
+  for edit <- [:move, :remove, :create, :lock, :unlock] do
+    @solver_edit edit
+    test "solver preserves a concurrent #{@solver_edit} and refuses the stale result" do
+      with_solver_adapter(StaleCatalogSolver, fn ->
+        try do
+          term = term_fixture()
+          room = room_fixture()
+          session = session_fixture(term: term, component: component_fixture(rooms: [room]))
+          plan = plan_fixture(term: term)
+
+          attrs = %{
+            plan_id: plan.id,
+            session_id: session.id,
+            room_id: room.id,
+            day: 1,
+            slot: 1,
+            locked: @solver_edit == :unlock
+          }
+
+          placement = if @solver_edit != :create, do: placement_fixture(attrs)
+
+          Application.put_env(:neu_zeit, :stale_solver_callback, fn ->
+            result =
+              case @solver_edit do
+                :move -> Planning.update_placement(placement, %{day: 2, slot: 2})
+                :remove -> Planning.delete_placement(placement)
+                :create -> Planning.create_placement(attrs)
+                :lock -> Planning.update_placement(placement, %{locked: true})
+                :unlock -> Planning.update_placement(placement, %{locked: false})
+              end
+
+            assert {:ok, _} = result
+          end)
+
+          assert {:error, {:conflict, message}} = Planning.solve_plan(plan.id)
+          assert message =~ "changed while the solver was running"
+
+          case @solver_edit do
+            :remove -> assert placements_for(plan) == []
+            :move -> assert [%{day: 2, slot: 2}] = placements_for(plan)
+            :lock -> assert [%{locked: true}] = placements_for(plan)
+            _ -> assert [%{day: 1, slot: 1, locked: false}] = placements_for(plan)
+          end
+        after
+          Application.delete_env(:neu_zeit, :stale_solver_callback)
+        end
+      end)
+    end
+  end
+
+  test "solver can still replace an unchanged draft" do
+    with_solver_adapter(StaleCatalogSolver, fn ->
+      term = term_fixture()
+      room = room_fixture()
+      session = session_fixture(term: term, component: component_fixture(rooms: [room]))
+      plan = plan_fixture(term: term)
+
+      placement_fixture(%{
+        plan_id: plan.id,
+        session_id: session.id,
+        room_id: room.id,
+        day: 2,
+        slot: 2
+      })
+
+      assert {:ok, _} = Planning.solve_plan(plan.id)
+      assert [%{day: 1, slot: 1}] = placements_for(plan)
+    end)
+  end
+
   test "clone_plan creates a new draft copy" do
     term = term_fixture()
     source = plan_fixture(term: term, status: "draft")
@@ -480,6 +550,7 @@ defmodule NeuZeit.PlanningTest do
              Planning.create_schedule_exception(%{
                kind: "cancel",
                occurrence_date: ~D[2026-08-31],
+               created_by: "Test administrator",
                reason: "no session"
              })
 
@@ -508,6 +579,7 @@ defmodule NeuZeit.PlanningTest do
       kind: "move",
       occurrence_date: ~D[2026-08-31],
       new_room_id: room.id,
+      created_by: "Test administrator",
       reason: "test"
     }
 
@@ -573,6 +645,7 @@ defmodule NeuZeit.PlanningTest do
                occurrence_date: ~D[2026-08-31],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "extra class"
              })
 
@@ -586,6 +659,7 @@ defmodule NeuZeit.PlanningTest do
                occurrence_date: ~D[2026-08-31],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "extra class"
              })
   end
@@ -625,6 +699,7 @@ defmodule NeuZeit.PlanningTest do
                new_date: ~D[2026-09-01],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "clash"
              })
 
@@ -639,6 +714,7 @@ defmodule NeuZeit.PlanningTest do
                new_date: ~D[2026-09-01],
                new_slot: 3,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "makeup"
              })
   end
@@ -670,6 +746,7 @@ defmodule NeuZeit.PlanningTest do
                  new_date: ~D[2026-09-01],
                  new_slot: 2,
                  new_room_id: disallowed_room.id,
+                 created_by: "Test administrator",
                  reason: "invalid room"
                })
 
@@ -692,6 +769,7 @@ defmodule NeuZeit.PlanningTest do
                occurrence_date: ~D[2026-09-02],
                new_slot: 4,
                new_room_id: room_a.id,
+               created_by: "Test administrator",
                reason: "extra"
              })
 
@@ -731,6 +809,7 @@ defmodule NeuZeit.PlanningTest do
                new_date: ~D[2026-09-02],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "wrong weekday"
              })
 
@@ -742,6 +821,7 @@ defmodule NeuZeit.PlanningTest do
                session_id: session.id,
                kind: "cancel",
                occurrence_date: ~D[2026-09-07],
+               created_by: "Test administrator",
                reason: "off week"
              })
 
@@ -780,6 +860,7 @@ defmodule NeuZeit.PlanningTest do
                session_id: session_a.id,
                kind: "cancel",
                occurrence_date: ~D[2026-08-31],
+               created_by: "Test administrator",
                reason: "cancelled"
              })
 
@@ -790,6 +871,7 @@ defmodule NeuZeit.PlanningTest do
                occurrence_date: ~D[2026-08-31],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "replacement"
              })
 
@@ -845,6 +927,7 @@ defmodule NeuZeit.PlanningTest do
                occurrence_date: ~D[2026-09-02],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "extra class"
              })
 
@@ -901,6 +984,7 @@ defmodule NeuZeit.PlanningTest do
                new_date: ~D[2026-09-02],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "makeup"
              })
 
@@ -962,6 +1046,7 @@ defmodule NeuZeit.PlanningTest do
       occurrence_date: ~D[2026-08-31],
       new_date: ~D[2026-08-31],
       new_room_id: room.id,
+      created_by: "Test administrator",
       reason: "move a double period"
     }
 
@@ -1013,6 +1098,7 @@ defmodule NeuZeit.PlanningTest do
                new_date: ~D[2026-09-01],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "test"
              })
 
@@ -1025,6 +1111,7 @@ defmodule NeuZeit.PlanningTest do
                occurrence_date: ~D[2026-09-01],
                new_slot: 2,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "test"
              })
 
@@ -1064,6 +1151,7 @@ defmodule NeuZeit.PlanningTest do
                new_date: ~D[2026-09-02],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "makeup for the holiday"
              })
   end
@@ -1097,6 +1185,7 @@ defmodule NeuZeit.PlanningTest do
                session_id: session.id,
                kind: "cancel",
                occurrence_date: ~D[2026-09-01],
+               created_by: "Test administrator",
                reason: "test"
              })
 

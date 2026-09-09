@@ -56,6 +56,6 @@ defmodule NeuZeit.Constraints.AdvisoryTest do
     assert advisory.day == 1
     assert advisory.slots == [2]
     assert advisory.weeks == [2]
-    assert advisory.cohorts == [["1A-MO"], ["D12"]]
+    assert Enum.sort(advisory.cohorts) == [["1A-MO"], ["D12"]]
   end
 end

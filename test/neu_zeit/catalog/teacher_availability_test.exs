@@ -141,6 +141,7 @@ defmodule NeuZeit.Catalog.TeacherAvailabilityTest do
                new_date: ~D[2026-09-01],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "outside availability"
              })
 
@@ -156,6 +157,7 @@ defmodule NeuZeit.Catalog.TeacherAvailabilityTest do
                new_date: ~D[2026-09-01],
                new_slot: 1,
                new_room_id: room.id,
+               created_by: "Test administrator",
                reason: "temporarily allowed"
              })
 

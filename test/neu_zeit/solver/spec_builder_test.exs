@@ -45,6 +45,7 @@ defmodule NeuZeit.Solver.SpecBuilderTest do
     assert spec.requirements == %{all_sessions_placed: true}
 
     assert spec.soft.weights == %{
+             weekly_balance: 100,
              building: 10,
              gaps: 5,
              active_days: 2,

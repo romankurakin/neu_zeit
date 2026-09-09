@@ -1,17 +1,9 @@
 defmodule NeuZeit.DataCase do
   @moduledoc """
-  This module defines the setup for tests requiring
-  access to the application's data layer.
+  Sets up database tests in a SQL sandbox.
 
-  You may define functions here to be used as helpers in
-  your tests.
-
-  Finally, if the test case interacts with the database,
-  we enable the SQL sandbox, so changes done to the database
-  are reverted at the end of every test. If you are using
-  PostgreSQL, you can even run database tests asynchronously
-  by setting `use NeuZeit.DataCase, async: true`, although
-  this option is not recommended for other databases.
+  Database changes are rolled back after each test. Use `async: true`
+  for independent PostgreSQL tests.
   """
 
   use ExUnit.CaseTemplate
@@ -35,6 +27,10 @@ defmodule NeuZeit.DataCase do
   def setup_sandbox(tags) do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(NeuZeit.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    # Sandbox transactions live for an entire test. Take the production schedule
+    # lock before any fixture inserts, avoiding lock-order inversion with other
+    # tests inserting the same unique registry values.
+    NeuZeit.Planning.SharedResources.lock!()
   end
 
   def errors_on(changeset) do

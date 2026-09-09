@@ -6,40 +6,38 @@ defmodule NeuZeit.Catalog.SlotProfileTest do
   alias NeuZeit.Catalog
   alias NeuZeit.Planning
 
-  test "creates the inferred DKU profiles idempotently" do
+  test "creates only the weekday daytime profile idempotently" do
+    term = term_fixture()
+    assert {:ok, [profile]} = Catalog.ensure_default_slot_profiles(term)
+    assert profile.name == "Weekdays, daytime"
+    assert profile.preset_key == "weekday_daytime"
+
+    assert MapSet.new(profile.cells, &{&1.day, &1.slot}) ==
+             MapSet.new(for day <- 1..5, slot <- 1..4, do: {day, slot})
+
+    assert {:ok, [same]} = Catalog.ensure_default_slot_profiles(term)
+    assert same.id == profile.id
+  end
+
+  test "reuses a matching example without changing its cells or name" do
+    term = term_fixture()
+    cells = for day <- 1..5, slot <- 1..4, do: %{day: day, slot: slot}
+    existing = slot_profile_fixture(term: term, name: "Будни, дневное время", cells: cells)
+    assert {:ok, [profile]} = Catalog.ensure_default_slot_profiles(term)
+    assert profile.id == existing.id
+    assert profile.name == existing.name
+    assert profile.preset_key == "weekday_daytime"
+  end
+
+  test "does not treat a similarly named custom grid as the default" do
     term = term_fixture()
 
+    custom =
+      slot_profile_fixture(term: term, name: "Будни, дневное время", cells: [%{day: 6, slot: 1}])
+
     assert {:ok, profiles} = Catalog.ensure_default_slot_profiles(term)
-
-    assert Enum.map(profiles, & &1.name) == [
-             "ANY",
-             "DAYTIME_ANY",
-             "DE_EARLY",
-             "DE_LATE",
-             "EN_EARLY",
-             "EN_LATE",
-             "EN_SATURDAY",
-             "KZ_LATE",
-             "PE_EDGE"
-           ]
-
-    de_early = Enum.find(profiles, &(&1.name == "DE_EARLY"))
-    kz_late = Enum.find(profiles, &(&1.name == "KZ_LATE"))
-
-    assert Enum.map(de_early.cells, &{&1.day, &1.slot}) == [
-             {1, 1},
-             {1, 2},
-             {3, 1},
-             {3, 2},
-             {5, 1},
-             {5, 2}
-           ]
-
-    assert Enum.all?(kz_late.cells, &(&1.day in 1..5 and &1.slot in 3..6))
-    assert length(kz_late.cells) == 20
-
-    assert {:ok, same_profiles} = Catalog.ensure_default_slot_profiles(term)
-    assert length(same_profiles) == length(profiles)
+    assert length(profiles) == 2
+    assert Catalog.get_slot_profile!(custom.id).preset_key == nil
   end
 
   test "profile changes roll back when they invalidate an existing placement" do
