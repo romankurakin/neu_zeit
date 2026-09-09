@@ -1,0 +1,228 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "can't be blank"
+msgstr "Füllen Sie das Feld aus."
+
+msgid "has already been taken"
+msgstr "Dieser Wert wird bereits verwendet. Geben Sie einen anderen ein."
+
+msgid "is invalid"
+msgstr "Prüfen Sie diesen Wert."
+
+msgid "must be accepted"
+msgstr "Bestätigen Sie diese Auswahl."
+
+msgid "has invalid format"
+msgstr "Prüfen Sie das Format."
+
+msgid "has an invalid entry"
+msgstr "Prüfen Sie die ausgewählten Werte."
+
+msgid "is reserved"
+msgstr "Dieser Wert ist reserviert. Geben Sie einen anderen ein."
+
+msgid "does not match confirmation"
+msgstr "Die Werte stimmen nicht überein."
+
+msgid "is still associated with this entry"
+msgstr "Entfernen Sie zuerst den verknüpften Eintrag."
+
+msgid "are still associated with this entry"
+msgstr "Entfernen Sie zuerst die verknüpften Einträge."
+
+msgid "should have %{count} item(s)"
+msgid_plural "should have %{count} item(s)"
+msgstr[0] "Wählen Sie genau %{count} Eintrag."
+msgstr[1] "Wählen Sie genau %{count} Einträge."
+
+msgid "should be %{count} character(s)"
+msgid_plural "should be %{count} character(s)"
+msgstr[0] "Verwenden Sie genau %{count} Zeichen."
+msgstr[1] "Verwenden Sie genau %{count} Zeichen."
+
+msgid "should be %{count} byte(s)"
+msgid_plural "should be %{count} byte(s)"
+msgstr[0] "Verwenden Sie genau %{count} Byte."
+msgstr[1] "Verwenden Sie genau %{count} Byte."
+
+msgid "should have at least %{count} item(s)"
+msgid_plural "should have at least %{count} item(s)"
+msgstr[0] "Wählen Sie mindestens %{count} Eintrag."
+msgstr[1] "Wählen Sie mindestens %{count} Einträge."
+
+msgid "should be at least %{count} character(s)"
+msgid_plural "should be at least %{count} character(s)"
+msgstr[0] "Verwenden Sie mindestens %{count} Zeichen."
+msgstr[1] "Verwenden Sie mindestens %{count} Zeichen."
+
+msgid "should be at least %{count} byte(s)"
+msgid_plural "should be at least %{count} byte(s)"
+msgstr[0] "Verwenden Sie mindestens %{count} Byte."
+msgstr[1] "Verwenden Sie mindestens %{count} Byte."
+
+msgid "should have at most %{count} item(s)"
+msgid_plural "should have at most %{count} item(s)"
+msgstr[0] "Wählen Sie höchstens %{count} Eintrag."
+msgstr[1] "Wählen Sie höchstens %{count} Einträge."
+
+msgid "should be at most %{count} character(s)"
+msgid_plural "should be at most %{count} character(s)"
+msgstr[0] "Verwenden Sie höchstens %{count} Zeichen."
+msgstr[1] "Verwenden Sie höchstens %{count} Zeichen."
+
+msgid "should be at most %{count} byte(s)"
+msgid_plural "should be at most %{count} byte(s)"
+msgstr[0] "Verwenden Sie höchstens %{count} Byte."
+msgstr[1] "Verwenden Sie höchstens %{count} Byte."
+
+msgid "must be less than %{number}"
+msgstr "Geben Sie einen Wert unter %{number} ein."
+
+msgid "must be greater than %{number}"
+msgstr "Geben Sie einen Wert über %{number} ein."
+
+msgid "must be less than or equal to %{number}"
+msgstr "Geben Sie einen Wert von höchstens %{number} ein."
+
+msgid "must be greater than or equal to %{number}"
+msgstr "Geben Sie einen Wert von mindestens %{number} ein."
+
+msgid "must be equal to %{number}"
+msgstr "Geben Sie %{number} ein."
+
+msgid "is read-only"
+msgstr "Dieser Wert kann nicht geändert werden."
+
+msgid "does not exist"
+msgstr "Dieser Eintrag existiert nicht mehr. Wählen Sie einen anderen."
+
+msgid "is not allowed for this component"
+msgstr "Wählen Sie einen für diese Lehrform erlaubten Raum."
+
+msgid "must be a Monday"
+msgstr "Wählen Sie einen Montag."
+
+msgid "must be on or after starts_on"
+msgstr "Wählen Sie ein Datum ab dem ersten Semestertag."
+
+msgid "must be within the term"
+msgstr "Wählen Sie ein Datum innerhalb des Semesters."
+
+msgid "must be on a teaching day"
+msgstr "Wählen Sie einen Unterrichtstag."
+
+msgid "must fall on teaching days"
+msgstr "Wählen Sie Daten, die auf Unterrichtstage fallen."
+
+msgid "must be a non-empty list of week numbers"
+msgstr "Wählen Sie mindestens eine Unterrichtswoche."
+
+msgid "must be inside the term week range"
+msgstr "Wählen Sie Wochen innerhalb dieses Semesters."
+
+msgid "has no start cell that fits the session duration"
+msgstr "Dieses Profil bietet keine Anfangszeit für die gesamte Einheit."
+
+msgid "availability and slot profile leave no valid start for this session"
+msgstr "Keine Anfangszeit passt zur Verfügbarkeit und zum Zeitprofil. Prüfen Sie beide."
+
+msgid "must contain at least one allowed start"
+msgstr "Wählen Sie mindestens eine Anfangszeit."
+
+msgid "must contain a start cell that fits every assigned session duration"
+msgstr "Erlauben Sie für jede zugewiesene Einheit eine Anfangszeit, die zu ihrer Dauer passt."
+
+msgid "change conflicts with existing placements"
+msgstr "Diese Wochen stehen im Konflikt mit eingeplanten Einheiten. Prüfen Sie den Stundenplan."
+
+msgid "must be a non-empty list of ids"
+msgstr "Wählen Sie mindestens einen Eintrag."
+
+msgid "contains invalid ids"
+msgstr "Prüfen Sie die Auswahl und versuchen Sie es erneut."
+
+msgid "contains unknown ids"
+msgstr "Einige ausgewählte Einträge existieren nicht mehr. Laden Sie die Seite neu und wählen Sie erneut."
+
+msgid "must match plan and session term"
+msgstr "Plan und Einheit müssen zum selben Semester gehören."
+
+msgid "or session_id does not exist"
+msgstr "Plan oder Einheit existiert nicht mehr. Laden Sie die Seite neu."
+
+msgid "must match the session term"
+msgstr "Wählen Sie das Semester dieser Einheit."
+
+msgid "must belong to this term"
+msgstr "Wählen Sie eine Einheit aus diesem Semester."
+
+msgid "is read-only unless it is a draft"
+msgstr "Erstellen Sie einen Entwurf, um den Stundenplan zu bearbeiten."
+
+msgid "locked placements cannot be changed without unlocking"
+msgstr "Lösen Sie die Fixierung, bevor Sie die Platzierung ändern."
+
+msgid "must be blank for cancellations"
+msgstr "Lassen Sie dieses Feld bei einer Absage leer."
+
+msgid "does not match any scheduled occurrence"
+msgstr "Diese Einheit findet an diesem Datum nicht statt. Wählen Sie ihr geplantes Datum."
+
+msgid "is already removed from the schedule by an excluded date"
+msgstr "Dieser Termin entfällt bereits, weil der Tag unterrichtsfrei ist."
+
+msgid "cells must be a list of day/slot maps"
+msgstr "Die Zeitauswahl konnte nicht gelesen werden. Laden Sie die Seite neu und wählen Sie erneut."
+
+msgid "each cell must be a day/slot map"
+msgstr "Die Zeitauswahl konnte nicht gelesen werden. Laden Sie die Seite neu und wählen Sie erneut."
+
+msgid "term must keep at least %{minimum} weeks; existing sessions or placements use week %{week}"
+msgstr "Behalten Sie mindestens %{minimum} Unterrichtswochen. Einheiten nutzen Woche %{week}."
+
+msgid "is outside the configured slot grid (1..%{slots})"
+msgstr "Die Einheit muss vollständig in den Unterrichtstag passen. Zeitfenster pro Tag: %{slots}."
+
+msgid "leaves no valid start for an existing session"
+msgstr "Für eine bestehende Einheit gibt es keine erlaubte Anfangszeit. Prüfen Sie Dauer und Zeitprofil."
+
+msgid "active plans cannot be deleted; publish another plan for the term first"
+msgstr "Veröffentlichen Sie zuerst einen anderen Plan für dieses Semester. Danach können Sie diesen löschen."
+
+msgid "session is placed in the active published plan"
+msgstr "Diese Einheit steht im veröffentlichten Stundenplan und kann nicht gelöscht werden."
+
+msgid "session has active schedule exceptions; revert or delete them first"
+msgstr "Nehmen Sie die einmaligen Änderungen dieser Einheit zurück, bevor Sie sie löschen."
+
+msgid "The plan changed while the solver was running. Your edits were kept. Run the solver again."
+msgstr "Der Stundenplan wurde während der Berechnung geändert. Ihre Änderungen bleiben erhalten. Starten Sie eine neue Berechnung."
+
+msgid "Remove placements before reducing this workload."
+msgstr "Entfernen Sie überzählige Termine aus dem Stundenplan, bevor Sie den Lehrumfang reduzieren."
+
+msgid "The workload changed. Reload it before saving."
+msgstr "Der Lehrumfang wurde geändert. Laden Sie ihn vor dem Speichern neu."
+
+msgid "This workload already exists. Edit its quantity."
+msgstr "Dieser Lehrumfang ist bereits vorhanden. Ändern Sie die Anzahl der Termine."
+
+msgid "A generated meeting must fall on a teaching date."
+msgstr "Der Termin muss auf einen Unterrichtstag fallen."
+
+msgid "Hours must cover a whole number of sessions of this duration."
+msgstr "Die Stunden müssen ohne Rest durch die Dauer eines Termins teilbar sein."
+
+msgid "Teaching load exceeds the available time."
+msgstr "Der Lehrumfang überschreitet die verfügbare Unterrichtszeit."

@@ -1,0 +1,237 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "can't be blank"
+msgstr "Заполните поле."
+
+msgid "has already been taken"
+msgstr "Такое значение уже есть. Укажите другое."
+
+msgid "is invalid"
+msgstr "Проверьте значение."
+
+msgid "must be accepted"
+msgstr "Подтвердите выбор."
+
+msgid "has invalid format"
+msgstr "Проверьте формат."
+
+msgid "has an invalid entry"
+msgstr "Проверьте выбранные значения."
+
+msgid "is reserved"
+msgstr "Это значение зарезервировано. Укажите другое."
+
+msgid "does not match confirmation"
+msgstr "Значения не совпадают."
+
+msgid "is still associated with this entry"
+msgstr "Сначала удалите связанную запись."
+
+msgid "are still associated with this entry"
+msgstr "Сначала удалите связанные записи."
+
+msgid "should have %{count} item(s)"
+msgid_plural "should have %{count} item(s)"
+msgstr[0] "Нужен %{count} элемент."
+msgstr[1] "Нужно %{count} элемента."
+msgstr[2] "Нужно %{count} элементов."
+
+msgid "should be %{count} character(s)"
+msgid_plural "should be %{count} character(s)"
+msgstr[0] "Нужен %{count} символ."
+msgstr[1] "Нужно %{count} символа."
+msgstr[2] "Нужно %{count} символов."
+
+msgid "should be %{count} byte(s)"
+msgid_plural "should be %{count} byte(s)"
+msgstr[0] "Нужен %{count} байт."
+msgstr[1] "Нужно %{count} байта."
+msgstr[2] "Нужно %{count} байт."
+
+msgid "should have at least %{count} item(s)"
+msgid_plural "should have at least %{count} item(s)"
+msgstr[0] "Минимум элементов: %{count}."
+msgstr[1] "Минимум элементов: %{count}."
+msgstr[2] "Минимум элементов: %{count}."
+
+msgid "should be at least %{count} character(s)"
+msgid_plural "should be at least %{count} character(s)"
+msgstr[0] "Минимум символов: %{count}."
+msgstr[1] "Минимум символов: %{count}."
+msgstr[2] "Минимум символов: %{count}."
+
+msgid "should be at least %{count} byte(s)"
+msgid_plural "should be at least %{count} byte(s)"
+msgstr[0] "Минимум байт: %{count}."
+msgstr[1] "Минимум байт: %{count}."
+msgstr[2] "Минимум байт: %{count}."
+
+msgid "should have at most %{count} item(s)"
+msgid_plural "should have at most %{count} item(s)"
+msgstr[0] "Максимум элементов: %{count}."
+msgstr[1] "Максимум элементов: %{count}."
+msgstr[2] "Максимум элементов: %{count}."
+
+msgid "should be at most %{count} character(s)"
+msgid_plural "should be at most %{count} character(s)"
+msgstr[0] "Максимум символов: %{count}."
+msgstr[1] "Максимум символов: %{count}."
+msgstr[2] "Максимум символов: %{count}."
+
+msgid "should be at most %{count} byte(s)"
+msgid_plural "should be at most %{count} byte(s)"
+msgstr[0] "Максимум байт: %{count}."
+msgstr[1] "Максимум байт: %{count}."
+msgstr[2] "Максимум байт: %{count}."
+
+msgid "must be less than %{number}"
+msgstr "Введите значение меньше %{number}."
+
+msgid "must be greater than %{number}"
+msgstr "Введите значение больше %{number}."
+
+msgid "must be less than or equal to %{number}"
+msgstr "Введите значение не больше %{number}."
+
+msgid "must be greater than or equal to %{number}"
+msgstr "Введите значение не меньше %{number}."
+
+msgid "must be equal to %{number}"
+msgstr "Введите %{number}."
+
+msgid "is read-only"
+msgstr "Это значение нельзя изменить."
+
+msgid "does not exist"
+msgstr "Запись больше не существует. Выберите другую."
+
+msgid "is not allowed for this component"
+msgstr "Выберите допустимую аудиторию для этого вида занятий."
+
+msgid "must be a Monday"
+msgstr "Выберите понедельник."
+
+msgid "must be on or after starts_on"
+msgstr "Выберите дату не раньше начала семестра."
+
+msgid "must be within the term"
+msgstr "Выберите дату в пределах семестра."
+
+msgid "must be on a teaching day"
+msgstr "Выберите учебный день."
+
+msgid "must fall on teaching days"
+msgstr "Выберите даты, которые приходятся на учебные дни."
+
+msgid "must be a non-empty list of week numbers"
+msgstr "Выберите хотя бы одну учебную неделю."
+
+msgid "must be inside the term week range"
+msgstr "Выберите недели в пределах семестра."
+
+msgid "has no start cell that fits the session duration"
+msgstr "В этом профиле нет времени, в которое занятие поместится целиком."
+
+msgid "availability and slot profile leave no valid start for this session"
+msgstr "Нет времени, подходящего по доступности преподавателя и профилю. Проверьте оба ограничения."
+
+msgid "must contain at least one allowed start"
+msgstr "Выберите хотя бы одно время начала."
+
+msgid "must contain a start cell that fits every assigned session duration"
+msgstr "Разрешите время начала, в которое каждое назначенное занятие поместится целиком."
+
+msgid "change conflicts with existing placements"
+msgstr "Эти недели конфликтуют с размещёнными занятиями. Проверьте расписание."
+
+msgid "must be a non-empty list of ids"
+msgstr "Выберите хотя бы одну запись."
+
+msgid "contains invalid ids"
+msgstr "Проверьте выбор и повторите попытку."
+
+msgid "contains unknown ids"
+msgstr "Часть выбранных записей больше не существует. Обновите страницу и выберите заново."
+
+msgid "must match plan and session term"
+msgstr "План и занятие должны относиться к одному семестру."
+
+msgid "or session_id does not exist"
+msgstr "План или занятие больше не существует. Обновите страницу."
+
+msgid "must match the session term"
+msgstr "Выберите семестр, к которому относится занятие."
+
+msgid "must belong to this term"
+msgstr "Выберите занятие из этого семестра."
+
+msgid "is read-only unless it is a draft"
+msgstr "Создайте черновик, чтобы изменить расписание."
+
+msgid "locked placements cannot be changed without unlocking"
+msgstr "Открепите размещение перед изменением."
+
+msgid "must be blank for cancellations"
+msgstr "При отмене занятия оставьте поле пустым."
+
+msgid "does not match any scheduled occurrence"
+msgstr "На эту дату занятие не запланировано. Выберите дату из расписания."
+
+msgid "is already removed from the schedule by an excluded date"
+msgstr "Занятие уже исключено, поскольку дата отмечена как неучебная."
+
+msgid "cells must be a list of day/slot maps"
+msgstr "Не удалось прочитать выбранное время. Обновите страницу и выберите заново."
+
+msgid "each cell must be a day/slot map"
+msgstr "Не удалось прочитать выбранное время. Обновите страницу и выберите заново."
+
+msgid "term must keep at least %{minimum} weeks; existing sessions or placements use week %{week}"
+msgstr "Минимум учебных недель: %{minimum}. Занятия используют неделю %{week}."
+
+msgid "is outside the configured slot grid (1..%{slots})"
+msgstr "Занятие должно целиком помещаться в учебный день. Интервалов в дне: %{slots}."
+
+msgid "leaves no valid start for an existing session"
+msgstr "Для одного из занятий нет допустимого времени начала. Проверьте его длительность и профиль времени."
+
+msgid "active plans cannot be deleted; publish another plan for the term first"
+msgstr "Сначала опубликуйте другой план семестра. После этого текущий план можно удалить."
+
+msgid "session is placed in the active published plan"
+msgstr "Занятие есть в опубликованном расписании. Удалить его нельзя."
+
+msgid "session has active schedule exceptions; revert or delete them first"
+msgstr "Перед удалением занятия отмените его разовые изменения."
+
+msgid "The plan changed while the solver was running. Your edits were kept. Run the solver again."
+msgstr "Расписание изменилось во время расчёта. Ваши правки сохранены. Запустите расчёт заново."
+
+msgid "Remove placements before reducing this workload."
+msgstr "Перед уменьшением нагрузки снимите лишние занятия с расписания."
+
+msgid "The workload changed. Reload it before saving."
+msgstr "Нагрузка изменилась. Откройте её заново перед сохранением."
+
+msgid "This workload already exists. Edit its quantity."
+msgstr "Такая нагрузка уже есть. Измените количество занятий в ней."
+
+msgid "A generated meeting must fall on a teaching date."
+msgstr "Занятие должно проходить в учебную дату."
+
+msgid "Hours must cover a whole number of sessions of this duration."
+msgstr "Часы должны делиться на длительность занятия без остатка."
+
+msgid "Teaching load exceeds the available time."
+msgstr "Нагрузка превышает доступное учебное время."

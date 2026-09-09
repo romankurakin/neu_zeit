@@ -12,101 +12,227 @@ msgstr ""
 
 ## From Ecto.Changeset.cast/4
 msgid "can't be blank"
-msgstr ""
+msgstr "Enter a value."
 
 ## From Ecto.Changeset.unique_constraint/3
 msgid "has already been taken"
-msgstr ""
+msgstr "This value is already used. Enter another one."
 
 ## From Ecto.Changeset.put_change/3
 msgid "is invalid"
-msgstr ""
+msgstr "Check this value."
 
 ## From Ecto.Changeset.validate_acceptance/3
 msgid "must be accepted"
-msgstr ""
+msgstr "Confirm this choice."
 
 ## From Ecto.Changeset.validate_format/3
 msgid "has invalid format"
-msgstr ""
+msgstr "Check the format."
 
 ## From Ecto.Changeset.validate_subset/3
 msgid "has an invalid entry"
-msgstr ""
+msgstr "Check the selected values."
 
 ## From Ecto.Changeset.validate_exclusion/3
 msgid "is reserved"
-msgstr ""
+msgstr "This value is reserved. Enter another one."
 
 ## From Ecto.Changeset.validate_confirmation/3
 msgid "does not match confirmation"
-msgstr ""
+msgstr "The values do not match."
 
 ## From Ecto.Changeset.no_assoc_constraint/3
 msgid "is still associated with this entry"
-msgstr ""
+msgstr "Remove the linked record first."
 
 msgid "are still associated with this entry"
-msgstr ""
+msgstr "Remove the linked records first."
 
 ## From Ecto.Changeset.validate_length/3
 msgid "should have %{count} item(s)"
 msgid_plural "should have %{count} item(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Select exactly %{count} item."
+msgstr[1] "Select exactly %{count} items."
 
 msgid "should be %{count} character(s)"
 msgid_plural "should be %{count} character(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Use exactly %{count} character."
+msgstr[1] "Use exactly %{count} characters."
 
 msgid "should be %{count} byte(s)"
 msgid_plural "should be %{count} byte(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Use exactly %{count} byte."
+msgstr[1] "Use exactly %{count} bytes."
 
 msgid "should have at least %{count} item(s)"
 msgid_plural "should have at least %{count} item(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Select at least %{count} item."
+msgstr[1] "Select at least %{count} items."
 
 msgid "should be at least %{count} character(s)"
 msgid_plural "should be at least %{count} character(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Use at least %{count} character."
+msgstr[1] "Use at least %{count} characters."
 
 msgid "should be at least %{count} byte(s)"
 msgid_plural "should be at least %{count} byte(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Use at least %{count} byte."
+msgstr[1] "Use at least %{count} bytes."
 
 msgid "should have at most %{count} item(s)"
 msgid_plural "should have at most %{count} item(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Select at most %{count} item."
+msgstr[1] "Select at most %{count} items."
 
 msgid "should be at most %{count} character(s)"
 msgid_plural "should be at most %{count} character(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Use at most %{count} character."
+msgstr[1] "Use at most %{count} characters."
 
 msgid "should be at most %{count} byte(s)"
 msgid_plural "should be at most %{count} byte(s)"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Use at most %{count} byte."
+msgstr[1] "Use at most %{count} bytes."
 
 ## From Ecto.Changeset.validate_number/3
 msgid "must be less than %{number}"
-msgstr ""
+msgstr "Enter a value below %{number}."
 
 msgid "must be greater than %{number}"
-msgstr ""
+msgstr "Enter a value above %{number}."
 
 msgid "must be less than or equal to %{number}"
-msgstr ""
+msgstr "Enter a value no greater than %{number}."
 
 msgid "must be greater than or equal to %{number}"
-msgstr ""
+msgstr "Enter a value of at least %{number}."
 
 msgid "must be equal to %{number}"
-msgstr ""
+msgstr "Enter %{number}."
+
+msgid "is read-only"
+msgstr "This value cannot be changed."
+
+msgid "does not exist"
+msgstr "This record no longer exists. Choose another one."
+
+msgid "is not allowed for this component"
+msgstr "Choose a room allowed for this teaching type."
+
+msgid "must be a Monday"
+msgstr "Choose a Monday."
+
+msgid "must be on or after starts_on"
+msgstr "Choose a date on or after the first day of the term."
+
+msgid "must be within the term"
+msgstr "Choose a date within the term."
+
+msgid "must be on a teaching day"
+msgstr "Choose a teaching day."
+
+msgid "must fall on teaching days"
+msgstr "Choose dates that fall on teaching days."
+
+msgid "must be a non-empty list of week numbers"
+msgstr "Select at least one teaching week."
+
+msgid "must be inside the term week range"
+msgstr "Select weeks within this term."
+
+msgid "has no start cell that fits the session duration"
+msgstr "This profile has no start time that fits the full session."
+
+msgid "availability and slot profile leave no valid start for this session"
+msgstr "No start time fits the teacher's availability and the time profile. Review both."
+
+msgid "must contain at least one allowed start"
+msgstr "Select at least one start time."
+
+msgid "must contain a start cell that fits every assigned session duration"
+msgstr "Allow a start time for each assigned session's full duration."
+
+msgid "change conflicts with existing placements"
+msgstr "These weeks conflict with scheduled sessions. Review the timetable."
+
+msgid "must be a non-empty list of ids"
+msgstr "Select at least one record."
+
+msgid "contains invalid ids"
+msgstr "Check the selection and try again."
+
+msgid "contains unknown ids"
+msgstr "Some selected records no longer exist. Refresh the page and select again."
+
+msgid "must match plan and session term"
+msgstr "The plan and session must belong to the same term."
+
+msgid "or session_id does not exist"
+msgstr "The plan or session no longer exists. Refresh the page."
+
+msgid "must match the session term"
+msgstr "Select the term this session belongs to."
+
+msgid "must belong to this term"
+msgstr "Select a session from this term."
+
+msgid "is read-only unless it is a draft"
+msgstr "Create a draft to edit the timetable."
+
+msgid "locked placements cannot be changed without unlocking"
+msgstr "Unlock the placement before changing it."
+
+msgid "must be blank for cancellations"
+msgstr "Leave this field empty when cancelling a dated session."
+
+msgid "does not match any scheduled occurrence"
+msgstr "This session is not scheduled on this date. Choose its scheduled date."
+
+msgid "is already removed from the schedule by an excluded date"
+msgstr "This dated session is already omitted because the date is non-teaching."
+
+msgid "cells must be a list of day/slot maps"
+msgstr "The time selection could not be read. Refresh the page and select again."
+
+msgid "each cell must be a day/slot map"
+msgstr "The time selection could not be read. Refresh the page and select again."
+
+msgid "term must keep at least %{minimum} weeks; existing sessions or placements use week %{week}"
+msgstr "Keep at least %{minimum} teaching weeks. Sessions use week %{week}."
+
+msgid "is outside the configured slot grid (1..%{slots})"
+msgstr "The session must fit within the teaching day. Time slots per day: %{slots}."
+
+msgid "leaves no valid start for an existing session"
+msgstr "An existing session has no allowed start time. Check its duration and time profile."
+
+msgid "active plans cannot be deleted; publish another plan for the term first"
+msgstr "Publish another plan for this term before deleting the current one."
+
+msgid "session is placed in the active published plan"
+msgstr "This session is in the published timetable and cannot be deleted."
+
+msgid "session has active schedule exceptions; revert or delete them first"
+msgstr "Revert this session's one-off changes before deleting it."
+
+msgid "The plan changed while the solver was running. Your edits were kept. Run the solver again."
+msgstr "The timetable changed during calculation. Your edits were kept. Start a new calculation."
+
+msgid "Remove placements before reducing this workload."
+msgstr "Remove placements before reducing this workload."
+
+msgid "The workload changed. Reload it before saving."
+msgstr "The workload changed. Reload it before saving."
+
+msgid "This workload already exists. Edit its quantity."
+msgstr "This workload already exists. Edit its quantity."
+
+msgid "A generated meeting must fall on a teaching date."
+msgstr "A generated meeting must fall on a teaching date."
+
+msgid "Hours must cover a whole number of sessions of this duration."
+msgstr "Hours must cover a whole number of sessions of this duration."
+
+msgid "Teaching load exceeds the available time."
+msgstr "Teaching load exceeds the available time."

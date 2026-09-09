@@ -1,0 +1,2938 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/neu_zeit_web/components/scheduling/term_calendar.ex:71
+#, elixir-autogen, elixir-format
+msgid "%{date}. Click to mark it non-teaching."
+msgstr "%{date}. Click to mark it non-teaching."
+
+#: lib/neu_zeit_web/components/ui/table.ex:38
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr "Actions"
+
+#: lib/neu_zeit_web/components/ui/status.ex:63
+#, elixir-autogen, elixir-format
+msgid "Active"
+msgstr "Active"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:182
+#, elixir-autogen, elixir-format
+msgid "All buildings"
+msgstr "All buildings"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:200
+#: lib/neu_zeit_web/live/session_live/index.ex:258
+#, elixir-autogen, elixir-format
+msgid "All courses"
+msgstr "All courses"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:264
+#: storybook/components/toolbar.story.exs:26
+#, elixir-autogen, elixir-format
+msgid "All teachers"
+msgstr "All teachers"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:207
+#: lib/neu_zeit_web/components/ui/errors.ex:309
+#: lib/neu_zeit_web/live/course_live/show.ex:255
+#: lib/neu_zeit_web/live/course_live/show.ex:283
+#: lib/neu_zeit_web/live/term_live/show.ex:210
+#: storybook/components/transfer_list.story.exs:30
+#, elixir-autogen, elixir-format
+msgid "Allowed rooms"
+msgstr "Allowed rooms"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:103
+#, elixir-autogen, elixir-format
+msgid "Another solve is already running. Try again once it finishes."
+msgstr "Another solve is already running. Try again once it finishes."
+
+#: lib/neu_zeit_web/components/ui/status.ex:64
+#, elixir-autogen, elixir-format
+msgid "Archived"
+msgstr "Archived"
+
+#: lib/neu_zeit_web/components/scheduling/timetable.ex:67
+#: lib/neu_zeit_web/components/ui/transfer_list.ex:22
+#, elixir-autogen, elixir-format
+msgid "Available"
+msgstr "Available"
+
+#: lib/neu_zeit_web/components/ui/status.ex:65
+#, elixir-autogen, elixir-format
+msgid "Blocked"
+msgstr "Blocked"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:307
+#: lib/neu_zeit_web/live/room_live/index.ex:214
+#: lib/neu_zeit_web/live/room_live/index.ex:265
+#, elixir-autogen, elixir-format
+msgid "Building"
+msgstr "Building"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:253
+#, elixir-autogen, elixir-format
+msgid "Building name"
+msgstr "Building name"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:167
+#, elixir-autogen, elixir-format
+msgid "Buildings"
+msgstr "Buildings"
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:67
+#, elixir-autogen, elixir-format
+msgid "Busiest"
+msgstr "Busiest"
+
+#: lib/neu_zeit_web/components/ui/dialog.ex:23
+#: lib/neu_zeit_web/components/ui/dialog.ex:54
+#: lib/neu_zeit_web/live/course_live/index.ex:177
+#: lib/neu_zeit_web/live/exception_live/index.ex:326
+#: lib/neu_zeit_web/live/people_live/index.ex:264
+#: lib/neu_zeit_web/live/people_live/index.ex:278
+#: lib/neu_zeit_web/live/plan_live/index.ex:142
+#: lib/neu_zeit_web/live/plan_live/publication.ex:34
+#: lib/neu_zeit_web/live/room_live/index.ex:256
+#: lib/neu_zeit_web/live/room_live/index.ex:271
+#: lib/neu_zeit_web/live/session_live/index.ex:419
+#: lib/neu_zeit_web/live/term_live/index.ex:167
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr "Cancel"
+
+#: lib/neu_zeit_web/components/layouts.ex:54
+#: lib/neu_zeit_web/components/layouts.ex:60
+#, elixir-autogen, elixir-format
+msgid "Close navigation"
+msgstr "Close navigation"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:298
+#: lib/neu_zeit_web/live/course_live/index.ex:133
+#: lib/neu_zeit_web/live/course_live/index.ex:172
+#, elixir-autogen, elixir-format
+msgid "Code"
+msgstr "Code"
+
+#: lib/neu_zeit_web/components/ui/dialog.ex:25
+#, elixir-autogen, elixir-format
+msgid "Confirm"
+msgstr "Confirm"
+
+#: lib/neu_zeit_web/components/ui/status.ex:66
+#, elixir-autogen, elixir-format
+msgid "Conflict"
+msgstr "Conflict"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:57
+#, elixir-autogen, elixir-format
+msgid "Conflicts"
+msgstr "Conflicts"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:303
+#: lib/neu_zeit_web/live/plan_live/reports.ex:65
+#: lib/neu_zeit_web/live/session_live/index.ex:257
+#: lib/neu_zeit_web/live/session_live/index.ex:316
+#: lib/neu_zeit_web/live/workload_live/index.ex:146
+#: storybook/components/table.story.exs:13
+#, elixir-autogen, elixir-format
+msgid "Course"
+msgstr "Course"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:16
+#: lib/neu_zeit_web/live/course_live/index.ex:115
+#: lib/neu_zeit_web/nav.ex:76
+#, elixir-autogen, elixir-format
+msgid "Courses"
+msgstr "Courses"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:130
+#, elixir-autogen, elixir-format
+msgid "Create the first term"
+msgstr "Create the first term"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:85
+#, elixir-autogen, elixir-format
+msgid "Created %{name}."
+msgstr "Created %{name}."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:299
+#: lib/neu_zeit_web/live/course_live/index.ex:139
+#: lib/neu_zeit_web/live/course_live/index.ex:174
+#: lib/neu_zeit_web/live/plan_live/reports.ex:68
+#, elixir-autogen, elixir-format
+msgid "Credits"
+msgstr "Credits"
+
+#: lib/neu_zeit_web/components/layouts.ex:154
+#, elixir-autogen, elixir-format
+msgid "Current term"
+msgstr "Current term"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:160
+#: lib/neu_zeit_web/live/course_live/index.ex:191
+#: lib/neu_zeit_web/live/people_live/index.ex:215
+#: lib/neu_zeit_web/live/people_live/index.ex:242
+#: lib/neu_zeit_web/live/people_live/index.ex:288
+#: lib/neu_zeit_web/live/plan_live/index.ex:178
+#: lib/neu_zeit_web/live/room_live/index.ex:235
+#: lib/neu_zeit_web/live/room_live/index.ex:281
+#: lib/neu_zeit_web/live/session_live/index.ex:348
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:241
+#: lib/neu_zeit_web/live/term_live/index.ex:149
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr "Delete"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:177
+#, elixir-autogen, elixir-format
+msgid "Delete term"
+msgstr "Delete term"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:82
+#: lib/neu_zeit_web/live/people_live/index.ex:117
+#: lib/neu_zeit_web/live/plan_live/index.ex:100
+#: lib/neu_zeit_web/live/room_live/index.ex:104
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:134
+#: lib/neu_zeit_web/live/term_live/index.ex:68
+#, elixir-autogen, elixir-format
+msgid "Deleted %{name}."
+msgstr "Deleted %{name}."
+
+#: lib/neu_zeit_web/components/ui/status.ex:62
+#, elixir-autogen, elixir-format
+msgid "Draft"
+msgstr "Draft"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:153
+#: lib/neu_zeit_web/live/exception_live/index.ex:259
+#: lib/neu_zeit_web/live/room_live/index.ex:233
+#: lib/neu_zeit_web/live/session_live/index.ex:345
+#: lib/neu_zeit_web/live/term_live/index.ex:147
+#: lib/neu_zeit_web/live/workload_live/index.ex:158
+#, elixir-autogen, elixir-format
+msgid "Edit"
+msgstr "Edit"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:169
+#: lib/neu_zeit_web/live/course_live/show.ex:201
+#, elixir-autogen, elixir-format
+msgid "Edit course"
+msgstr "Edit course"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:181
+#, elixir-autogen, elixir-format
+msgid "Edit dates"
+msgstr "Edit dates"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:141
+#, elixir-autogen, elixir-format
+msgid "Ends"
+msgstr "Ends"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:116
+#, elixir-autogen, elixir-format
+msgid "Even"
+msgstr "Even"
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:65
+#, elixir-autogen, elixir-format
+msgid "First"
+msgstr "First"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:317
+#: lib/neu_zeit_web/live/term_live/index.ex:162
+#, elixir-autogen, elixir-format
+msgid "First day (a Monday)"
+msgstr "First day (a Monday)"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:261
+#, elixir-autogen, elixir-format
+msgid "Full name"
+msgstr "Full name"
+
+#: lib/neu_zeit_web/components/ui/status.ex:70
+#, elixir-autogen, elixir-format
+msgid "Info"
+msgstr "Info"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:327
+#: lib/neu_zeit_web/live/course_live/show.ex:274
+#: storybook/components/table.story.exs:14
+#, elixir-autogen, elixir-format
+msgid "Kind"
+msgstr "Kind"
+
+#: lib/neu_zeit_web/components/layouts.ex:127
+#: lib/neu_zeit_web/components/ui/errors.ex:329
+#: lib/neu_zeit_web/live/course_live/show.ex:310
+#: lib/neu_zeit_web/live/course_live/show.ex:334
+#, elixir-autogen, elixir-format
+msgid "Language"
+msgstr "Language"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:231
+#, elixir-autogen, elixir-format
+msgid "Language subgroup"
+msgstr "Language subgroup"
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:66
+#, elixir-autogen, elixir-format
+msgid "Last"
+msgstr "Last"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:318
+#: lib/neu_zeit_web/live/term_live/index.ex:163
+#, elixir-autogen, elixir-format
+msgid "Last day"
+msgstr "Last day"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:296
+#: lib/neu_zeit_web/live/people_live/index.ex:201
+#: lib/neu_zeit_web/live/people_live/index.ex:227
+#: lib/neu_zeit_web/live/plan_live/index.ex:136
+#: lib/neu_zeit_web/live/plan_live/reports.ex:115
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:257
+#: lib/neu_zeit_web/live/term_live/index.ex:161
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr "Name"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:159
+#: lib/neu_zeit_web/live/room_live/index.ex:289
+#, elixir-autogen, elixir-format
+msgid "New building"
+msgstr "New building"
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:42
+#, elixir-autogen, elixir-format
+msgid "Next week"
+msgstr "Next week"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:199
+#, elixir-autogen, elixir-format
+msgid "No buildings yet"
+msgstr "No buildings yet"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:127
+#, elixir-autogen, elixir-format
+msgid "No courses yet"
+msgstr "No courses yet"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:209
+#, elixir-autogen, elixir-format
+msgid "No rooms in this building yet."
+msgstr "No rooms in this building yet."
+
+#: storybook/components/empty_state.story.exs:10
+#, elixir-autogen, elixir-format
+msgid "No sessions yet"
+msgstr "No sessions yet"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:199
+#, elixir-autogen, elixir-format
+msgid "No teachers yet."
+msgstr "No teachers yet."
+
+#: lib/neu_zeit_web/live/term_live/index.ex:125
+#, elixir-autogen, elixir-format
+msgid "No terms yet"
+msgstr "No terms yet"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:308
+#, elixir-autogen, elixir-format
+msgid "No translations yet."
+msgstr "No translations yet."
+
+#: lib/neu_zeit_web/components/ui/status.ex:59
+#: lib/neu_zeit_web/components/ui/status.ex:73
+#, elixir-autogen, elixir-format
+msgid "Not checked"
+msgstr "Not checked"
+
+#: lib/neu_zeit_web/components/ui/table.ex:32
+#, elixir-autogen, elixir-format
+msgid "Nothing here yet."
+msgstr "Nothing here yet."
+
+#: lib/neu_zeit_web/components/ui/status.ex:69
+#, elixir-autogen, elixir-format
+msgid "OK"
+msgstr "OK"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:113
+#, elixir-autogen, elixir-format
+msgid "Odd"
+msgstr "Odd"
+
+#: lib/neu_zeit_web/components/layouts.ex:34
+#, elixir-autogen, elixir-format
+msgid "Open navigation"
+msgstr "Open navigation"
+
+#: lib/neu_zeit_web/components/ui/status.ex:72
+#, elixir-autogen, elixir-format
+msgid "Over"
+msgstr "Over"
+
+#: lib/neu_zeit_web/nav.ex:19
+#, elixir-autogen, elixir-format
+msgid "Overview"
+msgstr "Overview"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:223
+#, elixir-autogen, elixir-format
+msgid "Placements"
+msgstr "Placements"
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:24
+#, elixir-autogen, elixir-format
+msgid "Previous week"
+msgstr "Previous week"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:11
+#: storybook/components/alert_dialog.story.exs:29
+#, elixir-autogen, elixir-format
+msgid "Publish this plan?"
+msgstr "Publish this plan?"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:157
+#, elixir-autogen, elixir-format
+msgid "Removed the %{locale} title."
+msgstr "Removed the %{locale} title."
+
+#: lib/neu_zeit_web/live/people_live/index.ex:208
+#: lib/neu_zeit_web/live/people_live/index.ex:235
+#: lib/neu_zeit_web/live/plan_live/index.ex:167
+#, elixir-autogen, elixir-format
+msgid "Rename"
+msgstr "Rename"
+
+#: lib/neu_zeit_web/components/ui/status.ex:67
+#: lib/neu_zeit_web/live/people_live/index.ex:203
+#: lib/neu_zeit_web/live/people_live/index.ex:229
+#, elixir-autogen, elixir-format
+msgid "Review"
+msgstr "Review"
+
+#: lib/neu_zeit_web/components/scheduling/session_card.ex:60
+#: lib/neu_zeit_web/components/ui/errors.ex:308
+#: lib/neu_zeit_web/live/exception_live/index.ex:311
+#: lib/neu_zeit_web/live/plan_live/reports.ex:46
+#: lib/neu_zeit_web/live/room_live/index.ex:211
+#: storybook/components/empty_state.story.exs:13
+#, elixir-autogen, elixir-format
+msgid "Room"
+msgstr "Room"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:261
+#, elixir-autogen, elixir-format
+msgid "Room name"
+msgstr "Room name"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:289
+#: lib/neu_zeit_web/live/plan_live/reports.ex:44
+#: lib/neu_zeit_web/live/room_live/index.ex:18
+#: lib/neu_zeit_web/live/room_live/index.ex:155
+#: lib/neu_zeit_web/live/room_live/index.ex:168
+#: lib/neu_zeit_web/nav.ex:75
+#, elixir-autogen, elixir-format
+msgid "Rooms"
+msgstr "Rooms"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:176
+#: lib/neu_zeit_web/live/exception_live/index.ex:323
+#: lib/neu_zeit_web/live/people_live/index.ex:263
+#: lib/neu_zeit_web/live/people_live/index.ex:277
+#: lib/neu_zeit_web/live/plan_live/index.ex:139
+#: lib/neu_zeit_web/live/room_live/index.ex:255
+#: lib/neu_zeit_web/live/room_live/index.ex:270
+#: lib/neu_zeit_web/live/session_live/index.ex:416
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:260
+#: lib/neu_zeit_web/live/term_live/index.ex:166
+#: lib/neu_zeit_web/live/term_live/settings.ex:41
+#: lib/neu_zeit_web/live/workload_live/index.ex:190
+#, elixir-autogen, elixir-format
+msgid "Save"
+msgstr "Save"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:340
+#, elixir-autogen, elixir-format
+msgid "Save title"
+msgstr "Save title"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:59
+#: lib/neu_zeit_web/live/people_live/index.ex:128
+#: lib/neu_zeit_web/live/plan_live/index.ex:79
+#: lib/neu_zeit_web/live/room_live/index.ex:125
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:112
+#, elixir-autogen, elixir-format
+msgid "Saved %{name}."
+msgstr "Saved %{name}."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:133
+#, elixir-autogen, elixir-format
+msgid "Saved the %{locale} title."
+msgstr "Saved the %{locale} title."
+
+#: lib/neu_zeit_web/components/ui/transfer_list.ex:23
+#, elixir-autogen, elixir-format
+msgid "Selected"
+msgstr "Selected"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:302
+#: lib/neu_zeit_web/live/exception_live/index.ex:243
+#: lib/neu_zeit_web/live/exception_live/index.ex:283
+#: storybook/components/empty_state.story.exs:12
+#, elixir-autogen, elixir-format
+msgid "Session"
+msgstr "Session"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:159
+#: lib/neu_zeit_web/live/course_live/index.ex:150
+#: lib/neu_zeit_web/live/people_live/index.ex:202
+#: lib/neu_zeit_web/live/people_live/index.ex:228
+#: lib/neu_zeit_web/live/plan_live/reports.ex:47
+#: lib/neu_zeit_web/live/session_live/index.ex:29
+#: lib/neu_zeit_web/live/session_live/index.ex:244
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:234
+#, elixir-autogen, elixir-format
+msgid "Sessions"
+msgstr "Sessions"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:228
+#: lib/neu_zeit_web/live/term_live/index.ex:140
+#, elixir-autogen, elixir-format
+msgid "Starts"
+msgstr "Starts"
+
+#: lib/neu_zeit_web/components/scheduling/check_results.ex:23
+#: lib/neu_zeit_web/components/ui/errors.ex:328
+#: lib/neu_zeit_web/live/exception_live/index.ex:252
+#: lib/neu_zeit_web/live/plan_live/index.ex:161
+#: lib/neu_zeit_web/live/plan_live/reports.ex:73
+#: storybook/components/table.story.exs:19
+#, elixir-autogen, elixir-format
+msgid "Status"
+msgstr "Status"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:305
+#: lib/neu_zeit_web/live/session_live/index.ex:263
+#: lib/neu_zeit_web/live/session_live/index.ex:322
+#: lib/neu_zeit_web/live/session_live/index.ex:372
+#: lib/neu_zeit_web/live/workload_live/index.ex:150
+#: lib/neu_zeit_web/live/workload_live/index.ex:169
+#: storybook/components/details_panel.story.exs:19
+#: storybook/components/table.story.exs:15
+#: storybook/components/toolbar.story.exs:25
+#, elixir-autogen, elixir-format
+msgid "Teacher"
+msgstr "Teacher"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:180
+#, elixir-autogen, elixir-format
+msgid "Teaching calendar"
+msgstr "Teaching calendar"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:311
+#: lib/neu_zeit_web/components/ui/errors.ex:320
+#: lib/neu_zeit_web/live/session_live/index.ex:394
+#, elixir-autogen, elixir-format
+msgid "Teaching weeks"
+msgstr "Teaching weeks"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:300
+#: lib/neu_zeit_web/live/term_live/index.ex:135
+#: lib/neu_zeit_web/nav.ex:16
+#, elixir-autogen, elixir-format
+msgid "Term"
+msgstr "Term"
+
+#: lib/neu_zeit_web/components/layouts.ex:147
+#: lib/neu_zeit_web/live/term_live/index.ex:15
+#: lib/neu_zeit_web/live/term_live/index.ex:113
+#: lib/neu_zeit_web/nav.ex:70
+#, elixir-autogen, elixir-format
+msgid "Terms"
+msgstr "Terms"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:288
+#, elixir-autogen, elixir-format
+msgid "The change could not be saved."
+msgstr "The change could not be saved."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:297
+#: lib/neu_zeit_web/live/course_live/index.ex:138
+#: lib/neu_zeit_web/live/course_live/index.ex:173
+#: lib/neu_zeit_web/live/course_live/show.ex:313
+#: lib/neu_zeit_web/live/plan_live/reports.ex:66
+#, elixir-autogen, elixir-format
+msgid "Title"
+msgstr "Title"
+
+#: lib/neu_zeit_web/components/scheduling/time_grid.ex:49
+#, elixir-autogen, elixir-format
+msgid "Toggle all of %{day}"
+msgstr "Toggle all of %{day}"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:299
+#, elixir-autogen, elixir-format
+msgid "Translated titles"
+msgstr "Translated titles"
+
+#: lib/neu_zeit_web/components/ui/status.ex:71
+#, elixir-autogen, elixir-format
+msgid "Under"
+msgstr "Under"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:56
+#, elixir-autogen, elixir-format
+msgid "Unplaced"
+msgstr "Unplaced"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:98
+#, elixir-autogen, elixir-format
+msgid "Updated %{name}."
+msgstr "Updated %{name}."
+
+#: lib/neu_zeit_web/components/scheduling/term_calendar.ex:29
+#, elixir-autogen, elixir-format
+msgid "Week"
+msgstr "Week"
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:30
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:33
+#, elixir-autogen, elixir-format
+msgid "Week %{week} of %{total}"
+msgstr "Week %{week} of %{total}"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:126
+#: lib/neu_zeit_web/live/session_live/index.ex:330
+#: lib/neu_zeit_web/live/term_live/index.ex:142
+#: lib/neu_zeit_web/live/workload_live/index.ex:154
+#: storybook/components/details_panel.story.exs:20
+#: storybook/components/table.story.exs:16
+#, elixir-autogen, elixir-format
+msgid "Weeks"
+msgstr "Weeks"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:24
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:45
+#, elixir-autogen, elixir-format
+msgid "Weeks %{list}"
+msgstr "Weeks %{list}"
+
+#: lib/neu_zeit_web/components/ui/loading_state.ex:20
+#: lib/neu_zeit_web/components/ui/loading_state.ex:31
+#, elixir-autogen, elixir-format
+msgid "Working"
+msgstr "Working"
+
+#: lib/neu_zeit_web/components/core_components.ex:63
+#, elixir-autogen, elixir-format
+msgid "close"
+msgstr "close"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:51
+#: lib/neu_zeit_web/live/course_live/index.ex:146
+#, elixir-autogen, elixir-format
+msgid "none"
+msgstr "none"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:191
+#: lib/neu_zeit_web/live/room_live/index.ex:193
+#, elixir-autogen, elixir-format
+msgid "%{count} room"
+msgid_plural "%{count} rooms"
+msgstr[0] "%{count} room"
+msgstr[1] "%{count} rooms"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:112
+#: lib/neu_zeit_web/live/course_live/show.ex:227
+#: lib/neu_zeit_web/live/session_live/index.ex:297
+#, elixir-autogen, elixir-format
+msgid "%{count} session"
+msgid_plural "%{count} sessions"
+msgstr[0] "%{count} session"
+msgstr[1] "%{count} sessions"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:118
+#: lib/neu_zeit_web/live/course_live/index.ex:169
+#, elixir-autogen, elixir-format
+msgid "New course"
+msgstr "New course"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:311
+#: lib/neu_zeit_web/live/room_live/index.ex:161
+#: lib/neu_zeit_web/live/room_live/index.ex:291
+#, elixir-autogen, elixir-format
+msgid "New room"
+msgstr "New room"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:179
+#: lib/neu_zeit_web/live/people_live/index.ex:298
+#, elixir-autogen, elixir-format
+msgid "New teacher"
+msgstr "New teacher"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:116
+#: lib/neu_zeit_web/live/term_live/index.ex:158
+#, elixir-autogen, elixir-format
+msgid "New term"
+msgstr "New term"
+
+#: dev/storybook_fixtures.ex:60
+#: lib/neu_zeit_web/components/scheduling/labels.ex:10
+#: storybook/components/details_panel.story.exs:17
+#, elixir-autogen, elixir-format
+msgid "Lab"
+msgstr "Lab"
+
+#: dev/storybook_fixtures.ex:53
+#: lib/neu_zeit_web/components/scheduling/labels.ex:8
+#, elixir-autogen, elixir-format
+msgid "Lecture"
+msgstr "Lecture"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:9
+#, elixir-autogen, elixir-format
+msgid "Seminar"
+msgstr "Seminar"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:75
+#, elixir-autogen, elixir-format
+msgid "%{name} is now unrestricted."
+msgstr "%{name} is now unrestricted."
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:149
+#, elixir-autogen, elixir-format
+msgid "%{name} is still assigned to a session."
+msgstr "%{name} is still assigned to a session."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:323
+#: lib/neu_zeit_web/live/availability_live/index.ex:19
+#: lib/neu_zeit_web/nav.ex:28
+#, elixir-autogen, elixir-format
+msgid "Availability"
+msgstr "Availability"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:123
+#: lib/neu_zeit_web/live/session_live/index.ex:373
+#: lib/neu_zeit_web/live/workload_live/index.ex:169
+#, elixir-autogen, elixir-format
+msgid "Choose a teacher"
+msgstr "Choose a teacher"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:185
+#: lib/neu_zeit_web/live/people_live/index.ex:286
+#: lib/neu_zeit_web/live/plan_live/index.ex:185
+#: lib/neu_zeit_web/live/room_live/index.ex:279
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:298
+#: lib/neu_zeit_web/live/term_live/index.ex:175
+#, elixir-autogen, elixir-format
+msgid "Delete %{name}?"
+msgstr "Delete %{name}?"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:300
+#, elixir-autogen, elixir-format
+msgid "Delete profile"
+msgstr "Delete profile"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:229
+#, elixir-autogen, elixir-format
+msgid "Longest session"
+msgstr "Longest session"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:206
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:250
+#, elixir-autogen, elixir-format
+msgid "New profile"
+msgstr "New profile"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:215
+#, elixir-autogen, elixir-format
+msgid "No profiles yet"
+msgstr "No profiles yet"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:335
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:220
+#, elixir-autogen, elixir-format
+msgid "Profile"
+msgstr "Profile"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:161
+#, elixir-autogen, elixir-format
+msgid "Remove restriction"
+msgstr "Remove restriction"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:96
+#: lib/neu_zeit_web/live/term_live/show.ex:206
+#, elixir-autogen, elixir-format
+msgid "Teacher availability"
+msgstr "Teacher availability"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:103
+#: lib/neu_zeit_web/live/calendar_live/index.ex:284
+#: lib/neu_zeit_web/live/people_live/index.ex:187
+#: lib/neu_zeit_web/live/plan_live/reports.ex:26
+#, elixir-autogen, elixir-format
+msgid "Teachers"
+msgstr "Teachers"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:46
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:119
+#, elixir-autogen, elixir-format
+msgid "%{count} week"
+msgid_plural "%{count} weeks"
+msgstr[0] "%{count} week"
+msgstr[1] "%{count} weeks"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:276
+#, elixir-autogen, elixir-format
+msgid "Any profile"
+msgstr "Any profile"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:410
+#: lib/neu_zeit_web/live/workload_live/index.ex:187
+#, elixir-autogen, elixir-format
+msgid "Attending"
+msgstr "Attending"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:430
+#, elixir-autogen, elixir-format
+msgid "Delete session"
+msgstr "Delete session"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:428
+#, elixir-autogen, elixir-format
+msgid "Delete this session?"
+msgstr "Delete this session?"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:357
+#, elixir-autogen, elixir-format
+msgid "Edit session"
+msgstr "Edit session"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:42
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:110
+#, elixir-autogen, elixir-format
+msgid "Every week"
+msgstr "Every week"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:248
+#: lib/neu_zeit_web/live/session_live/index.ex:357
+#, elixir-autogen, elixir-format
+msgid "New session"
+msgstr "New session"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:292
+#, elixir-autogen, elixir-format
+msgid "No profile"
+msgstr "No profile"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:389
+#: lib/neu_zeit_web/live/workload_live/index.ex:156
+#: lib/neu_zeit_web/live/workload_live/index.ex:173
+#, elixir-autogen, elixir-format
+msgid "No restriction"
+msgstr "No restriction"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:179
+#, elixir-autogen, elixir-format
+msgid "Session deleted."
+msgstr "Session deleted."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:158
+#, elixir-autogen, elixir-format
+msgid "Session saved."
+msgstr "Session saved."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:192
+#: lib/neu_zeit_web/live/term_live/show.ex:305
+#, elixir-autogen, elixir-format
+msgid "%{count} locked placement"
+msgid_plural "%{count} locked placements"
+msgstr[0] "%{count} locked placement"
+msgstr[1] "%{count} locked placements"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:332
+#, elixir-autogen, elixir-format
+msgid "%{count} overlap needs verifying"
+msgid_plural "%{count} overlaps need verifying"
+msgstr[0] "%{count} overlap needs verifying"
+msgstr[1] "%{count} overlaps need verifying"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:229
+#, elixir-autogen, elixir-format
+msgid "Abbreviated names: %{names}"
+msgstr "Abbreviated names: %{names}"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:320
+#, elixir-autogen, elixir-format
+msgid "By type: %{types}"
+msgstr "By type: %{types}"
+
+#: lib/neu_zeit_web/components/scheduling/check_results.ex:35
+#: storybook/components/details_panel.story.exs:16
+#, elixir-autogen, elixir-format
+msgid "Open"
+msgstr "Open"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:283
+#, elixir-autogen, elixir-format
+msgid "%{narrow} with a single room, %{broad} with more than five."
+msgstr "%{narrow} with a single room, %{broad} with more than five."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:66
+#, elixir-autogen, elixir-format
+msgid "%{count} unplaced"
+msgid_plural "%{count} unplaced"
+msgstr[0] "%{count} unplaced"
+msgstr[1] "%{count} unplaced"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:53
+#, elixir-autogen, elixir-format
+msgid "All"
+msgstr "All"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:187
+#, elixir-autogen, elixir-format
+msgid "Delete plan"
+msgstr "Delete plan"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:43
+#: lib/neu_zeit_web/live/term_live/show.ex:75
+#, elixir-autogen, elixir-format
+msgid "Draft %{n}"
+msgstr "Draft %{n}"
+
+#: lib/neu_zeit_web/components/scheduling/session_tray.ex:16
+#, elixir-autogen, elixir-format
+msgid "Everything is placed."
+msgstr "Everything is placed."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:197
+#, elixir-autogen, elixir-format
+msgid "Lock"
+msgstr "Lock"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:125
+#: lib/neu_zeit_web/live/term_live/show.ex:171
+#, elixir-autogen, elixir-format
+msgid "New draft"
+msgstr "New draft"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:150
+#, elixir-autogen, elixir-format
+msgid "No plans yet"
+msgstr "No plans yet"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:301
+#: lib/neu_zeit_web/live/calendar_live/index.ex:267
+#: lib/neu_zeit_web/live/plan_live/index.ex:156
+#: lib/neu_zeit_web/live/term_live/show.ex:155
+#: lib/neu_zeit_web/live/term_live/show.ex:171
+#, elixir-autogen, elixir-format
+msgid "Plan"
+msgstr "Plan"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:260
+#: lib/neu_zeit_web/live/plan_live/index.ex:19
+#: lib/neu_zeit_web/live/plan_live/index.ex:121
+#: lib/neu_zeit_web/live/term_live/show.ex:139
+#: lib/neu_zeit_web/nav.ex:37
+#, elixir-autogen, elixir-format
+msgid "Plans"
+msgstr "Plans"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:162
+#, elixir-autogen, elixir-format
+msgid "Published"
+msgstr "Published"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:116
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:197
+#, elixir-autogen, elixir-format
+msgid "Unlock"
+msgstr "Unlock"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:40
+#, elixir-autogen, elixir-format
+msgid "%{count} occurrence"
+msgid_plural "%{count} occurrences"
+msgstr[0] "%{count} occurrence"
+msgstr[1] "%{count} occurrences"
+
+#: lib/neu_zeit_web/components/scheduling/check_results.ex:26
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:52
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:25
+#: lib/neu_zeit_web/live/plan_live/show.ex:653
+#: lib/neu_zeit_web/live/term_live/show.ex:153
+#, elixir-autogen, elixir-format
+msgid "Checks"
+msgstr "Checks"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:81
+#, elixir-autogen, elixir-format
+msgid "Duration differs from the session"
+msgstr "Duration differs from the session"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:130
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:139
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:152
+#, elixir-autogen, elixir-format
+msgid "Edit rule"
+msgstr "Edit rule"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:113
+#, elixir-autogen, elixir-format
+msgid "Locked in place by hand"
+msgstr "Locked in place by hand"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:79
+#, elixir-autogen, elixir-format
+msgid "Outside the timetable grid"
+msgstr "Outside the timetable grid"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:85
+#, elixir-autogen, elixir-format
+msgid "Session placed more than once"
+msgstr "Session placed more than once"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:84
+#, elixir-autogen, elixir-format
+msgid "Teacher is not available then"
+msgstr "Teacher is not available then"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:80
+#, elixir-autogen, elixir-format
+msgid "Weeks differ from the session"
+msgstr "Weeks differ from the session"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:35
+#, elixir-autogen, elixir-format
+msgid "Adjacent"
+msgstr "Adjacent"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:33
+#, elixir-autogen, elixir-format
+msgid "Blocks"
+msgstr "Blocks"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:123
+#, elixir-autogen, elixir-format
+msgid "Building changes"
+msgstr "Building changes"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:34
+#, elixir-autogen, elixir-format
+msgid "Days"
+msgstr "Days"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:72
+#, elixir-autogen, elixir-format
+msgid "Difference"
+msgstr "Difference"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:116
+#, elixir-autogen, elixir-format
+msgid "Gaps"
+msgstr "Gaps"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:32
+#: lib/neu_zeit_web/live/plan_live/reports.ex:67
+#: lib/neu_zeit_web/live/session_live/index.ex:269
+#, elixir-autogen, elixir-format
+msgid "Group"
+msgstr "Group"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:122
+#, elixir-autogen, elixir-format
+msgid "Long days"
+msgstr "Long days"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:662
+#, elixir-autogen, elixir-format
+msgid "Quality"
+msgstr "Quality"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:38
+#, elixir-autogen, elixir-format
+msgid "Side by side"
+msgstr "Side by side"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:38
+#, elixir-autogen, elixir-format
+msgid "Split apart"
+msgstr "Split apart"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:20
+#: lib/neu_zeit_web/nav.ex:38
+#, elixir-autogen, elixir-format
+msgid "Calendar"
+msgstr "Calendar"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:278
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:57
+#, elixir-autogen, elixir-format
+msgid "Everything"
+msgstr "Everything"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:357
+#, elixir-autogen, elixir-format
+msgid "Nothing scheduled"
+msgstr "Nothing scheduled"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:386
+#: lib/neu_zeit_web/live/exception_live/index.ex:202
+#, elixir-autogen, elixir-format
+msgid "Added"
+msgstr "Added"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:386
+#: lib/neu_zeit_web/live/exception_live/index.ex:200
+#, elixir-autogen, elixir-format
+msgid "Cancelled"
+msgstr "Cancelled"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:240
+#: lib/neu_zeit_web/live/exception_live/index.ex:290
+#, elixir-autogen, elixir-format
+msgid "Change"
+msgstr "Change"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:312
+#, elixir-autogen, elixir-format
+msgid "Choose a room"
+msgstr "Choose a room"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:284
+#, elixir-autogen, elixir-format
+msgid "Choose a session"
+msgstr "Choose a session"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:321
+#: lib/neu_zeit_web/live/exception_live/index.ex:244
+#: lib/neu_zeit_web/live/exception_live/index.ex:297
+#, elixir-autogen, elixir-format
+msgid "Date"
+msgstr "Date"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:255
+#, elixir-autogen, elixir-format
+msgid "In force"
+msgstr "In force"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:386
+#: lib/neu_zeit_web/live/exception_live/index.ex:201
+#, elixir-autogen, elixir-format
+msgid "Moved"
+msgstr "Moved"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:245
+#, elixir-autogen, elixir-format
+msgid "Moved to"
+msgstr "Moved to"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:322
+#: lib/neu_zeit_web/live/exception_live/index.ex:300
+#, elixir-autogen, elixir-format
+msgid "New date"
+msgstr "New date"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:230
+#, elixir-autogen, elixir-format
+msgid "No one-off changes"
+msgstr "No one-off changes"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:21
+#: lib/neu_zeit_web/live/exception_live/index.ex:217
+#: lib/neu_zeit_web/nav.ex:39
+#, elixir-autogen, elixir-format
+msgid "One-off changes"
+msgstr "One-off changes"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:278
+#, elixir-autogen, elixir-format
+msgid "Published. The term's previous active plan is archived."
+msgstr "Published. The term's previous active plan is archived."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:325
+#: lib/neu_zeit_web/live/exception_live/index.ex:250
+#: lib/neu_zeit_web/live/exception_live/index.ex:317
+#, elixir-autogen, elixir-format
+msgid "Reason"
+msgstr "Reason"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:198
+#: lib/neu_zeit_web/live/exception_live/index.ex:221
+#, elixir-autogen, elixir-format
+msgid "Record a change"
+msgstr "Record a change"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:336
+#, elixir-autogen, elixir-format
+msgid "Revert this change?"
+msgstr "Revert this change?"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:72
+#, elixir-autogen, elixir-format
+msgid "One-off changes apply to the published timetable. Publish this plan first."
+msgstr "One-off changes apply to the published timetable. Publish this plan first."
+
+#: lib/neu_zeit_web/components/layouts.ex:215
+#, elixir-autogen, elixir-format
+msgid "Dark theme"
+msgstr "Dark theme"
+
+#: lib/neu_zeit_web/components/layouts.ex:213
+#, elixir-autogen, elixir-format
+msgid "Follow the system theme"
+msgstr "Follow the system theme"
+
+#: lib/neu_zeit_web/components/layouts.ex:214
+#, elixir-autogen, elixir-format
+msgid "Light theme"
+msgstr "Light theme"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:140
+#, elixir-autogen, elixir-format
+msgid "%{name} still attends a session."
+msgstr "%{name} still attends a session."
+
+#: lib/neu_zeit_web/live/course_live/index.ex:96
+#, elixir-autogen, elixir-format
+msgid "%{name} still has sessions in a term."
+msgstr "%{name} still has sessions in a term."
+
+#: lib/neu_zeit_web/live/people_live/index.ex:147
+#, elixir-autogen, elixir-format
+msgid "%{name} still teaches a session."
+msgstr "%{name} still teaches a session."
+
+#: lib/neu_zeit_web/live/room_live/index.ex:292
+#, elixir-autogen, elixir-format
+msgid "Edit room"
+msgstr "Edit room"
+
+#: lib/neu_zeit_web/components/ui/transfer_list.ex:37
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr "Remove"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:290
+#, elixir-autogen, elixir-format
+msgid "Rename building"
+msgstr "Rename building"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:299
+#, elixir-autogen, elixir-format
+msgid "Rename teacher"
+msgstr "Rename teacher"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:132
+#, elixir-autogen, elixir-format
+msgid "Rename plan"
+msgstr "Rename plan"
+
+#: lib/neu_zeit_web/components/ui/transfer_list.ex:37
+#, elixir-autogen, elixir-format
+msgid "Add"
+msgstr "Add"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:282
+#, elixir-autogen, elixir-format
+msgid "Any placement status"
+msgstr "Any placement status"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:171
+#, elixir-autogen, elixir-format
+msgid "Available starts: %{count}"
+msgstr "Available starts: %{count}"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:193
+#, elixir-autogen, elixir-format
+msgid "Block %{n}"
+msgstr "Block %{n}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:53
+#, elixir-autogen, elixir-format
+msgid "By room"
+msgstr "By room"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:53
+#, elixir-autogen, elixir-format
+msgid "By teacher"
+msgstr "By teacher"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:250
+#: lib/neu_zeit_web/live/plan_live/show.ex:641
+#, elixir-autogen, elixir-format
+msgid "Calendar by date"
+msgstr "Calendar by date"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:71
+#, elixir-autogen, elixir-format
+msgid "Calendar hours"
+msgstr "Calendar hours"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:134
+#, elixir-autogen, elixir-format
+msgid "Changes apply to: %{weeks}"
+msgstr "Changes apply to: %{weeks}"
+
+#: lib/neu_zeit_web/components/scheduling/timetable.ex:67
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:168
+#, elixir-autogen, elixir-format
+msgid "Check constraints"
+msgstr "Check constraints"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:255
+#: lib/neu_zeit_web/live/term_live/show.ex:82
+#, elixir-autogen, elixir-format
+msgid "Create a draft to edit this plan."
+msgstr "Create a draft to edit this plan."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:315
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:160
+#, elixir-autogen, elixir-format
+msgid "Day"
+msgstr "Day"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:400
+#: lib/neu_zeit_web/live/exception_live/index.ex:275
+#, elixir-autogen, elixir-format
+msgid "Edit change"
+msgstr "Edit change"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:137
+#, elixir-autogen, elixir-format
+msgid "Edit session weeks and duration"
+msgstr "Edit session weeks and duration"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:44
+#, elixir-autogen, elixir-format
+msgid "Even weeks"
+msgstr "Even weeks"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:70
+#, elixir-autogen, elixir-format
+msgid "Find an unplaced session"
+msgstr "Find an unplaced session"
+
+#: lib/neu_zeit_web/components/scheduling/timetable.ex:66
+#, elixir-autogen, elixir-format
+msgid "Inspect position: %{day}, %{time}"
+msgstr "Inspect position: %{day}, %{time}"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:306
+#, elixir-autogen, elixir-format
+msgid "Next"
+msgstr "Next"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:41
+#, elixir-autogen, elixir-format
+msgid "No teaching weeks"
+msgstr "No teaching weeks"
+
+#: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:43
+#, elixir-autogen, elixir-format
+msgid "Odd weeks"
+msgstr "Odd weeks"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:389
+#, elixir-autogen, elixir-format
+msgid "Original date: %{date}"
+msgstr "Original date: %{date}"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:305
+#, elixir-autogen, elixir-format
+msgid "Page %{page} of %{pages}"
+msgstr "Page %{page} of %{pages}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:188
+#, elixir-autogen, elixir-format
+msgid "Place here"
+msgstr "Place here"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:281
+#, elixir-autogen, elixir-format
+msgid "Placement status"
+msgstr "Placement status"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:304
+#, elixir-autogen, elixir-format
+msgid "Previous"
+msgstr "Previous"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:63
+#, elixir-autogen, elixir-format
+msgid "Published calendar, including active changes"
+msgstr "Published calendar, including active changes"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:633
+#, elixir-autogen, elixir-format
+msgid "Refresh"
+msgstr "Refresh"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:276
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:55
+#, elixir-autogen, elixir-format
+msgid "Resource"
+msgstr "Resource"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:94
+#: lib/neu_zeit_web/live/course_live/index.ex:114
+#: lib/neu_zeit_web/live/course_live/show.ex:197
+#: lib/neu_zeit_web/live/exception_live/index.ex:215
+#: lib/neu_zeit_web/live/people_live/index.ex:174
+#: lib/neu_zeit_web/live/room_live/index.ex:153
+#: lib/neu_zeit_web/live/session_live/index.ex:242
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:193
+#: lib/neu_zeit_web/live/workload_live/index.ex:135
+#, elixir-autogen, elixir-format
+msgid "Return to timetable"
+msgstr "Return to timetable"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:315
+#: lib/neu_zeit_web/live/plan_live/show.ex:651
+#, elixir-autogen, elixir-format
+msgid "Semester template"
+msgstr "Semester template"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:303
+#, elixir-autogen, elixir-format
+msgid "Session pages"
+msgstr "Session pages"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:76
+#, elixir-autogen, elixir-format
+msgid "Show more (%{count} remaining)"
+msgstr "Show more (%{count} remaining)"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:316
+#: lib/neu_zeit_web/live/exception_live/index.ex:304
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:164
+#, elixir-autogen, elixir-format
+msgid "Time"
+msgstr "Time"
+
+#: lib/neu_zeit_web/components/scheduling/timetable.ex:50
+#: lib/neu_zeit_web/live/calendar_live/index.ex:324
+#, elixir-autogen, elixir-format
+msgid "Timetable. Scroll horizontally to see all days."
+msgstr "Timetable. Scroll horizontally to see all days."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:283
+#, elixir-autogen, elixir-format
+msgid "Unplaced in %{plan}"
+msgstr "Unplaced in %{plan}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:51
+#, elixir-autogen, elixir-format
+msgid "View"
+msgstr "View"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:121
+#, elixir-autogen, elixir-format
+msgid "%{term} / %{other_term}: %{resource} is already booked on %{date}, %{time}. %{course}, %{teacher}, %{room}."
+msgstr "%{term} / %{other_term}: %{resource} is already booked on %{date}, %{time}. %{course}, %{teacher}, %{room}."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:90
+#, elixir-autogen, elixir-format
+msgid "Room booked in another term"
+msgstr "Room booked in another term"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:91
+#, elixir-autogen, elixir-format
+msgid "Teacher booked in another term"
+msgstr "Teacher booked in another term"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:158
+#, elixir-autogen, elixir-format
+msgid "Edit term"
+msgstr "Edit term"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:19
+#: lib/neu_zeit_web/live/term_live/show.ex:139
+#, elixir-autogen, elixir-format
+msgid "Open timetable"
+msgstr "Open timetable"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:145
+#, elixir-autogen, elixir-format
+msgid "%{count} allowed room"
+msgid_plural "%{count} allowed rooms"
+msgstr[0] "%{count} allowed room"
+msgstr[1] "%{count} allowed rooms"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:271
+#, elixir-autogen, elixir-format
+msgid "%{count} allowed start time"
+msgid_plural "%{count} allowed start times"
+msgstr[0] "%{count} allowed start time"
+msgstr[1] "%{count} allowed start times"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:156
+#, elixir-autogen, elixir-format
+msgid "%{count} possible start time with a free room."
+msgid_plural "%{count} possible start times with a free room."
+msgstr[0] "%{count} possible start time with a free room."
+msgstr[1] "%{count} possible start times with a free room."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:224
+#, elixir-autogen, elixir-format
+msgid "%{count} rule violation must be resolved first."
+msgid_plural "%{count} rule violations must be resolved first."
+msgstr[0] "%{count} rule violation must be resolved first."
+msgstr[1] "%{count} rule violations must be resolved first."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:124
+#, elixir-autogen, elixir-format
+msgid "%{count} start time"
+msgid_plural "%{count} start times"
+msgstr[0] "%{count} start time"
+msgstr[1] "%{count} start times"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:216
+#, elixir-autogen, elixir-format
+msgid "%{count} teaching type"
+msgid_plural "%{count} teaching types"
+msgstr[0] "%{count} teaching type"
+msgstr[1] "%{count} teaching types"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:200
+#, elixir-autogen, elixir-format
+msgid "%{count} teaching type allows only one room"
+msgid_plural "%{count} teaching types allow only one room"
+msgstr[0] "%{count} teaching type allows only one room"
+msgstr[1] "%{count} teaching types allow only one room"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:193
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:130
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:230
+#, elixir-autogen, elixir-format
+msgid "%{count} time slot"
+msgid_plural "%{count} time slots"
+msgstr[0] "%{count} time slot"
+msgstr[1] "%{count} time slots"
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:142
+#, elixir-autogen, elixir-format
+msgid "%{count} time slot allowed"
+msgid_plural "%{count} time slots allowed"
+msgstr[0] "%{count} time slot allowed"
+msgstr[1] "%{count} time slots allowed"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:299
+#, elixir-autogen, elixir-format
+msgid "A profile used by a session cannot be deleted."
+msgstr "A profile used by a session cannot be deleted."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:216
+#, elixir-autogen, elixir-format
+msgid "Add a teaching type and choose its allowed rooms."
+msgstr "Add a teaching type and choose its allowed rooms."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:293
+#, elixir-autogen, elixir-format
+msgid "Add teaching type"
+msgstr "Add teaching type"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:270
+#, elixir-autogen, elixir-format
+msgid "All groups"
+msgstr "All groups"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:307
+#, elixir-autogen, elixir-format
+msgid "All sessions are scheduled."
+msgstr "All sessions are scheduled."
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:338
+#, elixir-autogen, elixir-format
+msgid "All sessions have been scheduled. Review the timetable before publishing."
+msgstr "All sessions have been scheduled. Review the timetable before publishing."
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:145
+#, elixir-autogen, elixir-format
+msgid "Any time is allowed."
+msgstr "Any time is allowed."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:326
+#: lib/neu_zeit_web/live/exception_live/index.ex:251
+#: lib/neu_zeit_web/live/exception_live/index.ex:318
+#, elixir-autogen, elixir-format
+msgid "Author"
+msgstr "Author"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:234
+#, elixir-autogen, elixir-format
+msgid "Availability is entered for every teacher."
+msgstr "Availability is entered for every teacher."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:53
+#, elixir-autogen, elixir-format
+msgid "By group"
+msgstr "By group"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:223
+#, elixir-autogen, elixir-format
+msgid "Calculation failed"
+msgstr "Calculation failed"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:222
+#, elixir-autogen, elixir-format
+msgid "Calculation in progress"
+msgstr "Calculation in progress"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:63
+#, elixir-autogen, elixir-format
+msgid "Calendar from the template, without one-off changes"
+msgstr "Calendar from the template, without one-off changes"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:156
+#, elixir-autogen, elixir-format
+msgid "Capacity and equipment are not checked automatically. Include only suitable rooms."
+msgstr "Capacity and equipment are not checked automatically. Include only suitable rooms."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:255
+#, elixir-autogen, elixir-format
+msgid "Change reverted"
+msgstr "Change reverted"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:204
+#, elixir-autogen, elixir-format
+msgid "Check full name"
+msgstr "Check full name"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:230
+#, elixir-autogen, elixir-format
+msgid "Check group membership"
+msgstr "Check group membership"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:258
+#, elixir-autogen, elixir-format
+msgid "Check these group names: %{names}"
+msgstr "Check these group names: %{names}"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:227
+#, elixir-autogen, elixir-format
+msgid "Check whether locked placements, allowed rooms and time restrictions match your requirements."
+msgstr "Check whether locked placements, allowed rooms and time restrictions match your requirements."
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:89
+#, elixir-autogen, elixir-format
+msgid "Check whether these groups share students. These warnings do not block publication."
+msgstr "Check whether these groups share students. These warnings do not block publication."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:366
+#: lib/neu_zeit_web/live/workload_live/index.ex:167
+#, elixir-autogen, elixir-format
+msgid "Choose a teaching type"
+msgstr "Choose a teaching type"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:267
+#, elixir-autogen, elixir-format
+msgid "Choose at least one allowed room."
+msgstr "Choose at least one allowed room."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:177
+#, elixir-autogen, elixir-format
+msgid "Choose at least one room"
+msgstr "Choose at least one room"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:87
+#, elixir-autogen, elixir-format
+msgid "Choose at least one room for the new teaching type."
+msgstr "Choose at least one room for the new teaching type."
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:61
+#, elixir-autogen, elixir-format
+msgid "Copy created: %{name}."
+msgstr "Copy created: %{name}."
+
+#: lib/neu_zeit_web/live/room_live/index.ex:200
+#, elixir-autogen, elixir-format
+msgid "Create a building first, then add its rooms."
+msgstr "Create a building first, then add its rooms."
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:151
+#, elixir-autogen, elixir-format
+msgid "Create a draft to generate or edit a timetable."
+msgstr "Create a draft to generate or edit a timetable."
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:256
+#, elixir-autogen, elixir-format
+msgid "Create a plan and schedule sessions to see calendar dates."
+msgstr "Create a plan and schedule sessions to see calendar dates."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:358
+#, elixir-autogen, elixir-format
+msgid "Create a separate session for each parallel group."
+msgstr "Create a separate session for each parallel group."
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:119
+#, elixir-autogen, elixir-format
+msgid "Days with one session"
+msgstr "Days with one session"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:176
+#, elixir-autogen, elixir-format
+msgid "Deletion cannot be undone. Only terms without sessions or plans can be deleted."
+msgstr "Deletion cannot be undone. Only terms without sessions or plans can be deleted."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:279
+#, elixir-autogen, elixir-format
+msgid "Each teaching type has two to five allowed rooms."
+msgstr "Each teaching type has two to five allowed rooms."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:289
+#, elixir-autogen, elixir-format
+msgid "Every session has a time profile."
+msgstr "Every session has a time profile."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:173
+#, elixir-autogen, elixir-format
+msgid "Generate timetable"
+msgstr "Generate timetable"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:88
+#, elixir-autogen, elixir-format
+msgid "Group has overlapping sessions"
+msgstr "Group has overlapping sessions"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:89
+#, elixir-autogen, elixir-format
+msgid "Group may overlap with a subgroup"
+msgstr "Group may overlap with a subgroup"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:275
+#, elixir-autogen, elixir-format
+msgid "Group name"
+msgstr "Group name"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:208
+#, elixir-autogen, elixir-format
+msgid "Group names"
+msgstr "Group names"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:55
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:212
+#: lib/neu_zeit_web/components/ui/errors.ex:306
+#: lib/neu_zeit_web/live/calendar_live/index.ex:279
+#: lib/neu_zeit_web/live/people_live/index.ex:188
+#: lib/neu_zeit_web/live/plan_live/reports.ex:23
+#: lib/neu_zeit_web/live/session_live/index.ex:323
+#: lib/neu_zeit_web/live/session_live/index.ex:399
+#: lib/neu_zeit_web/live/workload_live/index.ex:151
+#: lib/neu_zeit_web/live/workload_live/index.ex:183
+#, elixir-autogen, elixir-format
+msgid "Groups"
+msgstr "Groups"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:210
+#, elixir-autogen, elixir-format
+msgid "Groups that may combine separate sections"
+msgstr "Groups that may combine separate sections"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:66
+#, elixir-autogen, elixir-format
+msgid "I checked teacher names and group membership."
+msgstr "I checked teacher names and group membership."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:301
+#, elixir-autogen, elixir-format
+msgid "If no translation is entered, the course title above is shown."
+msgstr "If no translation is entered, the course title above is shown."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:349
+#, elixir-autogen, elixir-format
+msgid "Its allowed room list will also be deleted. Teaching types used by sessions cannot be deleted."
+msgstr "Its allowed room list will also be deleted. Teaching types used by sessions cannot be deleted."
+
+#: lib/neu_zeit_web/live/people_live/index.ex:179
+#: lib/neu_zeit_web/live/people_live/index.ex:296
+#, elixir-autogen, elixir-format
+msgid "New group"
+msgstr "New group"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:254
+#, elixir-autogen, elixir-format
+msgid "No group names flagged for review."
+msgstr "No group names flagged for review."
+
+#: lib/neu_zeit_web/live/people_live/index.ex:225
+#, elixir-autogen, elixir-format
+msgid "No groups yet."
+msgstr "No groups yet."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:75
+#: lib/neu_zeit_web/live/session_live/index.ex:314
+#, elixir-autogen, elixir-format
+msgid "No matching sessions. Change the filters."
+msgstr "No matching sessions. Change the filters."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:302
+#, elixir-autogen, elixir-format
+msgid "No placements are locked."
+msgstr "No placements are locked."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:245
+#, elixir-autogen, elixir-format
+msgid "No possible duplicate sessions found."
+msgstr "No possible duplicate sessions found."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:181
+#, elixir-autogen, elixir-format
+msgid "No rooms are allowed. Add rooms to this teaching type."
+msgstr "No rooms are allowed. Add rooms to this teaching type."
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:82
+#, elixir-autogen, elixir-format
+msgid "No rule violations found in scheduled sessions."
+msgstr "No rule violations found in scheduled sessions."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:316
+#, elixir-autogen, elixir-format
+msgid "No rule violations found."
+msgstr "No rule violations found."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:225
+#, elixir-autogen, elixir-format
+msgid "No short teacher codes found."
+msgstr "No short teacher codes found."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:215
+#, elixir-autogen, elixir-format
+msgid "No teaching types yet"
+msgstr "No teaching types yet"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:220
+#, elixir-autogen, elixir-format
+msgid "No timetable fits the current rules"
+msgstr "No timetable fits the current rules"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:95
+#, elixir-autogen, elixir-format
+msgid "No timetable fits the current rules. Review locked placements, time profiles and allowed rooms."
+msgstr "No timetable fits the current rules. Review locked placements, time profiles and allowed rooms."
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:255
+#, elixir-autogen, elixir-format
+msgid "No timetable yet"
+msgstr "No timetable yet"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:309
+#, elixir-autogen, elixir-format
+msgid "One-off changes are shown only for the published plan."
+msgstr "One-off changes are shown only for the published plan."
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:283
+#, elixir-autogen, elixir-format
+msgid "Only the last time slot is selected. Sessions longer than one slot will not fit."
+msgstr "Only the last time slot is selected. Sessions longer than one slot will not fit."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:107
+#, elixir-autogen, elixir-format
+msgid "Placement rules"
+msgstr "Placement rules"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:207
+#, elixir-autogen, elixir-format
+msgid "Possible duplicate sessions"
+msgstr "Possible duplicate sessions"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:215
+#, elixir-autogen, elixir-format
+msgid "Possible group overlaps"
+msgstr "Possible group overlaps"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:287
+#, elixir-autogen, elixir-format
+msgid "Records used by sessions cannot be deleted."
+msgstr "Records used by sessions cannot be deleted."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:313
+#: lib/neu_zeit_web/live/plan_live/reports.ex:30
+#: lib/neu_zeit_web/live/session_live/index.ex:383
+#, elixir-autogen, elixir-format
+msgid "Related blocks"
+msgstr "Related blocks"
+
+#: lib/neu_zeit_web/live/people_live/index.ex:297
+#, elixir-autogen, elixir-format
+msgid "Rename group"
+msgstr "Rename group"
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:24
+#: lib/neu_zeit_web/live/term_live/show.ex:176
+#, elixir-autogen, elixir-format
+msgid "Resolve rule violations on the Checks tab before generating the timetable."
+msgstr "Resolve rule violations on the Checks tab before generating the timetable."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:266
+#: lib/neu_zeit_web/live/exception_live/index.ex:330
+#: lib/neu_zeit_web/live/exception_live/index.ex:340
+#, elixir-autogen, elixir-format
+msgid "Revert change"
+msgstr "Revert change"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:232
+#, elixir-autogen, elixir-format
+msgid "Review time restrictions and allowed rooms, then try again."
+msgstr "Review time restrictions and allowed rooms, then try again."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:82
+#, elixir-autogen, elixir-format
+msgid "Room is not allowed for this teaching type"
+msgstr "Room is not allowed for this teaching type"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:249
+#, elixir-autogen, elixir-format
+msgid "Same teaching type, teacher, weeks and duration: %{codes}"
+msgstr "Same teaching type, teacher, weeks and duration: %{codes}"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:214
+#, elixir-autogen, elixir-format
+msgid "Scheduling conflicts"
+msgstr "Scheduling conflicts"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:251
+#, elixir-autogen, elixir-format
+msgid "Select allowed start times."
+msgstr "Select allowed start times."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:429
+#, elixir-autogen, elixir-format
+msgid "Sessions scheduled in a draft or published plan cannot be deleted."
+msgstr "Sessions scheduled in a draft or published plan cannot be deleted."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:166
+#, elixir-autogen, elixir-format
+msgid "Sessions still use this teaching type."
+msgstr "Sessions still use this teaching type."
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:196
+#, elixir-autogen, elixir-format
+msgid "Sessions with this profile can start only at the selected times."
+msgstr "Sessions with this profile can start only at the selected times."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:69
+#: lib/neu_zeit_web/live/plan_live/reports.ex:46
+#: lib/neu_zeit_web/live/plan_live/reports.ex:115
+#, elixir-autogen, elixir-format
+msgid "Show in timetable"
+msgstr "Show in timetable"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:83
+#, elixir-autogen, elixir-format
+msgid "Start time is outside the time profile"
+msgstr "Start time is outside the time profile"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:87
+#, elixir-autogen, elixir-format
+msgid "Teacher has overlapping sessions"
+msgstr "Teacher has overlapping sessions"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:205
+#, elixir-autogen, elixir-format
+msgid "Teacher names"
+msgstr "Teacher names"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:663
+#: lib/neu_zeit_web/live/term_live/settings.ex:37
+#, elixir-autogen, elixir-format
+msgid "Teaching hours"
+msgstr "Teaching hours"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:304
+#: lib/neu_zeit_web/live/session_live/index.ex:365
+#: lib/neu_zeit_web/live/workload_live/index.ex:166
+#, elixir-autogen, elixir-format
+msgid "Teaching type"
+msgstr "Teaching type"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:74
+#, elixir-autogen, elixir-format
+msgid "Teaching type added: %{kind}."
+msgstr "Teaching type added: %{kind}."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:107
+#, elixir-autogen, elixir-format
+msgid "Teaching type removed: %{kind}."
+msgstr "Teaching type removed: %{kind}."
+
+#: lib/neu_zeit_web/live/course_live/index.ex:140
+#, elixir-autogen, elixir-format
+msgid "Teaching types"
+msgstr "Teaching types"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:206
+#, elixir-autogen, elixir-format
+msgid "Teaching types and allowed rooms"
+msgstr "Teaching types and allowed rooms"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:187
+#, elixir-autogen, elixir-format
+msgid "Teaching types will also be deleted. Courses used by sessions cannot be deleted."
+msgstr "Teaching types will also be deleted. Courses used by sessions cannot be deleted."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:338
+#, elixir-autogen, elixir-format
+msgid "The change will no longer apply. Its record will remain in the history."
+msgstr "The change will no longer apply. Its record will remain in the history."
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:152
+#, elixir-autogen, elixir-format
+msgid "The teacher must be available for the full session."
+msgstr "The teacher must be available for the full session."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:221
+#, elixir-autogen, elixir-format
+msgid "Time limit reached"
+msgstr "Time limit reached"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:100
+#, elixir-autogen, elixir-format
+msgid "Time limit reached. A complete timetable was not found."
+msgstr "Time limit reached. A complete timetable was not found."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:310
+#: lib/neu_zeit_web/live/session_live/index.ex:275
+#: lib/neu_zeit_web/live/session_live/index.ex:388
+#: lib/neu_zeit_web/live/workload_live/index.ex:156
+#: lib/neu_zeit_web/live/workload_live/index.ex:173
+#, elixir-autogen, elixir-format
+msgid "Time profile"
+msgstr "Time profile"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:122
+#, elixir-autogen, elixir-format
+msgid "Time profile: %{name}"
+msgstr "Time profile: %{name}"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:20
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:195
+#: lib/neu_zeit_web/live/term_live/show.ex:211
+#: lib/neu_zeit_web/nav.ex:30
+#, elixir-autogen, elixir-format
+msgid "Time profiles"
+msgstr "Time profiles"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:639
+#, elixir-autogen, elixir-format
+msgid "To change one date, open the calendar. To change the weekly timetable, create a draft."
+msgstr "To change one date, open the calendar. To change the weekly timetable, create a draft."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:273
+#, elixir-autogen, elixir-format
+msgid "Weekly sessions: %{full}. Selected weeks only: %{partial}."
+msgstr "Weekly sessions: %{full}. Selected weeks only: %{partial}."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:196
+#, elixir-autogen, elixir-format
+msgid "stays fixed during calculation"
+msgstr "stays fixed during calculation"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:177
+#, elixir-autogen, elixir-format
+msgid "A group and subgroup have sessions at the same time. Check whether they share students."
+msgstr "A group and subgroup have sessions at the same time. Check whether they share students."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:167
+#, elixir-autogen, elixir-format
+msgid "Another session uses this room at the same time."
+msgstr "Another session uses this room at the same time."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:182
+#, elixir-autogen, elixir-format
+msgid "Choose a date within the term."
+msgstr "Choose a date within the term."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:155
+#, elixir-autogen, elixir-format
+msgid "Choose a room allowed for this teaching type."
+msgstr "Choose a room allowed for this teaching type."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:158
+#, elixir-autogen, elixir-format
+msgid "Choose a start time allowed by the session's time profile."
+msgstr "Choose a start time allowed by the session's time profile."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:146
+#: lib/neu_zeit_web/components/ui/errors.ex:185
+#, elixir-autogen, elixir-format
+msgid "Choose a teaching day and a time that fits the full session."
+msgstr "Choose a teaching day and a time that fits the full session."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:92
+#, elixir-autogen, elixir-format
+msgid "Group booked in another term"
+msgstr "Group booked in another term"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:67
+#, elixir-autogen, elixir-format
+msgid "No group assigned"
+msgstr "No group assigned"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:152
+#, elixir-autogen, elixir-format
+msgid "Placement duration must match the session duration."
+msgstr "Placement duration must match the session duration."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:149
+#, elixir-autogen, elixir-format
+msgid "Placement weeks must match the session's teaching weeks."
+msgstr "Placement weeks must match the session's teaching weeks."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:136
+#, elixir-autogen, elixir-format
+msgid "Teacher available in %{count} time slot"
+msgid_plural "Teacher available in %{count} time slots"
+msgstr[0] "Teacher available in %{count} time slot"
+msgstr[1] "Teacher available in %{count} time slots"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:173
+#, elixir-autogen, elixir-format
+msgid "The group has another session at the same time."
+msgstr "The group has another session at the same time."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:170
+#, elixir-autogen, elixir-format
+msgid "The teacher has another session at the same time."
+msgstr "The teacher has another session at the same time."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:161
+#, elixir-autogen, elixir-format
+msgid "The teacher is not available for the full session at this time."
+msgstr "The teacher is not available for the full session at this time."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:191
+#, elixir-autogen, elixir-format
+msgid "This change no longer matches a scheduled session. Review it before publishing."
+msgstr "This change no longer matches a scheduled session. Review it before publishing."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:188
+#, elixir-autogen, elixir-format
+msgid "This date is marked as non-teaching. Choose another date."
+msgstr "This date is marked as non-teaching. Choose another date."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:164
+#, elixir-autogen, elixir-format
+msgid "This session is scheduled more than once. Remove the duplicate placement."
+msgstr "This session is scheduled more than once. Remove the duplicate placement."
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:235
+#, elixir-autogen, elixir-format
+msgid "Wait for the current calculation to finish."
+msgstr "Wait for the current calculation to finish."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:311
+#, elixir-autogen, elixir-format
+msgid "Sessions still to schedule: %{count} of %{total}."
+msgstr "Sessions still to schedule: %{count} of %{total}."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:293
+#, elixir-autogen, elixir-format
+msgid "Sessions without a time profile: %{count} of %{total}."
+msgstr "Sessions without a time profile: %{count} of %{total}."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:238
+#, elixir-autogen, elixir-format
+msgid "Teachers without time restrictions: %{count} of %{total}. Check that this is correct."
+msgstr "Teachers without time restrictions: %{count} of %{total}. Check that this is correct."
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:702
+#, elixir-autogen, elixir-format
+msgid "Unplaced: %{unplaced}, Conflicts: %{conflicts}, Warnings: %{advisories}"
+msgstr "Unplaced: %{unplaced}, Conflicts: %{conflicts}, Warnings: %{advisories}"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:65
+#, elixir-autogen, elixir-format
+msgid "I reviewed all warnings (%{count})."
+msgstr "I reviewed all warnings (%{count})."
+
+#: lib/neu_zeit_web/components/ui/status.ex:68
+#, elixir-autogen, elixir-format
+msgid "Warning"
+msgstr "Warning"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:658
+#, elixir-autogen, elixir-format
+msgid "Warnings"
+msgstr "Warnings"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:58
+#, elixir-autogen, elixir-format
+msgid "Warnings to review"
+msgstr "Warnings to review"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:26
+#, elixir-autogen, elixir-format
+msgid "Fri"
+msgstr "Fri"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:22
+#, elixir-autogen, elixir-format
+msgid "Mon"
+msgstr "Mon"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:27
+#, elixir-autogen, elixir-format
+msgid "Sat"
+msgstr "Sat"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:28
+#, elixir-autogen, elixir-format
+msgid "Sun"
+msgstr "Sun"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:25
+#, elixir-autogen, elixir-format
+msgid "Thu"
+msgstr "Thu"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:23
+#, elixir-autogen, elixir-format
+msgid "Tue"
+msgstr "Tue"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:24
+#, elixir-autogen, elixir-format
+msgid "Wed"
+msgstr "Wed"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:182
+#, elixir-autogen, elixir-format
+msgid "%{count} room. Check that it is suitable."
+msgid_plural "%{count} rooms. Check that each is suitable."
+msgstr[0] "%{count} room. Check that it is suitable."
+msgstr[1] "%{count} rooms. Check that each is suitable."
+
+#: lib/neu_zeit_web/components/scheduling/term_calendar.ex:69
+#, elixir-autogen, elixir-format
+msgid "%{date} is a non-teaching day. Click to make it a teaching day."
+msgstr "%{date} is a non-teaching day. Click to make it a teaching day."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:178
+#, elixir-autogen, elixir-format
+msgid "1 room. Check whether alternatives are available."
+msgstr "1 room. Check whether alternatives are available."
+
+#: lib/neu_zeit_web/live/room_live/index.ex:119
+#, elixir-autogen, elixir-format
+msgid "%{name} is used by a teaching type or a scheduled session."
+msgstr "%{name} is used by a teaching type or a scheduled session."
+
+#: lib/neu_zeit_web/live/room_live/index.ex:215
+#, elixir-autogen, elixir-format
+msgid "Allowed for"
+msgstr "Allowed for"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:324
+#, elixir-autogen, elixir-format
+msgid "Allowed start times"
+msgstr "Allowed start times"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:238
+#: lib/neu_zeit_web/components/ui/errors.ex:107
+#: lib/neu_zeit_web/components/ui/errors.ex:114
+#, elixir-autogen, elixir-format
+msgid "Calculation could not finish. Try again."
+msgstr "Calculation could not finish. Try again."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:209
+#, elixir-autogen, elixir-format
+msgid "Calculation moved a locked session. The result was not saved."
+msgstr "Calculation moved a locked session. The result was not saved."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:201
+#, elixir-autogen, elixir-format
+msgid "Calculation returned a timetable for a different set of sessions. The result was not saved."
+msgstr "Calculation returned a timetable for a different set of sessions. The result was not saved."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:194
+#, elixir-autogen, elixir-format
+msgid "Calculation returned an incomplete timetable. The result was not saved."
+msgstr "Calculation returned an incomplete timetable. The result was not saved."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:197
+#, elixir-autogen, elixir-format
+msgid "Calculation returned invalid data. The result was not saved."
+msgstr "Calculation returned invalid data. The result was not saved."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:206
+#, elixir-autogen, elixir-format
+msgid "Calculation used a room that no longer exists. The result was not saved."
+msgstr "Calculation used a room that no longer exists. The result was not saved."
+
+#: lib/neu_zeit_web/live/room_live/index.ex:227
+#, elixir-autogen, elixir-format
+msgid "Check building"
+msgstr "Check building"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:305
+#, elixir-autogen, elixir-format
+msgid "Choose a time"
+msgstr "Choose a time"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:380
+#: lib/neu_zeit_web/live/workload_live/index.ex:153
+#: lib/neu_zeit_web/live/workload_live/index.ex:172
+#, elixir-autogen, elixir-format
+msgid "Consecutive time slots"
+msgstr "Consecutive time slots"
+
+#: lib/neu_zeit_web/components/scheduling/time_grid.ex:74
+#, elixir-autogen, elixir-format
+msgid "Day %{day}, time slot %{slot}"
+msgstr "Day %{day}, time slot %{slot}"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:245
+#: lib/neu_zeit_web/live/course_live/show.ex:351
+#, elixir-autogen, elixir-format
+msgid "Delete teaching type"
+msgstr "Delete teaching type"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:347
+#, elixir-autogen, elixir-format
+msgid "Delete this teaching type?"
+msgstr "Delete this teaching type?"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:320
+#, elixir-autogen, elixir-format
+msgid "Delete translation"
+msgstr "Delete translation"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:312
+#, elixir-autogen, elixir-format
+msgid "Duration"
+msgstr "Duration"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:314
+#, elixir-autogen, elixir-format
+msgid "Locked"
+msgstr "Locked"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:304
+#, elixir-autogen, elixir-format
+msgid "New time"
+msgstr "New time"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:229
+#, elixir-autogen, elixir-format
+msgid "Number only"
+msgstr "Number only"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:48
+#, elixir-autogen, elixir-format
+msgid "Occupied time slots"
+msgstr "Occupied time slots"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:226
+#, elixir-autogen, elixir-format
+msgid "Room designation"
+msgstr "Room designation"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:213
+#, elixir-autogen, elixir-format
+msgid "Session placement"
+msgstr "Session placement"
+
+#: lib/neu_zeit_web/components/layouts.ex:193
+#, elixir-autogen, elixir-format
+msgid "The page could not be updated"
+msgstr "The page could not be updated"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:39
+#: lib/neu_zeit_web/components/ui/errors.ex:211
+#, elixir-autogen, elixir-format
+msgid "This record no longer exists."
+msgstr "This record no longer exists."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:334
+#, elixir-autogen, elixir-format
+msgid "Time slots"
+msgstr "Time slots"
+
+#: lib/neu_zeit_web/components/scheduling/time_grid.ex:61
+#, elixir-autogen, elixir-format
+msgid "Toggle time slot %{slot} on every day"
+msgstr "Toggle time slot %{slot} on every day"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:338
+#, elixir-autogen, elixir-format
+msgid "Translated title"
+msgstr "Translated title"
+
+#: lib/neu_zeit_web/components/scheduling/check_results.ex:30
+#: lib/neu_zeit_web/components/ui/errors.ex:330
+#, elixir-autogen, elixir-format
+msgid "Value"
+msgstr "Value"
+
+#: lib/neu_zeit_web/live/term_live/index.ex:161
+#, elixir-autogen, elixir-format
+msgid "Winter term 2026/27"
+msgstr "Winter term 2026/27"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:173
+#, elixir-autogen, elixir-format
+msgid "names containing letters or other characters"
+msgstr "names containing letters or other characters"
+
+#: lib/neu_zeit_web/controllers/error_html.ex:9
+#, elixir-autogen, elixir-format
+msgid "Could not open this page. Try again."
+msgstr "Could not open this page. Try again."
+
+#: lib/neu_zeit_web/controllers/error_html.ex:7
+#, elixir-autogen, elixir-format
+msgid "Page not found. Check the address."
+msgstr "Page not found. Check the address."
+
+#: lib/neu_zeit_web/live/room_live/index.ex:170
+#, elixir-autogen, elixir-format
+msgid "Rooms to review"
+msgstr "Rooms to review"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:266
+#, elixir-autogen, elixir-format
+msgid "Choose a building"
+msgstr "Choose a building"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:292
+#, elixir-autogen, elixir-format
+msgid "Adding"
+msgstr "Adding"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:71
+#, elixir-autogen, elixir-format
+msgid "Course, teacher or group"
+msgstr "Course, teacher or group"
+
+#: lib/neu_zeit_web/components/ui/loading_state.ex:24
+#, elixir-autogen, elixir-format
+msgid "Elapsed: %{elapsed} s."
+msgstr "Elapsed: %{elapsed} s."
+
+#: lib/neu_zeit_web/components/ui/loading_state.ex:23
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:21
+#, elixir-autogen, elixir-format
+msgid "Elapsed: %{elapsed} s. Limit: %{limit} s."
+msgstr "Elapsed: %{elapsed} s. Limit: %{limit} s."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:20
+#: lib/neu_zeit_web/live/term_live/show.ex:172
+#, elixir-autogen, elixir-format
+msgid "Generating timetable"
+msgstr "Generating timetable"
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:42
+#: lib/neu_zeit_web/live/plan_live/show.ex:631
+#: storybook/components/alert_dialog.story.exs:28
+#: storybook/components/alert_dialog.story.exs:31
+#, elixir-autogen, elixir-format
+msgid "Publish plan"
+msgstr "Publish plan"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:176
+#: lib/neu_zeit_web/live/course_live/show.ex:340
+#: lib/neu_zeit_web/live/exception_live/index.ex:322
+#: lib/neu_zeit_web/live/people_live/index.ex:263
+#: lib/neu_zeit_web/live/people_live/index.ex:277
+#: lib/neu_zeit_web/live/plan_live/index.ex:138
+#: lib/neu_zeit_web/live/room_live/index.ex:255
+#: lib/neu_zeit_web/live/room_live/index.ex:270
+#: lib/neu_zeit_web/live/session_live/index.ex:415
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:259
+#: lib/neu_zeit_web/live/term_live/index.ex:166
+#: lib/neu_zeit_web/live/term_live/settings.ex:41
+#: lib/neu_zeit_web/live/workload_live/index.ex:190
+#, elixir-autogen, elixir-format
+msgid "Saving"
+msgstr "Saving"
+
+#: lib/neu_zeit_web/components/ui/transfer_list.ex:36
+#, elixir-autogen, elixir-format
+msgid "Add %{name}"
+msgstr "Add %{name}"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:320
+#, elixir-autogen, elixir-format
+msgid "Applies only to this date. The semester template stays the same."
+msgstr "Applies only to this date. The semester template stays the same."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:173
+#, elixir-autogen, elixir-format
+msgid "Change reverted. Its history is kept."
+msgstr "Change reverted. Its history is kept."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:149
+#, elixir-autogen, elixir-format
+msgid "Change saved."
+msgstr "Change saved."
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:170
+#: lib/neu_zeit_web/live/plan_live/show.ex:640
+#, elixir-autogen, elixir-format
+msgid "Copy to draft"
+msgstr "Copy to draft"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:58
+#, elixir-autogen, elixir-format
+msgid "Courses not entered here are not included in the totals."
+msgstr "Courses not entered here are not included in the totals."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:208
+#, elixir-autogen, elixir-format
+msgid "Create separate sessions for parallel groups."
+msgstr "Create separate sessions for parallel groups."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:401
+#: lib/neu_zeit_web/live/workload_live/index.ex:184
+#, elixir-autogen, elixir-format
+msgid "For a shared session, select all attending groups."
+msgstr "For a shared session, select all attending groups."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:212
+#, elixir-autogen, elixir-format
+msgid "Locked placements"
+msgstr "Locked placements"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:129
+#, elixir-autogen, elixir-format
+msgid "Longest break (weeks)"
+msgstr "Longest break (weeks)"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:45
+#, elixir-autogen, elixir-format
+msgid "Moving a session changes every week it runs."
+msgstr "Moving a session changes every week it runs."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:340
+#, elixir-autogen, elixir-format
+msgid "No time profile"
+msgstr "No time profile"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:409
+#: lib/neu_zeit_web/live/workload_live/index.ex:187
+#, elixir-autogen, elixir-format
+msgid "Other groups"
+msgstr "Other groups"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:254
+#: storybook/components/transfer_list.story.exs:30
+#, elixir-autogen, elixir-format
+msgid "Other rooms"
+msgstr "Other rooms"
+
+#: lib/neu_zeit_web/components/layouts.ex:183
+#, elixir-autogen, elixir-format
+msgid "Reconnecting to the server"
+msgstr "Reconnecting to the server"
+
+#: lib/neu_zeit_web/components/ui/transfer_list.ex:36
+#, elixir-autogen, elixir-format
+msgid "Remove %{name}"
+msgstr "Remove %{name}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:199
+#, elixir-autogen, elixir-format
+msgid "Remove from timetable"
+msgstr "Remove from timetable"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:299
+#: storybook/components/toolbar.story.exs:29
+#, elixir-autogen, elixir-format
+msgid "Reset filters"
+msgstr "Reset filters"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:153
+#, elixir-autogen, elixir-format
+msgid "Room (saved immediately)"
+msgstr "Room (saved immediately)"
+
+#: lib/neu_zeit_web/components/scheduling/diagnostics.ex:86
+#, elixir-autogen, elixir-format
+msgid "Room has overlapping sessions"
+msgstr "Room has overlapping sessions"
+
+#: lib/neu_zeit_web/live/room_live/index.ex:280
+#, elixir-autogen, elixir-format
+msgid "Rooms used by teaching types or scheduled sessions cannot be deleted."
+msgstr "Rooms used by teaching types or scheduled sessions cannot be deleted."
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:291
+#, elixir-autogen, elixir-format
+msgid "Save the name to select start times. All times are allowed initially."
+msgstr "Save the name to select start times. All times are allowed initially."
+
+#: lib/neu_zeit_web/live/availability_live/index.ex:98
+#, elixir-autogen, elixir-format
+msgid "Select available times. An empty grid allows any time."
+msgstr "Select available times. An empty grid allows any time."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:49
+#, elixir-autogen, elixir-format
+msgid "The action could not be completed. Try again."
+msgstr "The action could not be completed. Try again."
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:12
+#, elixir-autogen, elixir-format
+msgid "This plan will replace the published timetable. The previous plan will be archived. One-off changes will be kept."
+msgstr "This plan will replace the published timetable. The previous plan will be archived. One-off changes will be kept."
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:623
+#, elixir-autogen, elixir-format
+msgid "Undo last edit"
+msgstr "Undo last edit"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:209
+#, elixir-autogen, elixir-format
+msgid "Weeks and durations"
+msgstr "Weeks and durations"
+
+#: storybook/scheduling/time_grid.story.exs:27
+#, elixir-autogen, elixir-format
+msgid "%{count} selected time slot"
+msgid_plural "%{count} selected time slots"
+msgstr[0] "%{count} selected time slot"
+msgstr[1] "%{count} selected time slots"
+
+#: storybook/components/empty_state.story.exs:11
+#, elixir-autogen, elixir-format
+msgid "No sessions scheduled this week."
+msgstr "No sessions scheduled this week."
+
+#: storybook/components/alert_dialog.story.exs:21
+#, elixir-autogen, elixir-format
+msgid "Publication confirmed."
+msgstr "Publication confirmed."
+
+#: storybook/components/flash.story.exs:11
+#, elixir-autogen, elixir-format
+msgid "Room occupied in weeks %{weeks}."
+msgstr "Room occupied in weeks %{weeks}."
+
+#: storybook/components/flash.story.exs:19
+#, elixir-autogen, elixir-format
+msgid "Show an error"
+msgstr "Show an error"
+
+#: storybook/components/alert_dialog.story.exs:30
+#, elixir-autogen, elixir-format
+msgid "This plan will replace the published timetable. Existing one-off changes will be kept."
+msgstr "This plan will replace the published timetable. Existing one-off changes will be kept."
+
+#: storybook/components/toolbar.story.exs:27
+#, elixir-autogen, elixir-format
+msgid "Unplaced only"
+msgstr "Unplaced only"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:143
+#, elixir-autogen, elixir-format
+msgid "Time and room"
+msgstr "Time and room"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:316
+#: lib/neu_zeit_web/live/exception_live/index.ex:197
+#: lib/neu_zeit_web/live/exception_live/index.ex:294
+#, elixir-autogen, elixir-format
+msgid "Add a dated session"
+msgstr "Add a dated session"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:177
+#, elixir-autogen, elixir-format
+msgid "Calculation replaces unlocked placements in this draft. Locked sessions stay in place."
+msgstr "Calculation replaces unlocked placements in this draft. Locked sessions stay in place."
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:401
+#: lib/neu_zeit_web/live/exception_live/index.ex:195
+#: lib/neu_zeit_web/live/exception_live/index.ex:292
+#, elixir-autogen, elixir-format
+msgid "Cancel dated session"
+msgstr "Cancel dated session"
+
+#: lib/neu_zeit_web/live/plan_live/index.ex:186
+#, elixir-autogen, elixir-format
+msgid "Deleting this plan also deletes its placements. The active plan cannot be deleted."
+msgstr "Deleting this plan also deletes its placements. The active plan cannot be deleted."
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:400
+#: lib/neu_zeit_web/live/exception_live/index.ex:196
+#: lib/neu_zeit_web/live/exception_live/index.ex:293
+#, elixir-autogen, elixir-format
+msgid "Move dated session"
+msgstr "Move dated session"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:97
+#, elixir-autogen, elixir-format
+msgid "No group overlaps flagged"
+msgstr "No group overlaps flagged"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:328
+#, elixir-autogen, elixir-format
+msgid "No group overlaps flagged."
+msgstr "No group overlaps flagged."
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:349
+#, elixir-autogen, elixir-format
+msgid "Non-teaching date"
+msgstr "Non-teaching date"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:319
+#: lib/neu_zeit_web/live/term_live/index.ex:143
+#: lib/neu_zeit_web/live/term_live/show.ex:190
+#, elixir-autogen, elixir-format
+msgid "Non-teaching dates"
+msgstr "Non-teaching dates"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:70
+#, elixir-autogen, elixir-format
+msgid "Planned hours"
+msgstr "Planned hours"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:69
+#, elixir-autogen, elixir-format
+msgid "Required hours"
+msgstr "Required hours"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:183
+#, elixir-autogen, elixir-format
+msgid "Select non-teaching dates. Dated sessions on these dates are omitted. You cannot add or move dated sessions to them."
+msgstr "Select non-teaching dates. Dated sessions on these dates are omitted. You cannot add or move dated sessions to them."
+
+#: lib/neu_zeit_web/live/term_live/index.ex:126
+#, elixir-autogen, elixir-format
+msgid "Set the term dates and non-teaching dates."
+msgstr "Set the term dates and non-teaching dates."
+
+#: lib/neu_zeit_web/live/people_live/index.ex:22
+#: lib/neu_zeit_web/live/people_live/index.ex:175
+#: lib/neu_zeit_web/nav.ex:77
+#, elixir-autogen, elixir-format
+msgid "Teachers and groups"
+msgstr "Teachers and groups"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:219
+#, elixir-autogen, elixir-format
+msgid "Teaching weeks: %{weeks}. Non-teaching dates: %{excluded}."
+msgstr "Teaching weeks: %{weeks}. Non-teaching dates: %{excluded}."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:204
+#, elixir-autogen, elixir-format
+msgid "Term dates and non-teaching dates"
+msgstr "Term dates and non-teaching dates"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:64
+#, elixir-autogen, elixir-format
+msgid "This dated session has changed. Reload the calendar."
+msgstr "This dated session has changed. Reload the calendar."
+
+#: lib/neu_zeit_web/components/scheduling/week_picker.ex:68
+#, elixir-autogen, elixir-format
+msgid "With non-teaching dates"
+msgstr "With non-teaching dates"
+
+#: lib/neu_zeit_web/components/ui/details_panel.ex:22
+#, elixir-autogen, elixir-format
+msgid "Close"
+msgstr "Close"
+
+#: lib/neu_zeit_web/components/ui/tabs.ex:14
+#, elixir-autogen, elixir-format
+msgid "Views"
+msgstr "Views"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:621
+#: lib/neu_zeit_web/nav.ex:23
+#, elixir-autogen, elixir-format
+msgid "Preparation"
+msgstr "Preparation"
+
+#: lib/neu_zeit_web/nav.ex:35
+#, elixir-autogen, elixir-format
+msgid "Scheduling"
+msgstr "Scheduling"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:22
+#, elixir-autogen, elixir-format
+msgid "Long days span %{count} or more time slots with gaps."
+msgstr "Long days span %{count} or more time slots with gaps."
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:18
+#, elixir-autogen, elixir-format
+msgid "No scheduled sessions"
+msgstr "No scheduled sessions"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:22
+#, elixir-autogen, elixir-format
+msgid "Totals cover all teaching weeks. Gaps are counted in time slots."
+msgstr "Totals cover all teaching weeks. Gaps are counted in time slots."
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:145
+#, elixir-autogen, elixir-format
+msgid "Add subjects, teachers and groups to the teaching load."
+msgstr "Add subjects, teachers and groups to the teaching load."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:150
+#: lib/neu_zeit_web/live/workload_live/index.ex:138
+#: lib/neu_zeit_web/live/workload_live/index.ex:163
+#, elixir-autogen, elixir-format
+msgid "Add teaching load"
+msgstr "Add teaching load"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:69
+#, elixir-autogen, elixir-format
+msgid "Add teaching load before generating a timetable."
+msgstr "Add teaching load before generating a timetable."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:136
+#: lib/neu_zeit_web/live/workload_live/index.ex:163
+#, elixir-autogen, elixir-format
+msgid "Edit teaching load"
+msgstr "Edit teaching load"
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:161
+#, elixir-autogen, elixir-format
+msgid "Individual sessions"
+msgstr "Individual sessions"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:145
+#, elixir-autogen, elixir-format
+msgid "No teaching load yet"
+msgstr "No teaching load yet"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:146
+#, elixir-autogen, elixir-format
+msgid "Set the teaching load and constraints, then generate a timetable."
+msgstr "Set the teaching load and constraints, then generate a timetable."
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:14
+#: lib/neu_zeit_web/live/workload_live/index.ex:136
+#: lib/neu_zeit_web/nav.ex:31
+#, elixir-autogen, elixir-format
+msgid "Teaching load"
+msgstr "Teaching load"
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:123
+#, elixir-autogen, elixir-format
+msgid "Teaching load saved."
+msgstr "Teaching load saved."
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:43
+#, elixir-autogen, elixir-format
+msgid "The workload changed. Reload it before saving."
+msgstr "The workload changed. Reload it before saving."
+
+#: lib/neu_zeit_web/live/session_live/index.ex:331
+#: lib/neu_zeit_web/live/workload_live/index.ex:154
+#, elixir-autogen, elixir-format
+msgid "Automatic"
+msgstr "Automatic"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:265
+#, elixir-autogen, elixir-format
+msgid "Automatic week selection for %{automatic} meetings. Fixed weeks for %{fixed} sessions."
+msgstr "Automatic week selection for %{automatic} meetings. Fixed weeks for %{fixed} sessions."
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:176
+#, elixir-autogen, elixir-format
+msgid "Fixed teaching weeks"
+msgstr "Fixed teaching weeks"
+
+#: lib/neu_zeit_web/live/session_live/index.ex:394
+#: lib/neu_zeit_web/live/workload_live/index.ex:176
+#, elixir-autogen, elixir-format
+msgid "Restrict available weeks"
+msgstr "Restrict available weeks"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:147
+#, elixir-autogen, elixir-format
+msgid "Week (saved immediately)"
+msgstr "Week (saved immediately)"
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:152
+#, elixir-autogen, elixir-format
+msgid "Academic hours"
+msgstr "Academic hours"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:56
+#, elixir-autogen, elixir-format
+msgid "Academic hours (%{minutes} min)"
+msgstr "Academic hours (%{minutes} min)"
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:171
+#, elixir-autogen, elixir-format
+msgid "Academic hours per semester (%{minutes} min)"
+msgstr "Academic hours per semester (%{minutes} min)"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:39
+#, elixir-autogen, elixir-format
+msgid "Minutes per academic hour"
+msgstr "Minutes per academic hour"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:13
+#: lib/neu_zeit_web/live/term_live/settings.ex:36
+#: lib/neu_zeit_web/nav.ex:25
+#, elixir-autogen, elixir-format
+msgid "Settings"
+msgstr "Settings"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:25
+#, elixir-autogen, elixir-format
+msgid "Settings saved."
+msgstr "Settings saved."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:169
+#, elixir-autogen, elixir-format
+msgid "Timetable"
+msgstr "Timetable"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:40
+#, elixir-autogen, elixir-format
+msgid "Used for teaching load and hour reports. Session times stay unchanged."
+msgstr "Used for teaching load and hour reports. Session times stay unchanged."
+
+#: lib/neu_zeit_web/live/course_live/index.ex:128
+#, elixir-autogen, elixir-format
+msgid "Add a course and choose allowed rooms for each teaching type."
+msgstr "Add a course and choose allowed rooms for each teaching type."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:300
+#, elixir-autogen, elixir-format
+msgid "No plan selected."
+msgstr "No plan selected."
+
+#: lib/neu_zeit_web/components/scheduling/session_card.ex:63
+#, elixir-autogen, elixir-format
+msgid "Week selected automatically"
+msgstr "Week selected automatically"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:200
+#, elixir-autogen, elixir-format
+msgid "Add weekday profile"
+msgstr "Add weekday profile"
+
+#: lib/neu_zeit_web/live/slot_profile_live/index.ex:58
+#, elixir-autogen, elixir-format
+msgid "Weekday profile is ready."
+msgstr "Weekday profile is ready."
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:15
+#, elixir-autogen, elixir-format
+msgid "Weekdays, daytime"
+msgstr "Weekdays, daytime"

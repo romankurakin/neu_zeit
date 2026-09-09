@@ -107,3 +107,165 @@ msgstr ""
 
 msgid "must be equal to %{number}"
 msgstr ""
+
+## Administrator form and workflow errors.
+msgid "is read-only"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "does not exist"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "is not allowed for this component"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be a Monday"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be on or after starts_on"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be within the term"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be on a teaching day"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must fall on teaching days"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be a non-empty list of week numbers"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be inside the term week range"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "has no start cell that fits the session duration"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "availability and slot profile leave no valid start for this session"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must contain at least one allowed start"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must contain a start cell that fits every assigned session duration"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "change conflicts with existing placements"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be a non-empty list of ids"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "contains invalid ids"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "contains unknown ids"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must match plan and session term"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "or session_id does not exist"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must match the session term"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must belong to this term"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "is read-only unless it is a draft"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "locked placements cannot be changed without unlocking"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "must be blank for cancellations"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "does not match any scheduled occurrence"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "is already removed from the schedule by an excluded date"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "cells must be a list of day/slot maps"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "each cell must be a day/slot map"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "term must keep at least %{minimum} weeks; existing sessions or placements use week %{week}"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "is outside the configured slot grid (1..%{slots})"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "leaves no valid start for an existing session"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "active plans cannot be deleted; publish another plan for the term first"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "session is placed in the active published plan"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "session has active schedule exceptions; revert or delete them first"
+msgstr ""
+
+## Administrator form and workflow errors.
+msgid "The plan changed while the solver was running. Your edits were kept. Run the solver again."
+msgstr ""
+
+msgid "Remove placements before reducing this workload."
+msgstr ""
+
+msgid "The workload changed. Reload it before saving."
+msgstr ""
+
+msgid "This workload already exists. Edit its quantity."
+msgstr ""
+
+msgid "A generated meeting must fall on a teaching date."
+msgstr ""
+
+msgid "Hours must cover a whole number of sessions of this duration."
+msgstr ""
+
+msgid "Teaching load exceeds the available time."
+msgstr ""
