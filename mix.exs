@@ -28,7 +28,7 @@ defmodule NeuZeit.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [ci: :test, precommit: :test]
     ]
   end
 
@@ -87,6 +87,14 @@ defmodule NeuZeit.MixProject do
         "compile --warnings-as-errors",
         "deps.unlock --unused",
         "format",
+        "lint",
+        "test"
+      ],
+      # The precommit steps, without writing to the working tree. CI runs this.
+      ci: [
+        "compile --warnings-as-errors",
+        "deps.unlock --check-unused",
+        "format --check-formatted",
         "lint",
         "test"
       ]
