@@ -5,14 +5,14 @@
     "unicorn",
     "oxc"
   ],
+  // Nursery rules are still in development and change between releases.
+  // Restriction rules are meant to be chosen one by one, not enabled as a set.
   "categories": {
     "correctness": "error",
     "suspicious": "error",
     "pedantic": "error",
     "perf": "error",
-    "style": "error",
-    "restriction": "error",
-    "nursery": "error"
+    "style": "error"
   },
   "options": {
     "typeAware": true,
@@ -22,43 +22,8 @@
     "browser": true
   },
   "rules": {
-    // DOM and plugin APIs expose mutable objects. Keep application parameters readonly.
-    "typescript/prefer-readonly-parameter-types": [
-      "error",
-      {
-        "allow": [
-          {
-            "from": "lib",
-            "name": [
-              "Element",
-              "HTMLElement",
-              "HTMLButtonElement",
-              "HTMLDialogElement",
-              "EventTarget",
-              "Event",
-              "MouseEvent",
-              "KeyboardEvent",
-              "PointerEvent",
-              "CustomEvent",
-              "ParentNode"
-            ]
-          },
-          {
-            "from": "package",
-            "name": [
-              "Sortable",
-              "SortableEvent"
-            ],
-            "package": "@types/sortablejs"
-          },
-          {
-            "from": "package",
-            "name": "PluginAPI",
-            "package": "tailwindcss"
-          }
-        ]
-      }
-    ],
+    // Every hook takes a mutable DOM object, so the allow list never converges.
+    "typescript/prefer-readonly-parameter-types": "off",
     // Conflicts with eslint/no-ternary.
     "unicorn/prefer-ternary": "off",
     // Each JSDoc-typed declaration needs its own statement.
@@ -87,16 +52,13 @@
       }
     },
     {
+      // Volt loads this plugin in Node, not in the browser.
       "files": [
         "assets/vendor/heroicons.mjs"
       ],
       "env": {
         "browser": false,
         "node": true
-      },
-      "rules": {
-        // Volt 0.17 loads fs and path but cannot resolve their node: forms.
-        "unicorn/prefer-node-protocol": "off"
       }
     }
   ],
