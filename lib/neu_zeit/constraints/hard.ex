@@ -90,7 +90,16 @@ defmodule NeuZeit.Constraints.Hard do
     Enum.flat_map(placements, fn placement ->
       session = placement.session
 
-      if session && placement.week_mask != session.week_mask do
+      valid =
+        session &&
+          if(Map.get(session, :automatic_weeks, false),
+            do:
+              length(placement.week_mask || []) == 1 &&
+                Enum.all?(placement.week_mask, &(&1 in session.week_mask)),
+            else: placement.week_mask == session.week_mask
+          )
+
+      if session && not valid do
         [
           error(
             "week_mask_mismatch",

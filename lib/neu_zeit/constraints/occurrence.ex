@@ -18,15 +18,18 @@ defmodule NeuZeit.Constraints.Occurrence do
       |> Projection.project(placements, exceptions)
       |> filter_dates(dates)
 
-    sessions_by_id = sessions_by_id(occurrences)
+    sessions_by_id =
+      sessions_by_id(occurrences ++ Enum.map(placements, &%{session_id: &1.session_id}))
 
     errors =
-      exception_date_errors(term, exceptions, sessions_by_id) ++
+      NeuZeit.Constraints.AutomaticWeeks.errors(term, placements, sessions_by_id) ++
+        exception_date_errors(term, exceptions, sessions_by_id) ++
         orphaned_exception_errors(term, placements, exceptions, opts) ++
         room_eligibility_errors(occurrences, sessions_by_id) ++
         time_profile_errors(occurrences, sessions_by_id) ++
         teacher_availability_errors(term, occurrences, sessions_by_id) ++
-        conflict_errors(occurrences, sessions_by_id)
+        conflict_errors(occurrences, sessions_by_id) ++
+        NeuZeit.Planning.SharedResources.errors(term, placements, exceptions)
 
     case Enum.uniq(errors) do
       [] -> :ok

@@ -1,13 +1,10 @@
 defmodule NeuZeit.Constraints.Soft do
   @moduledoc """
-  Phoenix-owned description of the timetable soft objective.
+  Defines the soft constraints sent to the solver.
 
-  Phoenix serializes the normalized groups, pairs, and weights the solver needs
-  to optimize (building clustering, cohort gaps, sequence adjacency, and minimal
-  perturbation). Scoring itself is owned by the solver: it optimizes this
-  objective internally. Phoenix neither evaluates nor persists a score — drafts
-  are compared by inspecting their placements, not by a number. This module only
-  describes the objective for the solver.
+  Serializes groups, pairs and weights for the optimization objective.
+  The solver computes the objective value; Phoenix does not store a plan score.
+  Administrators compare placements and quality reports.
   """
 
   alias NeuZeit.Catalog.WeekPattern
@@ -15,6 +12,7 @@ defmodule NeuZeit.Constraints.Soft do
 
   def weights(policy \\ Config.load!()) do
     %{
+      weekly_balance: get_in(policy, [:soft, :balance_weeks, :weight]) || 0,
       building: get_in(policy, [:soft, :cluster_buildings, :weight]) || 0,
       gaps: get_in(policy, [:soft, :minimize_gaps, :weight]) || 0,
       active_days: get_in(policy, [:soft, :minimize_active_days, :weight]) || 0,

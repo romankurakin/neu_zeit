@@ -40,6 +40,7 @@ defmodule NeuZeit.Planning.ScheduleException do
       :created_by
     ])
     |> validate_required([:term_id, :session_id, :kind, :occurrence_date, :reason, :status])
+    |> validate_author()
     |> validate_inclusion(:kind, @kinds)
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:new_slot, greater_than: 0)
@@ -51,6 +52,12 @@ defmodule NeuZeit.Planning.ScheduleException do
       name: :exceptions_one_override_per_occurrence
     )
     |> check_constraint(:kind, name: :exceptions_payload_ck)
+  end
+
+  defp validate_author(changeset) do
+    if get_field(changeset, :status) == "reverted" && changeset.data.id,
+      do: changeset,
+      else: validate_required(changeset, [:created_by])
   end
 
   def update_changeset(exception, attrs) do
