@@ -10,6 +10,7 @@ defmodule NeuZeit.Catalog.Term do
     field :ends_on, :date
     field :excluded_dates, {:array, :date}, default: []
     field :weeks_count, :integer
+    field :academic_hour_minutes, :integer, default: 45
 
     has_many :sessions, NeuZeit.Catalog.Session
     has_many :slot_profiles, NeuZeit.Catalog.SlotProfile
@@ -21,8 +22,9 @@ defmodule NeuZeit.Catalog.Term do
 
   def changeset(term, attrs) do
     term
-    |> cast(attrs, [:name, :starts_on, :ends_on, :excluded_dates])
-    |> validate_required([:name, :starts_on, :ends_on])
+    |> cast(attrs, [:name, :starts_on, :ends_on, :excluded_dates, :academic_hour_minutes])
+    |> validate_required([:name, :starts_on, :ends_on, :academic_hour_minutes])
+    |> validate_number(:academic_hour_minutes, greater_than: 0, less_than_or_equal_to: 60)
     |> validate_starts_on_week_start()
     |> validate_change(:ends_on, fn :ends_on, ends_on ->
       starts_on = get_field(term |> cast(attrs, [:starts_on]), :starts_on)

@@ -7,6 +7,8 @@ defmodule NeuZeit.Catalog.Session do
   alias NeuZeit.Catalog.{SlotProfile, TeacherAvailabilityCell, Term, WeekPattern}
 
   schema "sessions" do
+    field :workload_id, Ecto.UUID
+    field :automatic_weeks, :boolean, default: false
     field :sequence_group, :string
     field :week_mask, {:array, :integer}
     field :duration_slots, :integer, default: 1
@@ -29,6 +31,7 @@ defmodule NeuZeit.Catalog.Session do
     |> cast(attrs, [
       :term_id,
       :course_component_id,
+      :automatic_weeks,
       :teacher_id,
       :slot_profile_id,
       :sequence_group,
@@ -38,6 +41,7 @@ defmodule NeuZeit.Catalog.Session do
     |> validate_required([
       :term_id,
       :course_component_id,
+      :automatic_weeks,
       :teacher_id,
       :week_mask,
       :duration_slots
@@ -64,6 +68,7 @@ defmodule NeuZeit.Catalog.Session do
     |> reject_fields(attrs, [:term_id])
     |> cast(attrs, [
       :course_component_id,
+      :automatic_weeks,
       :teacher_id,
       :slot_profile_id,
       :sequence_group,
@@ -73,6 +78,7 @@ defmodule NeuZeit.Catalog.Session do
     |> validate_required([
       :term_id,
       :course_component_id,
+      :automatic_weeks,
       :teacher_id,
       :week_mask,
       :duration_slots

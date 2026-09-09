@@ -5,6 +5,7 @@ defmodule NeuZeit.Catalog.SlotProfile do
 
   schema "slot_profiles" do
     field :name, :string
+    field :preset_key, :string
 
     belongs_to :term, NeuZeit.Catalog.Term
 
@@ -16,6 +17,10 @@ defmodule NeuZeit.Catalog.SlotProfile do
 
     timestamps()
   end
+
+  # Recognize the old generated name and localized examples without matching arbitrary names.
+  def daytime_name?(name),
+    do: name in ["DAYTIME_ANY", "Weekdays, daytime", "Будни, дневное время", "Werktags, tagsüber"]
 
   def changeset(profile, attrs) do
     profile
