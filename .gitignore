@@ -1,53 +1,31 @@
-# Compiled artifacts
+# Built, fetched or dumped. Nothing here is written by hand.
 /_build/
-
-.DS_Store
-
-# Test coverage reports
 /cover/
-
-# Downloaded dependencies
 /deps/
-
-# Generated documentation
 /doc/
-
-# Local dependency fetch markers
+/tmp/
 /.fetch
-
-# VM crash dumps
+node_modules/
 erl_crash.dump
-
-# Mix archives
+neu_zeit-*.tar
 *.ez
 
-# Temporary files
-/tmp/
-
-# Hex package archives
-neu_zeit-*.tar
-
-# Python solver artifacts
-/priv/solver/.venv/
-/priv/solver/__pycache__/
-/priv/solver/.pytest_cache/
-
-# Generated assets
+# Phoenix writes these from lib/ and assets/ during compilation.
+/assets/colocated/
 /priv/static/assets/
-
-# Asset digest cache
 /priv/static/cache_manifest.json
 
-# Local container settings and tool caches
+# Tool state, wherever a tool creates it.
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+/.claude/launch.json
+/.elixir_ls/
+/.expert/
+
+# Real secrets. The example file records which names are required.
 .env
 .env.*
 !.env.example
-/.expert/
-/.claude/launch.json
-/.elixir_ls/
-.ruff_cache/
-
-# Frontend packages
-node_modules/
-
-/assets/colocated/
