@@ -6,6 +6,12 @@ defmodule NeuZeitWeb.PlacementController do
 
   action_fallback NeuZeitWeb.FallbackController
 
+  def index(conn, %{"plan_id" => plan_id}) do
+    with :ok <- RequestParams.require_uuid(plan_id, "plan_id") do
+      json(conn, %{data: ApiJSON.data(Planning.list_placements(plan_id))})
+    end
+  end
+
   def index(conn, _params) do
     json(conn, %{data: ApiJSON.data(Planning.list_placements())})
   end

@@ -1,8 +1,6 @@
 defmodule NeuZeitWeb.ErrorJSON do
   @moduledoc """
-  This module is invoked by your endpoint in case of errors on JSON requests.
-
-  See config/config.exs.
+  Formats endpoint errors for JSON requests.
   """
 
   def render(template, _assigns) do

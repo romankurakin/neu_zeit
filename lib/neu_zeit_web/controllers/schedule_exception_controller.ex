@@ -6,6 +6,12 @@ defmodule NeuZeitWeb.ScheduleExceptionController do
 
   action_fallback NeuZeitWeb.FallbackController
 
+  def index(conn, %{"term_id" => term_id}) do
+    with :ok <- RequestParams.require_uuid(term_id, "term_id") do
+      json(conn, %{data: ApiJSON.data(Planning.list_schedule_exceptions(term_id))})
+    end
+  end
+
   def index(conn, _params) do
     json(conn, %{data: ApiJSON.data(Planning.list_schedule_exceptions())})
   end

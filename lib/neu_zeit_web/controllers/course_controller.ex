@@ -60,6 +60,38 @@ defmodule NeuZeitWeb.CourseController do
     end
   end
 
+  def translations(conn, %{"course_id" => course_id}) do
+    with :ok <- RequestParams.require_uuid(course_id, "course_id"),
+         {:ok, _course} <- RequestParams.fetch_not_found(fn -> Catalog.get_course!(course_id) end) do
+      json(conn, %{data: ApiJSON.data(Catalog.list_course_translations(course_id))})
+    end
+  end
+
+  def update_translation(conn, %{"course_id" => course_id, "locale" => locale}) do
+    attrs = conn.body_params["course_translation"] || conn.body_params
+
+    with :ok <- RequestParams.require_uuid(course_id, "course_id"),
+         {:ok, translation} <- fetch_translation(course_id, locale),
+         {:ok, translation} <- Catalog.update_course_translation(translation, attrs) do
+      json(conn, %{data: ApiJSON.data(translation)})
+    end
+  end
+
+  def delete_translation(conn, %{"course_id" => course_id, "locale" => locale}) do
+    with :ok <- RequestParams.require_uuid(course_id, "course_id"),
+         {:ok, translation} <- fetch_translation(course_id, locale),
+         {:ok, _translation} <- Catalog.delete_course_translation(translation) do
+      send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp fetch_translation(course_id, locale) do
+    case Catalog.get_course_translation(course_id, locale) do
+      nil -> {:error, :not_found}
+      translation -> {:ok, translation}
+    end
+  end
+
   defp delete_course(course) do
     Catalog.delete_course(course)
   rescue

@@ -6,8 +6,33 @@ defmodule NeuZeitWeb.PlanController do
 
   action_fallback NeuZeitWeb.FallbackController
 
+  def index(conn, %{"term_id" => term_id}) do
+    with :ok <- RequestParams.require_uuid(term_id, "term_id") do
+      json(conn, %{data: ApiJSON.data(Planning.list_plans(term_id))})
+    end
+  end
+
   def index(conn, _params) do
     json(conn, %{data: ApiJSON.data(Planning.list_plans())})
+  end
+
+  @doc """
+  Returns plan quality metrics for groups, teachers, sequences and rooms.
+  """
+  def quality(conn, %{"plan_id" => plan_id}) do
+    with :ok <- RequestParams.require_uuid(plan_id, "plan_id"),
+         {:ok, report} <-
+           RequestParams.fetch_not_found(fn -> NeuZeit.Planning.Quality.report(plan_id) end) do
+      json(conn, %{
+        data: %{
+          cohorts: report.cohorts,
+          teachers: report.teachers,
+          sequences: report.sequences,
+          rooms: report.rooms
+        },
+        meta: NeuZeit.Planning.Quality.verdicts(report)
+      })
+    end
   end
 
   def create(conn, params) do
@@ -90,6 +115,12 @@ defmodule NeuZeitWeb.PlanController do
          :ok <- ensure_plan_exists(id),
          {:ok, result} <- RequestParams.handle_not_found(fn -> Planning.solve_plan(id) end) do
       json(conn, %{data: result})
+    else
+      {:error, :already_running} ->
+        {:error, {:conflict, "Timetable generation is already running for this plan."}}
+
+      error ->
+        error
     end
   end
 
