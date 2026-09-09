@@ -32,6 +32,15 @@ jobs:
           cache-from: type=gha,scope=development
           cache-to: type=gha,mode=max,scope=development
 
+      # The image bakes user dev as 1000, the runner checks out as 1001, and a
+      # Linux bind mount keeps the host owner. Without this the container
+      # cannot write to the workspace or to a freshly created volume.
+      - name: Give the workspace and the volumes to the container user
+        run: |
+          sudo chown -R 1000:1000 .
+          docker compose run --rm --no-deps --user root application \
+            chown -R dev:dev /app /home/dev
+
       - name: Start the stack
         run: docker compose up --wait --wait-timeout 900 application
 
