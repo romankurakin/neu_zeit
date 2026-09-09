@@ -9,6 +9,7 @@
     "@types/sortablejs": "^1.15",
     "daisyui": "^5.0",
     "heroicons": "^2.2",
+    "oxfmt": "^0.67",
     "oxlint": "^1.81",
     "oxlint-tsgolint": "^7.0",
     "tailwindcss": "^4.3",

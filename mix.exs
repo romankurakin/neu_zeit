@@ -50,11 +50,11 @@ defmodule NeuZeit.MixProject do
       {:npm, "~> 0.7", runtime: false},
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},
-      {:telemetry_metrics, "~> 1.1"},
+      {:telemetry_metrics, "~> 1.2"},
       {:telemetry_poller, "~> 1.3"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.4"},
-      {:dns_cluster, "~> 0.2"},
+      {:dns_cluster, "~> 0.3"},
       {:bandit, "~> 1.12"}
     ]
   end
