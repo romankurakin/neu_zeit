@@ -1,7 +1,6 @@
 defmodule NeuZeit.Release do
   @moduledoc """
-  Used for executing DB release tasks when run in production without Mix
-  installed.
+  Runs database release tasks without Mix installed.
   """
   @app :neu_zeit
 

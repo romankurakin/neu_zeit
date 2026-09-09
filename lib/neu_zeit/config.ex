@@ -60,6 +60,7 @@ defmodule NeuZeit.Config do
 
   defp solver_weights(config) do
     [
+      get_in(config, [:soft, :balance_weeks, :weight]) || 0,
       get_in(config, [:soft, :cluster_buildings, :weight]),
       get_in(config, [:soft, :minimize_gaps, :weight]),
       get_in(config, [:soft, :minimize_active_days, :weight]),
