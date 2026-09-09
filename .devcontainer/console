@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+# Both modes use the running application's node and database connections.
+if [ "$#" -eq 0 ]; then
+  exec iex --sname "console_$$@localhost" --remsh neu_zeit@localhost
+elif [ "$#" -eq 2 ] && [ "$1" = "eval" ]; then
+  exec elixir --sname "console_$$@localhost" -e '
+    [expression] = System.argv()
+    {value, _bindings} = :erpc.call(:neu_zeit@localhost, Code, :eval_string, [expression])
+    IO.inspect(value, limit: :infinity, printable_limit: :infinity)
+  ' -- "$2"
+else
+  printf '%s\n' "Usage: console [eval EXPRESSION]" >&2
+  exit 2
+fi

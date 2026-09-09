@@ -1,0 +1,107 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error",
+    "restriction": "error",
+    "nursery": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "env": {
+    "browser": true
+  },
+  "rules": {
+    // DOM and plugin APIs expose mutable objects. Keep application parameters readonly.
+    "typescript/prefer-readonly-parameter-types": [
+      "error",
+      {
+        "allow": [
+          {
+            "from": "lib",
+            "name": [
+              "Element",
+              "HTMLElement",
+              "HTMLButtonElement",
+              "HTMLDialogElement",
+              "EventTarget",
+              "Event",
+              "MouseEvent",
+              "KeyboardEvent",
+              "PointerEvent",
+              "CustomEvent",
+              "ParentNode"
+            ]
+          },
+          {
+            "from": "package",
+            "name": [
+              "Sortable",
+              "SortableEvent"
+            ],
+            "package": "@types/sortablejs"
+          },
+          {
+            "from": "package",
+            "name": "PluginAPI",
+            "package": "tailwindcss"
+          }
+        ]
+      }
+    ],
+    // Conflicts with eslint/no-ternary.
+    "unicorn/prefer-ternary": "off",
+    // Each JSDoc-typed declaration needs its own statement.
+    "eslint/one-var": [
+      "error",
+      "never"
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "assets/colocated/**/*.js"
+      ],
+      "rules": {
+        // Phoenix generates these filenames.
+        "unicorn/filename-case": "off"
+      }
+    },
+    {
+      "files": [
+        "assets/js/hook-dom.js"
+      ],
+      "rules": {
+        // Match the DOM lookup APIs.
+        "unicorn/no-null": "off"
+      }
+    },
+    {
+      "files": [
+        "assets/vendor/heroicons.mjs"
+      ],
+      "env": {
+        "browser": false,
+        "node": true
+      },
+      "rules": {
+        // Volt 0.17 loads fs and path but cannot resolve their node: forms.
+        "unicorn/prefer-node-protocol": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    // Phoenix generates the hook registry. Lint the hooks themselves.
+    "assets/colocated/*/*/index.js"
+  ]
+}

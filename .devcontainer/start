@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+uv sync --locked --project priv/solver
+mix setup
+exec elixir --sname neu_zeit@localhost -S mix phx.server

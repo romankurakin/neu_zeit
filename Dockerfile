@@ -1,75 +1,57 @@
-ARG ELIXIR_VERSION=1.20
-ARG OTP_VERSION=29
-ARG DEBIAN_VERSION=trixie-slim
+ARG ELIXIR_IMAGE=elixir:1.20-slim
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:latest
+ARG RUNNER_IMAGE=debian:trixie-slim
+ARG NODE_IMAGE=node:24-bookworm-slim
 
-ARG BUILDER_IMAGE="docker.io/elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION}-slim"
-ARG RUNNER_IMAGE="docker.io/debian:${DEBIAN_VERSION}"
-ARG UV_IMAGE="ghcr.io/astral-sh/uv:latest"
+FROM ${UV_IMAGE} AS uv
+FROM ${NODE_IMAGE} AS node
 
-FROM ${BUILDER_IMAGE} AS builder
-
+FROM ${ELIXIR_IMAGE} AS toolchain
+COPY --from=uv /uv /uvx /usr/local/bin/
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential ca-certificates git \
-  && rm -rf /var/lib/apt/lists/*
-
+    && apt-get install -y --no-install-recommends build-essential ca-certificates git curl inotify-tools procps \
+    && rm -rf /var/lib/apt/lists/*
+ENV LANG=C.UTF-8 UV_LINK_MODE=copy
 WORKDIR /app
 
-RUN mix local.hex --force \
-  && mix local.rebar --force
+FROM toolchain AS development
+RUN useradd --create-home --shell /bin/bash dev \
+    && mkdir -p /app/_build /app/deps /app/node_modules /app/assets/colocated /app/priv/solver/.venv /app/priv/static/assets \
+    && chown -R dev:dev /app
+COPY --chmod=755 .devcontainer/start .devcontainer/console /usr/local/bin/
+USER dev
+RUN mix local.hex --force && mix local.rebar --force
+CMD ["start"]
 
-ENV MIX_ENV="prod"
-
+FROM toolchain AS builder
+ENV MIX_ENV=prod
+RUN mix local.hex --force && mix local.rebar --force
 COPY mix.exs mix.lock ./
-RUN mix deps.get --only $MIX_ENV
-RUN mkdir config
-
-COPY config/config.exs config/${MIX_ENV}.exs config/
+RUN mix deps.get --only prod
+COPY config/config.exs config/prod.exs config/
 RUN mix deps.compile
-
+COPY package.json npm.lock ./
 COPY priv priv
-
 COPY lib lib
-
-RUN mix compile
-
-# Changes to config/runtime.exs don't require recompiling the code
+COPY assets assets
+RUN mix assets.setup && mix assets.deploy
 COPY config/runtime.exs config/
-
 COPY rel rel
 RUN mix release
 
-FROM ${UV_IMAGE} AS uv
-
-FROM ${RUNNER_IMAGE} AS final
-
-COPY --from=uv /uv /uvx /usr/local/bin/
-
+FROM ${RUNNER_IMAGE} AS production
+COPY --from=uv /uv /usr/local/bin/
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates procps \
-  && rm -rf /var/lib/apt/lists/*
-
-RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen \
-  && locale-gen
-
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
-ENV HOME=/tmp
-ENV UV_CACHE_DIR=/tmp/uv-cache
-
-ENV UV_MANAGED_PYTHON=1
-ENV UV_PYTHON_INSTALL_DIR=/app/python
-
-WORKDIR "/app"
-RUN chown nobody /app
-
-ENV MIX_ENV="prod"
-
-COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/neu_zeit ./
-
-RUN uv sync --locked --project /app/lib/neu_zeit-*/priv/solver \
-  && chown -R nobody:root /app /tmp/uv-cache
-
+    && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 libsctp1 ca-certificates curl procps \
+    && rm -rf /var/lib/apt/lists/*
+ENV LANG=C.UTF-8 HOME=/tmp UV_CACHE_DIR=/tmp/uv-cache \
+    UV_PYTHON_INSTALL_DIR=/opt/python UV_PROJECT_ENVIRONMENT=/opt/solver-venv \
+    UV_LINK_MODE=copy UV_MANAGED_PYTHON=1
+WORKDIR /app
+COPY --from=builder --chown=nobody:root /app/_build/prod/rel/neu_zeit ./
+RUN uv sync --locked --no-dev --project /app/lib/neu_zeit-*/priv/solver \
+    && chown -R nobody:root /opt/python /opt/solver-venv /tmp/uv-cache
+ENV UV_OFFLINE=1 UV_NO_SYNC=1
 USER nobody
-
 CMD ["/app/bin/server"]

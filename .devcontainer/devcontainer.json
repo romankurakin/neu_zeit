@@ -1,0 +1,25 @@
+{
+  "name": "NeuZeit",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "application",
+  "runServices": [
+    "application",
+    "database"
+  ],
+  "workspaceFolder": "/app",
+  "remoteUser": "dev",
+  "overrideCommand": false,
+  "shutdownAction": "none",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "expertlsp.expert",
+        "oxc.oxc-vscode"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/app/priv/solver/.venv/bin/python",
+        "js/ts.tsdk.path": "./node_modules/typescript"
+      }
+    }
+  }
+}

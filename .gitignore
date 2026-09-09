@@ -1,33 +1,53 @@
-# The directory Mix will write compiled artifacts to.
+# Compiled artifacts
 /_build/
 
 .DS_Store
 
-# If you run "mix test --cover", coverage assets end up here.
+# Test coverage reports
 /cover/
 
-# The directory Mix downloads your dependencies sources to.
+# Downloaded dependencies
 /deps/
 
-# Where 3rd-party dependencies like ExDoc output generated docs.
+# Generated documentation
 /doc/
 
-# Ignore .fetch files in case you like to edit your project deps locally.
+# Local dependency fetch markers
 /.fetch
 
-# If the VM crashes, it generates a dump, let's ignore it too.
+# VM crash dumps
 erl_crash.dump
 
-# Also ignore archive artifacts (built via "mix archive.build").
+# Mix archives
 *.ez
 
-# Temporary files, for example, from tests.
+# Temporary files
 /tmp/
 
-# Ignore package tarball (built via "mix hex.build").
+# Hex package archives
 neu_zeit-*.tar
 
 # Python solver artifacts
 /priv/solver/.venv/
 /priv/solver/__pycache__/
 /priv/solver/.pytest_cache/
+
+# Generated assets
+/priv/static/assets/
+
+# Asset digest cache
+/priv/static/cache_manifest.json
+
+# Local container settings and tool caches
+.env
+.env.*
+!.env.example
+/.expert/
+/.claude/launch.json
+/.elixir_ls/
+.ruff_cache/
+
+# Frontend packages
+node_modules/
+
+/assets/colocated/

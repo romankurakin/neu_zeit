@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "sortablejs": "^1.15",
+    "topbar": "^3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13",
+    "@types/phoenix": "^1.6",
+    "@types/sortablejs": "^1.15",
+    "daisyui": "^5.0",
+    "heroicons": "^2.2",
+    "oxlint": "^1.81",
+    "oxlint-tsgolint": "^7.0",
+    "tailwindcss": "^4.3",
+    "typescript": "^7.0"
+  },
+  "name": "neu-zeit",
+  "private": true,
+  "scripts": {
+    "lint": "oxlint assets/js assets/vendor assets/colocated/dev/*/*/*.js --deny-warnings"
+  }
+}
