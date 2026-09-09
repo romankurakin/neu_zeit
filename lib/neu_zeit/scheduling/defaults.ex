@@ -1,10 +1,8 @@
 defmodule NeuZeit.Scheduling.Defaults do
   @moduledoc """
-  Default business policy for schedule generation.
+  Default scheduling policy.
 
-  These values are product defaults, not deployment/runtime infrastructure
-  settings. Future admin-facing configuration should persist and version this
-  shape through the domain model instead of adding another file-based source.
+  Future administrator-editable policy should be stored and versioned as domain data.
   """
 
   def policy do
@@ -32,6 +30,7 @@ defmodule NeuZeit.Scheduling.Defaults do
         ]
       },
       soft: %{
+        balance_weeks: %{weight: 100},
         cluster_buildings: %{weight: 10},
         minimize_gaps: %{weight: 5},
         minimize_active_days: %{weight: 2},

@@ -43,10 +43,10 @@ defmodule NeuZeit.Solver.OrToolsPort do
     path =
       Path.join(
         System.tmp_dir!(),
-        "neu_zeit_solver_#{System.unique_integer([:positive, :monotonic])}.json"
+        "neu_zeit_solver_#{Ecto.UUID.generate()}.json"
       )
 
-    File.write!(path, Jason.encode!(spec))
+    File.write!(path, Jason.encode!(spec), [:exclusive])
     path
   end
 
@@ -81,11 +81,9 @@ defmodule NeuZeit.Solver.OrToolsPort do
     end
   end
 
-  # Port.close/1 only closes the pipes; the external uv/python process reads
-  # the spec from argv (never stdin) and would keep solving until its final
-  # stdout write, so it must be killed explicitly. The process may also exit
-  # between the receive deadline and this call, leaving the port already
-  # closed — hence the rescue.
+  # Closing the port does not stop uv/python: it reads input from argv.
+  # Terminate the process explicitly. Rescue handles a process that exits
+  # between the receive timeout and the close call.
   defp terminate_port(port) do
     os_pid =
       case Port.info(port, :os_pid) do

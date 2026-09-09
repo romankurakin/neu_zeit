@@ -1,28 +1,48 @@
 defmodule NeuZeit.Solver.ResultValidator do
   @moduledoc false
 
-  import Ecto.Query, warn: false
-
-  alias NeuZeit.Catalog.{Room, Session}
   alias NeuZeit.Constraints.Hard
-  alias NeuZeit.Planning.{Placement, Plan}
-  alias NeuZeit.Repo
+  alias NeuZeit.Planning.{Placement, SharedResources}
+  alias NeuZeit.Solver.Snapshot
 
   def validate(plan_id, spec, result) do
+    with {:ok, _assignment} <- parse_assignment(result),
+         {:ok, snapshot} <- Snapshot.load(plan_id) do
+      validate_snapshot(snapshot, spec, result)
+    else
+      {:error, :not_found} -> {:error, errors(error("plan_not_found", "plan no longer exists"))}
+      error -> error
+    end
+  end
+
+  @doc "Checks output against explicit inputs without database access or generated IDs."
+  def validate_snapshot(snapshot, spec, result) do
     with {:ok, assignment} <- parse_assignment(result),
-         {:ok, plan} <- fetch_plan(plan_id),
-         sessions <- sessions_for_term(plan.term_id),
-         :ok <- validate_session_ids(assignment, sessions),
-         {:ok, rooms} <- rooms_for_assignment(assignment),
-         {:ok, placements} <- build_placements(plan, sessions, rooms, assignment, spec.fixed),
+         :ok <- validate_session_ids(assignment, snapshot.sessions),
+         {:ok, rooms} <- rooms_for_assignment(assignment, snapshot.rooms),
+         {:ok, placements} <-
+           build_placements(snapshot.plan, snapshot.sessions, rooms, assignment, spec.fixed),
          :ok <- validate_fixed_placements(placements, spec.fixed),
-         :ok <- validate_hard_constraints(placements) do
+         :ok <- validate_hard_constraints(placements, snapshot.config.grid),
+         :ok <- NeuZeit.Constraints.AutomaticWeeks.validate(snapshot.plan.term, placements),
+         :ok <- validate_shared_resources(snapshot, placements) do
       {:ok,
        %{
          placements: placements,
          result: result |> Map.drop(["objective"]) |> Map.put("assignment", assignment)
        }}
     end
+  end
+
+  defp validate_shared_resources(snapshot, placements) do
+    conflicts =
+      placements
+      |> Enum.flat_map(
+        &SharedResources.candidate_errors(snapshot.external, snapshot.plan.term, &1.session, &1)
+      )
+      |> Enum.uniq()
+
+    if conflicts == [], do: :ok, else: {:error, %{errors: conflicts}}
   end
 
   defp parse_assignment(%{"unplaced" => unplaced} = result) when unplaced not in [[], nil] do
@@ -54,31 +74,20 @@ defmodule NeuZeit.Solver.ResultValidator do
     with {:ok, room_id} <- cast_uuid(field(placement, :room), "room"),
          {:ok, day} <- cast_positive_integer(field(placement, :day), "day"),
          {:ok, slot} <- cast_positive_integer(field(placement, :slot), "slot") do
-      {:ok, %{room: room_id, day: day, slot: slot}}
+      weeks = field(placement, :weeks)
+
+      if is_nil(weeks) or
+           (is_list(weeks) && weeks != [] && Enum.all?(weeks, &(is_integer(&1) && &1 > 0))) do
+        {:ok,
+         %{room: room_id, day: day, slot: slot}
+         |> then(fn value -> if weeks, do: Map.put(value, :weeks, weeks), else: value end)}
+      else
+        {:error, "weeks must be a non-empty list of positive integers"}
+      end
     end
   end
 
   defp parse_placement(_placement), do: {:error, "placement must be an object"}
-
-  defp fetch_plan(plan_id) do
-    case Repo.get(Plan, plan_id) do
-      %Plan{} = plan -> {:ok, plan}
-      nil -> {:error, errors(error("plan_not_found", "plan no longer exists"))}
-    end
-  end
-
-  defp sessions_for_term(term_id) do
-    Repo.all(
-      from session in Session,
-        where: session.term_id == ^term_id,
-        preload: [
-          :cohorts,
-          teacher: [:availability_cells],
-          slot_profile: [:cells],
-          course_component: [:allowed_rooms]
-        ]
-    )
-  end
 
   defp validate_session_ids(assignment, sessions) do
     expected = sessions |> Enum.map(& &1.id) |> MapSet.new()
@@ -100,16 +109,9 @@ defmodule NeuZeit.Solver.ResultValidator do
     end
   end
 
-  defp rooms_for_assignment(assignment) do
+  defp rooms_for_assignment(assignment, all_rooms) do
     room_ids = assignment |> Map.values() |> Enum.map(& &1.room) |> Enum.uniq()
-
-    rooms =
-      Repo.all(
-        from room in Room,
-          where: room.id in ^room_ids,
-          preload: [:building]
-      )
-      |> Map.new(&{&1.id, &1})
+    rooms = all_rooms |> Map.new(&{&1.id, &1}) |> Map.take(room_ids)
 
     if map_size(rooms) == length(room_ids) do
       {:ok, rooms}
@@ -126,11 +128,15 @@ defmodule NeuZeit.Solver.ResultValidator do
         session = Map.fetch!(sessions_by_id, session_id)
 
         %Placement{
-          id: Ecto.UUID.generate(version: 7),
+          id: session.id,
           plan_id: plan.id,
           term_id: plan.term_id,
           session_id: session.id,
-          week_mask: session.week_mask,
+          week_mask:
+            if(session.automatic_weeks,
+              do: Map.get(placement, :weeks, []),
+              else: session.week_mask
+            ),
           duration_slots: session.duration_slots,
           room_id: placement.room,
           day: placement.day,
@@ -155,7 +161,9 @@ defmodule NeuZeit.Solver.ResultValidator do
            placement = Map.get(placements_by_session, session_id)
 
            is_nil(placement) or placement.day != fixed_placement.day or
-             placement.slot != fixed_placement.slot or placement.room_id != fixed_placement.room
+             placement.slot != fixed_placement.slot or placement.room_id != fixed_placement.room or
+             (Map.has_key?(fixed_placement, :weeks) &&
+                placement.week_mask != fixed_placement.weeks)
          end) do
       nil ->
         :ok
@@ -170,8 +178,8 @@ defmodule NeuZeit.Solver.ResultValidator do
     end
   end
 
-  defp validate_hard_constraints(placements) do
-    case Hard.validate_placements(placements) do
+  defp validate_hard_constraints(placements, grid) do
+    case Hard.validate_placements(placements, grid) do
       :ok -> :ok
       {:error, errors} -> {:error, %{errors: errors}}
     end

@@ -3,46 +3,53 @@ defmodule NeuZeit.Solver.SpecBuilder do
   Builds the normalized JSON contract consumed by the Python solver.
   """
 
-  import Ecto.Query, warn: false
-
-  alias NeuZeit.Catalog.{Room, Session, TeacherAvailabilityCell}
-  alias NeuZeit.Config
+  alias NeuZeit.Catalog.TeacherAvailabilityCell
   alias NeuZeit.Constraints.{Hard, Soft}
-  alias NeuZeit.Planning.{Placement, Plan}
-  alias NeuZeit.Repo
+  alias NeuZeit.Planning.Placement
+  alias NeuZeit.Solver.Snapshot
 
-  def build!(plan_id) do
-    config = Config.load!()
+  def build!(plan_id), do: plan_id |> Snapshot.load!() |> build()
 
-    plan =
-      Plan
-      |> Repo.get!(plan_id)
-      |> Repo.preload(:term)
-
-    rooms = Repo.all(from r in Room, order_by: r.id, preload: [:building])
-
-    sessions =
-      Repo.all(
-        from s in Session,
-          where: s.term_id == ^plan.term_id,
-          order_by: s.id,
-          preload: [
-            :cohorts,
-            teacher: [:availability_cells],
-            slot_profile: [:cells],
-            course_component: [:allowed_rooms]
-          ]
-      )
-
-    placements =
-      Repo.all(
-        from p in Placement,
-          where: p.plan_id == ^plan.id,
-          preload: [:session]
-      )
-
+  @doc "Builds the solver contract from a loaded snapshot without database access."
+  def build(%{
+        plan: plan,
+        rooms: rooms,
+        sessions: sessions,
+        placements: placements,
+        external: external,
+        config: config
+      }) do
     room_specs = Enum.map(rooms, &room_spec/1)
-    session_specs = Enum.map(sessions, &session_spec(&1, config.grid))
+
+    session_specs =
+      Enum.map(sessions, fn session ->
+        spec = session_spec(session, config.grid)
+
+        masks =
+          if session.automatic_weeks,
+            do: Enum.map(session.week_mask, &[&1]),
+            else: [session.week_mask]
+
+        blocked =
+          for mask <- masks,
+              start <- spec.allowed_starts,
+              room <- spec.allowed_rooms,
+              placement = %Placement{
+                id: session.id,
+                session_id: session.id,
+                day: start.day,
+                slot: start.slot,
+                room_id: room,
+                week_mask: mask,
+                duration_slots: session.duration_slots
+              },
+              NeuZeit.Planning.SharedResources.blocked?(external, plan.term, session, placement) do
+            cell = %{day: start.day, slot: start.slot, room: room}
+            if session.automatic_weeks, do: Map.put(cell, :week, hd(mask)), else: cell
+          end
+
+        Map.put(spec, :blocked_assignments, blocked)
+      end)
 
     %{
       grid: %{
@@ -108,6 +115,21 @@ defmodule NeuZeit.Solver.SpecBuilder do
       weeks: session.week_mask,
       sequence_group: session.sequence_group
     }
+    |> then(fn spec ->
+      if session.automatic_weeks do
+        key =
+          {session.course_component_id, session.teacher_id,
+           Enum.sort(Enum.map(session.cohorts, & &1.id)), session.duration_slots,
+           session.slot_profile_id, session.week_mask}
+
+        Map.merge(spec, %{
+          choose_week: true,
+          workload: key |> :erlang.term_to_binary() |> Base.encode64()
+        })
+      else
+        spec
+      end
+    end)
   end
 
   defp allowed_starts(session, grid) do
@@ -153,7 +175,12 @@ defmodule NeuZeit.Solver.SpecBuilder do
   defp placement_map(placements) do
     Map.new(placements, fn placement ->
       {to_string(placement.session_id),
-       %{day: placement.day, slot: placement.slot, room: to_string(placement.room_id)}}
+       %{day: placement.day, slot: placement.slot, room: to_string(placement.room_id)}
+       |> then(fn value ->
+         if Map.get(placement.session, :automatic_weeks, false),
+           do: Map.put(value, :weeks, placement.week_mask),
+           else: value
+       end)}
     end)
   end
 end

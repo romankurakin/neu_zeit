@@ -4,8 +4,19 @@ version = "0.1.0"
 description = "OR-Tools CP-SAT solver adapter for NeuZeit timetable plans"
 requires-python = "==3.14.*"
 dependencies = [
-  "ortools>=9.15",
+  "ortools~=9.15.0",
 ]
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "ruff~=0.16.0",
+]
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
