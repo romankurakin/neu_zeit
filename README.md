@@ -48,6 +48,16 @@ docker compose -f compose.prod.yaml run --rm migrate && \
   docker compose -f compose.prod.yaml up -d application
 ```
 
+## Demonstration host
+
+**Deploy demonstration host** in the Actions tab creates a droplet that builds
+this repository and serves it over HTTPS. **Undeploy demonstration host**
+deletes it, and the demonstration database with it. Both need the
+`DIGITALOCEAN_ACCESS_TOKEN` secret.
+
+First boot builds the release, so the printed address answers a few minutes
+later.
+
 ## Guides
 
 - [Administrator guide](docs/admin-scheduling-guide.md).

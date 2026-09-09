@@ -1,0 +1,84 @@
+name: Deploy demonstration host
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Branch, tag or commit to deploy
+        default: main
+      region:
+        description: DigitalOcean region
+        default: fra1
+      size:
+        description: Droplet size. The solver needs two cores.
+        default: s-2vcpu-4gb
+
+permissions:
+  contents: read
+
+# One demonstration host at a time.
+concurrency:
+  group: demonstration-host
+
+env:
+  DROPLET: neu-zeit-demo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Refuse to replace a running host
+        run: |
+          if doctl compute droplet list --format Name --no-header \
+            | grep -qx "$DROPLET"; then
+            echo "$DROPLET already exists. Run Undeploy first." >&2
+            exit 1
+          fi
+
+      - name: Prepare the first boot
+        run: |
+          sed -e "s|__REPOSITORY__|${{ github.server_url }}/${{ github.repository }}.git|" \
+              -e "s|__REVISION__|${{ inputs.revision }}|" \
+              deploy/cloud-init.yaml > /tmp/cloud-init.yaml
+
+      # The workflow cannot know which key is yours, so it adds every one.
+      - name: Create the droplet
+        run: |
+          KEYS="$(doctl compute ssh-key list --format FingerPrint --no-header | paste -sd, -)"
+          if [ -n "$KEYS" ]; then
+            set -- --ssh-keys "$KEYS"
+          else
+            echo "The account has no SSH key. The droplet will not accept a shell."
+            set --
+          fi
+          doctl compute droplet create "$DROPLET" \
+            --image ubuntu-24-04-x64 \
+            --size "${{ inputs.size }}" \
+            --region "${{ inputs.region }}" \
+            --user-data-file /tmp/cloud-init.yaml \
+            --wait "$@"
+
+      - name: Report the address
+        run: |
+          ADDRESS="$(doctl compute droplet get "$DROPLET" --format PublicIPv4 --no-header)"
+          HOST="$(printf '%s' "$ADDRESS" | tr '.' '-').sslip.io"
+          {
+            echo "### Demonstration host"
+            echo
+            echo "https://$HOST"
+            echo
+            echo "The droplet builds the release on first boot, so the address"
+            echo "answers a few minutes from now."
+            echo
+            echo '```'
+            echo "ssh root@$ADDRESS"
+            echo "tail -f /var/log/neu-zeit-start.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

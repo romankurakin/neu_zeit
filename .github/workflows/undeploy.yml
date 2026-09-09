@@ -1,0 +1,34 @@
+name: Undeploy demonstration host
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demonstration-host
+
+env:
+  DROPLET: neu-zeit-demo
+
+jobs:
+  undeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      # The disk goes with the droplet, and the demonstration database with it.
+      # Nothing else was created.
+      - name: Delete the droplet
+        run: |
+          if doctl compute droplet list --format Name --no-header \
+            | grep -qx "$DROPLET"; then
+            doctl compute droplet delete "$DROPLET" --force
+            echo "Deleted $DROPLET." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No $DROPLET to delete." >> "$GITHUB_STEP_SUMMARY"
+          fi

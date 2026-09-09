@@ -1,0 +1,53 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - openssl
+
+write_files:
+  - path: /opt/neu-zeit/start
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      # The deploy workflow fills in __REPOSITORY__ and __REVISION__.
+      set -eu
+
+      APPLICATION=/opt/neu-zeit/application
+      git clone --depth 1 --branch "__REVISION__" "__REPOSITORY__" "${APPLICATION}"
+      cd "${APPLICATION}"
+
+      # sslip.io resolves this name back to the address, so Caddy can get a
+      # certificate for it without a registered domain.
+      ADDRESS="$(curl -fsS --retry 5 --retry-delay 3 https://api.ipify.org)"
+      HOST="$(printf '%s' "${ADDRESS}" | tr '.' '-').sslip.io"
+
+      # The secrets are made here. They reach neither the log nor the repository.
+      {
+        printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 24)"
+        printf 'SECRET_KEY_BASE=%s\n' "$(openssl rand -base64 48)"
+        printf 'PHX_HOST=%s\n' "${HOST}"
+      } > .env
+      chmod 600 .env
+
+      docker compose -f compose.prod.yaml build application
+      docker compose -f compose.prod.yaml up -d database
+      docker compose -f compose.prod.yaml run --rm migrate
+      docker compose -f compose.prod.yaml up -d application
+
+      printf '%s {\n  reverse_proxy 127.0.0.1:4000\n}\n' "${HOST}" \
+        > /opt/neu-zeit/Caddyfile
+
+      # Host networking lets Caddy hold 80 and 443 and still reach the
+      # loopback port that compose.prod.yaml publishes.
+      docker run --detach --name caddy --restart unless-stopped --network host \
+        --volume /opt/neu-zeit/Caddyfile:/etc/caddy/Caddyfile:ro \
+        --volume caddy_data:/data \
+        caddy:2
+
+      printf 'https://%s\n' "${HOST}" > /opt/neu-zeit/address
+
+runcmd:
+  - [sh, -c, "curl -fsSL https://get.docker.com | sh"]
+  - [sh, -c, "/opt/neu-zeit/start 2>&1 | tee /var/log/neu-zeit-start.log"]
