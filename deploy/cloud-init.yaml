@@ -1,5 +1,13 @@
 #cloud-config
 package_update: true
+
+# The host compiles the release on first boot. That build, not serving, is the
+# memory peak, so a small plan needs swap to survive it. The disk has room.
+swap:
+  filename: /swapfile
+  size: 2147483648
+  maxsize: 2147483648
+
 packages:
   - ca-certificates
   - curl
