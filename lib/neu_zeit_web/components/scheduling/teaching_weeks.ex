@@ -109,10 +109,22 @@ defmodule NeuZeitWeb.Scheduling.TeachingWeeks do
         <button type="button" class="btn" phx-click={@event} phx-value-preset="all">
           {gettext("Every week")}
         </button>
-        <button :if={@parity_presets} type="button" class="btn" phx-click={@event} phx-value-preset="odd">
+        <button
+          :if={@parity_presets}
+          type="button"
+          class="btn"
+          phx-click={@event}
+          phx-value-preset="odd"
+        >
           {gettext("Odd")}
         </button>
-        <button :if={@parity_presets} type="button" class="btn" phx-click={@event} phx-value-preset="even">
+        <button
+          :if={@parity_presets}
+          type="button"
+          class="btn"
+          phx-click={@event}
+          phx-value-preset="even"
+        >
           {gettext("Even")}
         </button>
         <span class="ml-auto type-detail text-base-content">

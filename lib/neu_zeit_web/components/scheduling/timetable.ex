@@ -47,74 +47,114 @@ defmodule NeuZeitWeb.Scheduling.Timetable do
       |> assign(:positioned, positioned)
 
     ~H"""
-    <div class="min-w-0 max-w-full min-h-80 max-h-[calc(100dvh-22rem)] overflow-auto pb-2" tabindex="0" role="region" aria-label={gettext("Timetable. Scroll horizontally to see all days.")}>
-      <div id={@id} phx-hook=".BoardDrag" data-readonly={to_string(@readonly)}
+    <div
+      class="min-w-0 max-w-full min-h-80 max-h-[calc(100dvh-22rem)] overflow-auto pb-2"
+      tabindex="0"
+      role="region"
+      aria-label={gettext("Timetable. Scroll horizontally to see all days.")}
+    >
+      <div
+        id={@id}
+        phx-hook=".BoardDrag"
+        data-readonly={to_string(@readonly)}
         class="grid gap-1 min-w-full"
-        style={"min-width: calc(#{@min_width}rem + #{length(@days)} * var(--spacing)); grid-template-columns: 5rem #{@columns}; grid-template-rows: auto repeat(#{length(@slots)}, minmax(10rem, auto));"}>
+        style={"min-width: calc(#{@min_width}rem + #{length(@days)} * var(--spacing)); grid-template-columns: 5rem #{@columns}; grid-template-rows: auto repeat(#{length(@slots)}, minmax(10rem, auto));"}
+      >
         <span class="sticky left-0 top-0 z-20 bg-base-200"></span>
-        <div :for={{day, index} <- @days} class="sticky top-0 z-10 bg-base-200 py-1 text-center type-detail font-semibold" style={"grid-column: #{index + 1}; grid-row: 1;"}>{day}</div>
+        <div
+          :for={{day, index} <- @days}
+          class="sticky top-0 z-10 bg-base-200 py-1 text-center type-detail font-semibold"
+          style={"grid-column: #{index + 1}; grid-row: 1;"}
+        >
+          {day}
+        </div>
         <%= for {slot, slot_index} <- @slots do %>
-          <div class="sticky left-0 z-10 bg-base-200 text-right type-detail tabular-nums pt-2 pr-2" style={"grid-column: 1; grid-row: #{slot_index + 1};"}>{slot.start}<br />{slot.end}</div>
-          <div :for={{day, day_index} <- @days}
+          <div
+            class="sticky left-0 z-10 bg-base-200 text-right type-detail tabular-nums pt-2 pr-2"
+            style={"grid-column: 1; grid-row: #{slot_index + 1};"}
+          >
+            {slot.start}<br />{slot.end}
+          </div>
+          <div
+            :for={{day, day_index} <- @days}
             id={"#{@id}-cell-#{day_index}-#{slot_index}"}
-            data-dropzone="cell" data-day={day_index} data-slot={slot_index}
+            data-dropzone="cell"
+            data-day={day_index}
+            data-slot={slot_index}
             style={"grid-column: #{day_index + 1}; grid-row: #{slot_index + 1};"}
-            class={["rounded-box border border-base-300 bg-base-200 min-h-40", Map.has_key?(@legal, {day_index, slot_index}) && !@readonly && "border-success bg-success/10"]}>
-            <button :if={@highlighting && !@readonly} type="button"
+            class={[
+              "rounded-box border border-base-300 bg-base-200 min-h-40",
+              Map.has_key?(@legal, {day_index, slot_index}) && !@readonly &&
+                "border-success bg-success/10"
+            ]}
+          >
+            <button
+              :if={@highlighting && !@readonly}
+              type="button"
               class="btn btn-ghost font-normal w-full h-full items-start pt-1 whitespace-normal"
-              phx-click={@on_place} phx-value-day={day_index} phx-value-slot={slot_index}
-              aria-label={gettext("Inspect position: %{day}, %{time}", day: day, time: slot.start)}>
-              {if Map.has_key?(@legal, {day_index, slot_index}), do: gettext("Available"), else: gettext("Check constraints")}
+              phx-click={@on_place}
+              phx-value-day={day_index}
+              phx-value-slot={slot_index}
+              aria-label={gettext("Inspect position: %{day}, %{time}", day: day, time: slot.start)}
+            >
+              {if Map.has_key?(@legal, {day_index, slot_index}),
+                do: gettext("Available"),
+                else: gettext("Check constraints")}
             </button>
           </div>
         <% end %>
-        <.session_card :for={{placement, lane, count} <- @positioned}
-          id={"#{@id}-placement-#{placement.id}"} session={placement.session} placement={placement}
-          weeks_count={@weeks_count} grid={@grid}
-          selected={@selected_placement_id == placement.id} on_select={@on_select}
-          style={"grid-column: #{placement.day + 1}; grid-row: #{placement.slot + 1} / span #{placement.duration_slots}; z-index: 1; width: calc(100% / #{count} - var(--spacing) / 2); margin-left: calc(100% * #{lane} / #{count});"} />
+        <.session_card
+          :for={{placement, lane, count} <- @positioned}
+          id={"#{@id}-placement-#{placement.id}"}
+          session={placement.session}
+          placement={placement}
+          weeks_count={@weeks_count}
+          grid={@grid}
+          selected={@selected_placement_id == placement.id}
+          on_select={@on_select}
+          style={"grid-column: #{placement.day + 1}; grid-row: #{placement.slot + 1} / span #{placement.duration_slots}; z-index: 1; width: calc(100% / #{count} - var(--spacing) / 2); margin-left: calc(100% * #{lane} / #{count});"}
+        />
       </div>
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".BoardDrag">
-      import {acknowledgePatch, defineHook, htmlElements, restoreDraggedItem} from "@/js/hook-dom.js"
-      import Sortable from "sortablejs"
-
-      const animationDisabled = 0
-      const dragAnimation = 120
+      import {
+        acknowledgePatch,
+        defineHook,
+        dragAnimation,
+        htmlElements,
+        restoreDraggedItem,
+      } from "@/js/hook-dom.js";
+      import Sortable from "sortablejs";
 
       export default defineHook({
         /** @param {HTMLElement} zone */
         createSorter(zone) {
-          let animation = dragAnimation
-          if (globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            animation = animationDisabled
-          }
           return Sortable.create(zone, {
-            animation,
+            animation: dragAnimation(),
             draggable: "[data-session-id]",
             forceFallback: true,
             ghostClass: "opacity-40",
-            group: {name: "board", pull: true, put: zone !== this.el},
+            group: { name: "board", pull: true, put: zone !== this.el },
             onEnd: (event) => {
-              this.onDrop(event)
+              this.onDrop(event);
             },
             onStart: () => {
-              this.dragging = true
+              this.dragging = true;
             },
             sort: false,
-          })
+          });
         },
         destroyed() {
-          this.teardown()
+          this.teardown();
         },
         dragging: false,
         mounted() {
-          this.setup()
+          this.setup();
         },
         /** @param {import("sortablejs").SortableEvent} event */
         onDrop(event) {
-          this.dragging = false
-          restoreDraggedItem(event)
+          this.dragging = false;
+          restoreDraggedItem(event);
           if (typeof event.to.dataset.dropzone === "string") {
             this.pushEvent(
               "drop_session",
@@ -125,39 +165,39 @@ defmodule NeuZeitWeb.Scheduling.Timetable do
                 target: event.to.dataset.dropzone,
               },
               acknowledgePatch,
-            )
+            );
           }
         },
         setup() {
-          this.teardown()
+          this.teardown();
           if (this.el.dataset.readonly === "true") {
-            return
+            return;
           }
-          const tray = document.querySelector('[data-dropzone="tray"]')
-          const zones = [this.el, ...htmlElements(this.el, "[data-dropzone]")]
+          const tray = document.querySelector('[data-dropzone="tray"]');
+          const zones = [this.el, ...htmlElements(this.el, "[data-dropzone]")];
           if (tray instanceof HTMLElement) {
-            zones.push(tray)
+            zones.push(tray);
           }
-          this.sorters = zones.map((zone) => this.createSorter(zone))
+          this.sorters = zones.map((zone) => this.createSorter(zone));
         },
         /** @type {Sortable[]} */
         sorters: [],
         teardown() {
           for (const sorter of this.sorters) {
             try {
-              sorter.destroy()
+              sorter.destroy();
             } catch {
               // LiveView may remove a drop zone before the hook updates.
             }
           }
-          this.sorters = []
+          this.sorters = [];
         },
         updated() {
           if (!this.dragging) {
-            this.setup()
+            this.setup();
           }
         },
-      })
+      });
     </script>
     """
   end

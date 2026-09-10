@@ -29,12 +29,22 @@ defmodule NeuZeitWeb.UI.Table do
 
   def table(assigns) do
     ~H"""
-    <% assigns = assign_new(assigns, :empty_text, fn -> assigns.empty_message || gettext("Nothing here yet.") end) %>
+    <% assigns =
+      assign_new(assigns, :empty_text, fn -> assigns.empty_message || gettext("Nothing here yet.") end) %>
     <div class="card card-border overflow-x-auto border-base-300 bg-base-100">
       <table class="table table-pin-rows">
         <thead>
           <tr>
-            <th :for={col <- @col} scope="col" class={[col[:class], if(col[:numeric], do: "text-right tabular-nums", else: "text-left")]}>{col[:label]}</th>
+            <th
+              :for={col <- @col}
+              scope="col"
+              class={[
+                col[:class],
+                if(col[:numeric], do: "text-right tabular-nums", else: "text-left")
+              ]}
+            >
+              {col[:label]}
+            </th>
             <th :if={@action != []} scope="col" class="text-right">{gettext("Actions")}</th>
           </tr>
         </thead>
@@ -50,7 +60,13 @@ defmodule NeuZeitWeb.UI.Table do
             class={["hover:bg-base-200/60", @row_click && "cursor-pointer"]}
             phx-click={@row_click && @row_click.(row)}
           >
-            <td :for={col <- @col} class={[col[:class], if(col[:numeric], do: "text-right tabular-nums", else: "text-left")]}>
+            <td
+              :for={col <- @col}
+              class={[
+                col[:class],
+                if(col[:numeric], do: "text-right tabular-nums", else: "text-left")
+              ]}
+            >
               {render_slot(col, @row_item.(row))}
             </td>
             <td :if={@action != []} class="w-0 whitespace-nowrap text-right">

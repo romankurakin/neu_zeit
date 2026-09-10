@@ -109,7 +109,13 @@ defmodule NeuZeitWeb.TermLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={Nav.sections(@navigation_term)} current_path={~p"/terms"} terms={@terms} current_term={@navigation_term}>
+    <Layouts.app
+      flash={@flash}
+      nav={Nav.sections(@navigation_term)}
+      current_path={~p"/terms"}
+      terms={@terms}
+      current_term={@navigation_term}
+    >
       <.page_header title={gettext("Terms")}>
         <:actions>
           <.link patch={~p"/terms/new"} class="btn btn-primary">
@@ -137,15 +143,19 @@ defmodule NeuZeitWeb.TermLive.Index do
                 {term.name}
               </.link>
             </:col>
-            <:col :let={term} label={gettext("Starts")}>{term.starts_on}</:col>
-            <:col :let={term} label={gettext("Ends")}>{term.ends_on}</:col>
+            <:col :let={term} label={gettext("Starts")}><.date value={term.starts_on} /></:col>
+            <:col :let={term} label={gettext("Ends")}><.date value={term.ends_on} /></:col>
             <:col :let={term} label={gettext("Weeks")} numeric>{term.weeks_count}</:col>
             <:col :let={term} label={gettext("Non-teaching dates")} numeric>
               {length(term.excluded_dates)}
             </:col>
             <:action :let={term}>
               <.link patch={~p"/terms/#{term}/edit"} class="btn btn-ghost">{gettext("Edit")}</.link>
-              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={term.id}>
+              <button
+                class="btn btn-ghost text-error"
+                phx-click="delete_prompt"
+                phx-value-id={term.id}
+              >
                 {gettext("Delete")}
               </button>
             </:action>
@@ -153,14 +163,25 @@ defmodule NeuZeitWeb.TermLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@editing}
+          class="order-first lg:order-last"
           title={if @editing.id, do: gettext("Edit term"), else: gettext("New term")}
         >
-          <.form for={@form} id="term-form" phx-mounted={JS.focus_first(to: "#term-form")} phx-change="validate" phx-submit="save" class="flex flex-col gap-2">
-            <.input field={@form[:name]} type="text" label={gettext("Name")} placeholder={gettext("Winter term 2026/27")} />
-            <.input field={@form[:starts_on]} type="date" label={gettext("First day (a Monday)")} />
-            <.input field={@form[:ends_on]} type="date" label={gettext("Last day")} />
+          <.form
+            for={@form}
+            id="term-form"
+            phx-mounted={JS.focus_first(to: "#term-form")}
+            phx-change="validate"
+            phx-submit="save"
+            class="flex flex-col gap-2"
+          >
+            <.input field={@form[:name]} type="text" label={gettext("Name")} />
+            <.date_field
+              field={@form[:starts_on]}
+              label={gettext("First day (a Monday)")}
+              weekday={1}
+            />
+            <.date_field field={@form[:ends_on]} label={gettext("Last day")} />
 
             <div class="flex gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
@@ -173,7 +194,9 @@ defmodule NeuZeitWeb.TermLive.Index do
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.name)}
-        message={gettext("Deletion cannot be undone. Only terms without sessions or plans can be deleted.")}
+        message={
+          gettext("Deletion cannot be undone. Only terms without sessions or plans can be deleted.")
+        }
         confirm_label={gettext("Delete term")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"

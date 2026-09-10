@@ -618,8 +618,17 @@ defmodule NeuZeitWeb.PlanLive.Show do
       <.page_header title={@plan.name} subtitle={gate_summary(@board)}>
         <:status><.status_indicator status={@plan.status} /></:status>
         <:actions>
-          <.link :if={@plan.status == "draft"} navigate={~p"/terms/#{@term}?plan_id=#{@plan.id}"} class="btn">{gettext("Preparation")}</.link>
-          <button :if={@plan.status == "draft"} class="btn btn-neutral" phx-click="undo" disabled={@plan.status != "draft" or @undo == []}>
+          <.link
+            :if={@plan.status == "draft"}
+            navigate={~p"/terms/#{@term}?plan_id=#{@plan.id}"}
+            class="btn"
+          >{gettext("Preparation")}</.link>
+          <button
+            :if={@plan.status == "draft"}
+            class="btn btn-neutral"
+            phx-click="undo"
+            disabled={@plan.status != "draft" or @undo == []}
+          >
             <.icon name="hero-arrow-uturn-left" class="size-4" /> {gettext("Undo last edit")}
           </button>
           <button
@@ -634,16 +643,25 @@ defmodule NeuZeitWeb.PlanLive.Show do
         </:actions>
       </.page_header>
 
-
       <div :if={@plan.status != "draft"} class="alert mb-4">
-        <span>{gettext("To change one date, open the calendar. To change the weekly timetable, create a draft.")}</span>
+        <span>{gettext(
+          "To change one date, open the calendar. To change the weekly timetable, create a draft."
+        )}</span>
         <button class="btn btn-neutral" phx-click="clone_draft">{gettext("Copy to draft")}</button>
-        <.link navigate={~p"/terms/#{@term}/calendar?plan_id=#{@plan.id}"} class="btn btn-neutral">{gettext("Calendar by date")}</.link>
+        <.link navigate={~p"/terms/#{@term}/calendar?plan_id=#{@plan.id}"} class="btn btn-neutral">{gettext(
+          "Calendar by date"
+        )}</.link>
       </div>
       <RunStatus.run_status
-        board={@board} term={@term} workspace={@workspace}
-        solving_since={@solving_since} tick={@tick} solver_limit={@solver_limit}
-        solver_blocked={@solver_blocked && @plan.status == "draft"} last_result={@last_result} />
+        board={@board}
+        term={@term}
+        workspace={@workspace}
+        solving_since={@solving_since}
+        tick={@tick}
+        solver_limit={@solver_limit}
+        solver_blocked={@solver_blocked && @plan.status == "draft"}
+        last_result={@last_result}
+      />
 
       <.tabs
         active={workspace_path(assigns)}
@@ -664,11 +682,19 @@ defmodule NeuZeitWeb.PlanLive.Show do
         ]}
       />
 
-      <Reports.reports :if={@tab != "board"}
-        tab={@tab} board={@board} plan={@plan} term={@term} workspace={@workspace}
-        quality={@quality} coverage={@coverage} />
+      <Reports.reports
+        :if={@tab != "board"}
+        tab={@tab}
+        board={@board}
+        plan={@plan}
+        term={@term}
+        workspace={@workspace}
+        quality={@quality}
+        coverage={@coverage}
+      />
 
-      <BoardEditor.board :if={@tab == "board"}
+      <BoardEditor.board
+        :if={@tab == "board"}
         board={@board}
         plan={@plan}
         term={@term}
@@ -692,8 +718,12 @@ defmodule NeuZeitWeb.PlanLive.Show do
         rooms={@rooms}
       />
 
-      <Publication.confirmation :if={@publishing} gate={@gate}
-        acknowledged={@acknowledged} advisory_count={length(@board.advisories)} />
+      <Publication.confirmation
+        :if={@publishing}
+        gate={@gate}
+        acknowledged={@acknowledged}
+        advisory_count={length(@board.advisories)}
+      />
     </Layouts.app>
     """
   end

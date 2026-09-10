@@ -53,8 +53,16 @@ defmodule NeuZeitWeb.CoreComponents do
         @kind == :error && "alert-error"
       ]}>
         <span :if={@loading} class="loading loading-spinner loading-sm shrink-0" aria-hidden="true"></span>
-        <.icon :if={not @loading and @kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={not @loading and @kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
+        <.icon
+          :if={not @loading and @kind == :info}
+          name="hero-information-circle"
+          class="size-5 shrink-0"
+        />
+        <.icon
+          :if={not @loading and @kind == :error}
+          name="hero-exclamation-circle"
+          class="size-5 shrink-0"
+        />
         <div>
           <p :if={@title} class="font-semibold">{@title}</p>
           <p :if={message}>{message}</p>
@@ -279,7 +287,10 @@ defmodule NeuZeitWeb.CoreComponents do
     """
   end
 
-  defp error(assigns) do
+  @doc "Renders a message under the field it belongs to."
+  slot :inner_block, required: true
+
+  def error(assigns) do
     ~H"""
     <p class="mt-1 flex gap-2 items-center type-detail text-error">
       <.icon name="hero-exclamation-circle" class="size-5" />
@@ -309,12 +320,14 @@ defmodule NeuZeitWeb.CoreComponents do
     """
   end
 
+  # Entrances and exits both use ease-out, so an element arrives fast and settles.
+  # The motion-safe variant leaves the start and end states, without the travel.
   def show(js \\ %JS{}, selector) do
     JS.show(js,
       to: selector,
-      time: 300,
+      time: 200,
       transition:
-        {"transition-all ease-out duration-300",
+        {"motion-safe:transition-all ease-out duration-200",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
          "opacity-100 translate-y-0 sm:scale-100"}
     )
@@ -325,7 +338,8 @@ defmodule NeuZeitWeb.CoreComponents do
       to: selector,
       time: 200,
       transition:
-        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
+        {"motion-safe:transition-all ease-out duration-200",
+         "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
   end

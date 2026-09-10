@@ -7,7 +7,13 @@ defmodule NeuZeitWeb.Stories.Timetable do
   @impl true
   def render(assigns) do
     ~H"""
-    <.timetable id="duration-board" placements={Fixtures.placements()} week={3} weeks_count={15} readonly />
+    <.timetable
+      id="duration-board"
+      placements={Fixtures.placements()}
+      week={3}
+      weeks_count={15}
+      readonly
+    />
     """
   end
 end

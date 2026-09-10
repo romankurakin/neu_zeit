@@ -43,24 +43,17 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
        socket |> Nav.assign_return(params) |> assign(:selected, nil) |> assign(:cells, [])}
 
   @impl true
-  def handle_event("grid_changed", %{"cells" => cells}, socket) do
+  def handle_event("grid_changed", params, socket) do
     teacher = socket.assigns.selected
-    cells = Enum.map(cells, &%{"day" => &1["day"], "slot" => &1["slot"]})
+    cells = apply_cells(socket.assigns.cells, params)
 
     case Catalog.replace_teacher_availability(socket.assigns.term.id, teacher.id, cells) do
       {:ok, saved} ->
-        {:reply, %{cells: Enum.map(saved, &Map.take(&1, [:day, :slot]))},
-         assign(socket, :cells, saved)}
+        {:noreply, assign(socket, :cells, saved)}
 
       {:error, reason} ->
-        # A same-value assign produces no DOM diff. Explicitly acknowledge the
-        # stored cells so optimistic painting also rolls back after a refusal.
-        saved = Catalog.list_teacher_availability(socket.assigns.term.id, teacher.id)
-
-        {:reply, %{cells: Enum.map(saved, &Map.take(&1, [:day, :slot]))},
-         socket
-         |> assign(:cells, saved)
-         |> Errors.put(reason)}
+        # The assigns still hold the stored cells, so a refusal renders them again.
+        {:noreply, Errors.put(socket, reason)}
     end
   end
 
@@ -94,9 +87,7 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
       <.page_header
         title={gettext("Teacher availability")}
-        subtitle={
-          gettext("Select available times. An empty grid allows any time.")
-        }
+        subtitle={gettext("Select available times. An empty grid allows any time.")}
       />
 
       <div class="grid min-w-0 gap-4 lg:grid-cols-[1fr_2fr]">
@@ -139,7 +130,10 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
             legend={
               if restricted?(@cells),
                 do:
-                  ngettext("%{count} time slot allowed", "%{count} time slots allowed", length(@cells),
+                  ngettext(
+                    "%{count} time slot allowed",
+                    "%{count} time slots allowed",
+                    length(@cells),
                     count: length(@cells)
                   ),
                 else: gettext("Any time is allowed.")
@@ -149,14 +143,14 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
           <div :if={restricted?(@cells)} class="alert alert-info mt-4">
             <.icon name="hero-information-circle" class="size-5" />
             <span>
-              {gettext(
-                "The teacher must be available for the full session."
-              )}
+              {gettext("The teacher must be available for the full session.")}
             </span>
           </div>
 
           <:actions>
-            <.link navigate={~p"/terms/#{@term}/sessions?teacher_id=#{@selected.id}"} class="btn">{gettext("Sessions")}</.link>
+            <.link navigate={~p"/terms/#{@term}/sessions?teacher_id=#{@selected.id}"} class="btn">{gettext(
+              "Sessions"
+            )}</.link>
             <button :if={restricted?(@cells)} class="btn" phx-click="clear">
               {gettext("Remove restriction")}
             </button>

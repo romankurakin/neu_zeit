@@ -22,8 +22,13 @@ defmodule NeuZeitWeb.Stories.Toolbar do
     ~H"""
     <form id="example-filters" phx-change="filter">
       <.toolbar>
-        <.input type="select" name="teacher" value={@teacher} label={gettext("Teacher")}
-          options={[{gettext("All teachers"), ""}, {"Anna Weber", "anna"}]} />
+        <.input
+          type="select"
+          name="teacher"
+          value={@teacher}
+          label={gettext("Teacher")}
+          options={[{gettext("All teachers"), ""}, {"Anna Weber", "anna"}]}
+        />
         <.input type="checkbox" name="unplaced" checked={@unplaced} label={gettext("Unplaced only")} />
         <:actions>
           <button type="button" class="btn" phx-click="reset">{gettext("Reset filters")}</button>

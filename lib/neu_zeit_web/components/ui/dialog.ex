@@ -40,9 +40,16 @@ defmodule NeuZeitWeb.UI.Dialog do
 
   def dialog(assigns) do
     ~H"""
-    <dialog id={@id} role={@role} class="modal" aria-labelledby={"#{@id}-title"}
+    <dialog
+      id={@id}
+      role={@role}
+      class="modal"
+      aria-labelledby={"#{@id}-title"}
       aria-describedby={@description && "#{@id}-description"}
-      phx-hook=".NativeDialog" phx-mounted={JS.ignore_attributes("open")} data-cancel={@on_cancel}>
+      phx-hook=".NativeDialog"
+      phx-mounted={JS.ignore_attributes("open")}
+      data-cancel={@on_cancel}
+    >
       <div class={["modal-box", @class]}>
         <h2 id={"#{@id}-title"} class="type-title">{@title}</h2>
         <div :if={@description || @inner_block != []} class="mt-4 flex flex-col gap-4">
@@ -51,49 +58,55 @@ defmodule NeuZeitWeb.UI.Dialog do
         </div>
         <div :if={@actions != []} class="modal-action">{render_slot(@actions)}</div>
       </div>
-      <button type="button" class="modal-backdrop" phx-click={@on_cancel} aria-label={gettext("Cancel")} tabindex="-1"></button>
+      <button
+        type="button"
+        class="modal-backdrop"
+        phx-click={@on_cancel}
+        aria-label={gettext("Cancel")}
+        tabindex="-1"
+      ></button>
     </dialog>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".NativeDialog">
-      import {acknowledgePatch, defineHook} from "@/js/hook-dom.js"
+      import { acknowledgePatch, defineHook } from "@/js/hook-dom.js";
 
       export default defineHook({
         destroyed() {
-          this.el.removeEventListener("cancel", this.onCancel)
+          this.el.removeEventListener("cancel", this.onCancel);
           if (this.el instanceof HTMLDialogElement) {
-            this.el.close()
+            this.el.close();
           }
           if (this.previous instanceof HTMLElement && this.previous.isConnected) {
-            this.previous.focus({preventScroll: true})
+            this.previous.focus({ preventScroll: true });
           }
         },
 
         mounted() {
-          this.previous = document.activeElement
-          this.onCancel = this.onCancel.bind(this)
-          this.el.addEventListener("cancel", this.onCancel)
+          this.previous = document.activeElement;
+          this.onCancel = this.onCancel.bind(this);
+          this.el.addEventListener("cancel", this.onCancel);
           requestAnimationFrame(() => {
             if (this.el instanceof HTMLDialogElement && this.el.isConnected) {
-              this.el.showModal()
+              this.el.showModal();
               requestAnimationFrame(() => {
-                const target = this.el.querySelector("[autofocus]")
+                const target = this.el.querySelector("[autofocus]");
                 if (target instanceof HTMLElement) {
-                  target.focus()
+                  target.focus();
                 }
-              })
+              });
             }
-          })
+          });
         },
 
         /** @param {Event} event */
         onCancel(event) {
-          event.preventDefault()
+          event.preventDefault();
           if (typeof this.el.dataset.cancel === "string") {
-            this.pushEvent(this.el.dataset.cancel, {}, acknowledgePatch)
+            this.pushEvent(this.el.dataset.cancel, {}, acknowledgePatch);
           }
         },
 
         previous: document.activeElement,
-      })
+      });
     </script>
     """
   end

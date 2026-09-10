@@ -14,24 +14,34 @@ defmodule NeuZeitWeb.PlanLive.RunStatus do
 
   def run_status(assigns) do
     ~H"""
-    <div :if={@solving_since || @solver_blocked || solver_status(@last_result)} id="plan-run-status" class="mb-4 flex flex-col gap-4">
+    <div
+      :if={@solving_since || @solver_blocked || solver_status(@last_result)}
+      id="plan-run-status"
+      class="mb-4 flex flex-col gap-4"
+    >
       <div :if={@solving_since} role="status" class="flex flex-wrap items-center gap-2 type-detail">
         <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
         <span>{gettext("Generating timetable")}</span>
-        <span>{gettext("Elapsed: %{elapsed} s. Limit: %{limit} s.", elapsed: elapsed(@solving_since, @tick), limit: @solver_limit)}</span>
+        <span>{gettext("Elapsed: %{elapsed} s. Limit: %{limit} s.",
+          elapsed: elapsed(@solving_since, @tick),
+          limit: @solver_limit
+        )}</span>
       </div>
       <div :if={@solver_blocked && !@solving_since} class="alert alert-error">
         <span>{gettext("Resolve rule violations on the Checks tab before generating the timetable.")}</span>
-        <.link patch={workspace_path(@workspace, %{"tab" => "checks"})} class="link">{gettext("Checks")}</.link>
+        <.link patch={workspace_path(@workspace, %{"tab" => "checks"})} class="link">{gettext(
+          "Checks"
+        )}</.link>
       </div>
-      <.solver_feedback
-        :if={!@solving_since && solver_status(@last_result) != nil}
-        status={solver_status(@last_result)}
-        message={solver_message(@last_result)}
-        term={@term}
-        locked_count={Enum.count(@board.placements, & &1.locked)}
-        narrow_pools={narrow_pools(@board)}
-      />
+      <div :if={!@solving_since && solver_status(@last_result) != nil} class="motion-safe:enter">
+        <.solver_feedback
+          status={solver_status(@last_result)}
+          message={solver_message(@last_result)}
+          term={@term}
+          locked_count={Enum.count(@board.placements, & &1.locked)}
+          narrow_pools={narrow_pools(@board)}
+        />
+      </div>
     </div>
     """
   end

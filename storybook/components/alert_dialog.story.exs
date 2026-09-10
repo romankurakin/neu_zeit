@@ -26,9 +26,19 @@ defmodule NeuZeitWeb.Stories.AlertDialog do
     ~H"""
     <.flash id="publication-result" kind={:info} flash={@flash} />
     <button class="btn btn-primary" phx-click="confirm_open">{gettext("Publish plan")}</button>
-    <.alert_dialog variant="primary" :if={@confirming?} title={gettext("Publish this plan?")}
-      message={gettext("This plan will replace the published timetable. Existing one-off changes will be kept.")}
-      confirm_label={gettext("Publish plan")} on_confirm="confirm_accept" on_cancel="confirm_cancel" />
+    <.alert_dialog
+      :if={@confirming?}
+      variant="primary"
+      title={gettext("Publish this plan?")}
+      message={
+        gettext(
+          "This plan will replace the published timetable. Existing one-off changes will be kept."
+        )
+      }
+      confirm_label={gettext("Publish plan")}
+      on_confirm="confirm_accept"
+      on_cancel="confirm_cancel"
+    />
     """
   end
 end

@@ -165,6 +165,6 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}?plan_id=#{plan.id}")
     assert has_element?(view, "button[phx-click=generate]")
     view |> form("#generation-plan", plan_id: other.id) |> render_change()
-    assert has_element?(view, ~s(a[href="/terms/#{ctx.term.id}/plans/#{other.id}?tab=checks"]))
+    assert has_element?(view, ~s(a[href="/terms/#{ctx.term.id}/plans/#{other.id}?tab=board"]))
   end
 end

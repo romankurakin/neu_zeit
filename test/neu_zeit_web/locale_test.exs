@@ -82,7 +82,11 @@ defmodule NeuZeitWeb.LocaleTest do
       assert has_element?(view, "th", "Пн")
       assert has_element?(view, "th", "Сб")
       refute has_element?(view, "th", "Mon")
-      assert has_element?(view, "button[phx-value-date='#{term.starts_on}']", "07.09")
+      # The browser formats the date, so the server sends it exactly, in every language.
+      assert has_element?(
+               view,
+               "button[phx-value-date='#{term.starts_on}'] time[datetime='#{term.starts_on}']"
+             )
     end
 
     @tag locale: "ru"

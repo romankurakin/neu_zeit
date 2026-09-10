@@ -41,6 +41,8 @@ defmodule NeuZeit.Planning.ScheduleException do
     ])
     |> validate_required([:term_id, :session_id, :kind, :occurrence_date, :reason, :status])
     |> validate_author()
+    |> validate_length(:reason, min: 1, max: 500)
+    |> validate_length(:created_by, max: 100)
     |> validate_inclusion(:kind, @kinds)
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:new_slot, greater_than: 0)

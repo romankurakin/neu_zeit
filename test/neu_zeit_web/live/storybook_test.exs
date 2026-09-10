@@ -25,26 +25,35 @@ defmodule NeuZeitWeb.StorybookTest do
   end
 
   describe "time grid" do
-    test "replaces the whole cell set from the paint hook", %{conn: conn} do
+    test "painting adds the cells it covers", %{conn: conn} do
       live = story(conn, "scheduling/time_grid")
 
       html =
         render_hook(live, "grid_changed", %{
-          "id" => "availability-grid",
-          "cells" => [%{"day" => 2, "slot" => 3}, %{"day" => 2, "slot" => 4}]
+          "cells" => [%{"day" => 2, "slot" => 3}, %{"day" => 2, "slot" => 4}],
+          "selected" => true
         })
 
-      assert html =~ "2 selected time slots"
+      assert html =~ "5 selected time slots"
     end
 
-    test "accepts an empty selection", %{conn: conn} do
+    test "painting clears the cells it covers", %{conn: conn} do
       html =
         render_hook(story(conn, "scheduling/time_grid"), "grid_changed", %{
-          "id" => "availability-grid",
-          "cells" => []
+          "cells" => [%{"day" => 1, "slot" => 1}, %{"day" => 1, "slot" => 2}],
+          "selected" => false
         })
 
-      assert html =~ "0 selected time slots"
+      assert html =~ "1 selected time slot"
+    end
+
+    test "clicking a selected cell clears it", %{conn: conn} do
+      html =
+        story(conn, "scheduling/time_grid")
+        |> element(~s{#availability-grid [data-cell][data-day="1"][data-slot="1"]})
+        |> render_click()
+
+      assert html =~ "2 selected time slots"
     end
   end
 

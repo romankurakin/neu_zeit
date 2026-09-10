@@ -20,7 +20,11 @@ defmodule NeuZeitWeb.UI.LoadingState do
       <p class="type-heading">{@label || gettext("Working")}</p>
       <p :if={@elapsed_seconds} class="type-detail text-base-content">
         {if @limit_seconds,
-          do: gettext("Elapsed: %{elapsed} s. Limit: %{limit} s.", elapsed: @elapsed_seconds, limit: @limit_seconds),
+          do:
+            gettext("Elapsed: %{elapsed} s. Limit: %{limit} s.",
+              elapsed: @elapsed_seconds,
+              limit: @limit_seconds
+            ),
           else: gettext("Elapsed: %{elapsed} s.", elapsed: @elapsed_seconds)}
       </p>
       <progress
@@ -29,8 +33,7 @@ defmodule NeuZeitWeb.UI.LoadingState do
         value={min(@elapsed_seconds, @limit_seconds)}
         max={@limit_seconds}
         aria-label={@label || gettext("Working")}
-      >
-      </progress>
+      ></progress>
     </div>
     """
   end

@@ -15,9 +15,11 @@ defmodule NeuZeitWeb.UI.StatCard do
     ~H"""
     <.card tag_name="div">
       <dl class="stat p-0">
-      <dt class="stat-title type-detail">{@label}</dt>
-      <dd class={["stat-value type-display tabular-nums", NeuZeitWeb.UI.Status.value_tone(@status)]}>{@value}</dd>
-      <dd :if={@hint} class="stat-desc type-detail">{@hint}</dd>
+        <dt class="stat-title type-detail">{@label}</dt>
+        <dd class={["stat-value type-display tabular-nums", NeuZeitWeb.UI.Status.value_tone(@status)]}>
+          {@value}
+        </dd>
+        <dd :if={@hint} class="stat-desc type-detail">{@hint}</dd>
       </dl>
     </.card>
     """

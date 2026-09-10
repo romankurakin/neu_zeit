@@ -240,9 +240,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
       current_term={@term}
     >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
-      <.page_header
-        title={gettext("Sessions")}
-      >
+      <.page_header title={gettext("Sessions")}>
         <:actions>
           <.link patch={~p"/terms/#{@term}/sessions/new"} class="btn btn-primary">
             <.icon name="hero-plus" class="size-4" /> {gettext("New session")}
@@ -256,31 +254,57 @@ defmodule NeuZeitWeb.SessionLive.Index do
             <form id="session-filters" phx-change="filter" class="flex flex-wrap items-center gap-2">
               <select aria-label={gettext("Course")} name="course_id" class="select select-bordered">
                 <option value="all">{gettext("All courses")}</option>
-                <option :for={course <- @courses} value={course.id} selected={@filters["course_id"] == course.id}>
+                <option
+                  :for={course <- @courses}
+                  value={course.id}
+                  selected={@filters["course_id"] == course.id}
+                >
                   {course.code}
                 </option>
               </select>
               <select aria-label={gettext("Teacher")} name="teacher_id" class="select select-bordered">
                 <option value="all">{gettext("All teachers")}</option>
-                <option :for={teacher <- @teachers} value={teacher.id} selected={@filters["teacher_id"] == teacher.id}>
+                <option
+                  :for={teacher <- @teachers}
+                  value={teacher.id}
+                  selected={@filters["teacher_id"] == teacher.id}
+                >
                   {teacher.name}
                 </option>
               </select>
               <select aria-label={gettext("Group")} name="cohort_id" class="select select-bordered">
                 <option value="all">{gettext("All groups")}</option>
-                <option :for={cohort <- @cohorts} value={cohort.id} selected={@filters["cohort_id"] == cohort.id}>
+                <option
+                  :for={cohort <- @cohorts}
+                  value={cohort.id}
+                  selected={@filters["cohort_id"] == cohort.id}
+                >
                   {cohort.name}
                 </option>
               </select>
-              <select aria-label={gettext("Time profile")} name="slot_profile_id" class="select select-bordered">
+              <select
+                aria-label={gettext("Time profile")}
+                name="slot_profile_id"
+                class="select select-bordered"
+              >
                 <option value="all">{gettext("Any profile")}</option>
-                <option :for={profile <- @profiles} value={profile.id} selected={@filters["slot_profile_id"] == profile.id}>
+                <option
+                  :for={profile <- @profiles}
+                  value={profile.id}
+                  selected={@filters["slot_profile_id"] == profile.id}
+                >
                   {slot_profile_label(profile)}
                 </option>
               </select>
               <select name="unplaced_in_plan" aria-label={gettext("Placement status")} class="select">
                 <option value="all">{gettext("Any placement status")}</option>
-                <option :for={plan <- @plans} value={plan.id} selected={@filters["unplaced_in_plan"] == plan.id}>{gettext("Unplaced in %{plan}", plan: plan.name)}</option>
+                <option
+                  :for={plan <- @plans}
+                  value={plan.id}
+                  selected={@filters["unplaced_in_plan"] == plan.id}
+                >
+                  {gettext("Unplaced in %{plan}", plan: plan.name)}
+                </option>
               </select>
               <label class="label cursor-pointer gap-2 type-detail">
                 <input
@@ -300,10 +324,20 @@ defmodule NeuZeitWeb.SessionLive.Index do
             </:actions>
           </.toolbar>
 
-          <nav :if={@pages > 1} class="flex items-center gap-2 my-4" aria-label={gettext("Session pages")}>
-            <.link :if={@page > 1} patch={sessions_path(assigns, @filters, @page - 1)} class="btn">{gettext("Previous")}</.link>
+          <nav
+            :if={@pages > 1}
+            class="flex items-center gap-2 my-4"
+            aria-label={gettext("Session pages")}
+          >
+            <.link :if={@page > 1} patch={sessions_path(assigns, @filters, @page - 1)} class="btn">{gettext(
+              "Previous"
+            )}</.link>
             <span class="type-detail">{gettext("Page %{page} of %{pages}", page: @page, pages: @pages)}</span>
-            <.link :if={@page < @pages} patch={sessions_path(assigns, @filters, @page + 1)} class="btn">{gettext("Next")}</.link>
+            <.link
+              :if={@page < @pages}
+              patch={sessions_path(assigns, @filters, @page + 1)}
+              class="btn"
+            >{gettext("Next")}</.link>
           </nav>
           <.table
             id="sessions"
@@ -329,7 +363,11 @@ defmodule NeuZeitWeb.SessionLive.Index do
             </:col>
             <:col :let={session} label={gettext("Weeks")}>
               <span :if={session.automatic_weeks}>{gettext("Automatic")}</span>
-              <.teaching_weeks :if={!session.automatic_weeks} weeks={session.week_mask} total={@term.weeks_count} />
+              <.teaching_weeks
+                :if={!session.automatic_weeks}
+                weeks={session.week_mask}
+                total={@term.weeks_count}
+              />
             </:col>
             <:col :let={session} label={gettext("Time slots")} numeric>{session.duration_slots}</:col>
             <:col :let={session} label={gettext("Profile")}>
@@ -344,7 +382,11 @@ defmodule NeuZeitWeb.SessionLive.Index do
               <.link patch={~p"/terms/#{@term}/sessions/#{session}/edit"} class="btn btn-ghost">
                 {gettext("Edit")}
               </.link>
-              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={session.id}>
+              <button
+                class="btn btn-ghost text-error"
+                phx-click="delete_prompt"
+                phx-value-id={session.id}
+              >
                 {gettext("Delete")}
               </button>
             </:action>
@@ -352,13 +394,19 @@ defmodule NeuZeitWeb.SessionLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@editing}
+          class="order-first lg:order-last"
           title={if @editing.id, do: gettext("Edit session"), else: gettext("New session")}
           subtitle={gettext("Create a separate session for each parallel group.")}
           on_close={JS.patch(~p"/terms/#{@term}/sessions")}
         >
-          <.form for={@form} id="session-form" phx-mounted={JS.focus_first(to: "#session-form")} phx-submit="save" class="flex flex-col gap-4">
+          <.form
+            for={@form}
+            id="session-form"
+            phx-mounted={JS.focus_first(to: "#session-form")}
+            phx-submit="save"
+            class="flex flex-col gap-4"
+          >
             <.input
               field={@form[:course_component_id]}
               type="select"
@@ -391,16 +439,18 @@ defmodule NeuZeitWeb.SessionLive.Index do
             />
 
             <div>
-              <p class="label-text mb-1 block type-detail">{if @editing.automatic_weeks, do: gettext("Restrict available weeks"), else: gettext("Teaching weeks")}</p>
+              <p class="label-text mb-1 block type-detail">
+                {if @editing.automatic_weeks,
+                  do: gettext("Restrict available weeks"),
+                  else: gettext("Teaching weeks")}
+              </p>
               <.week_selector id="session-weeks" weeks={@week_mask} total={@term.weeks_count} />
             </div>
 
             <div>
               <p class="label-text mb-1 block type-detail">{gettext("Groups")}</p>
               <p class="mb-2 type-detail text-base-content">
-                {gettext(
-                  "For a shared session, select all attending groups."
-                )}
+                {gettext("For a shared session, select all attending groups.")}
               </p>
               <.transfer_list
                 id="session-cohorts"

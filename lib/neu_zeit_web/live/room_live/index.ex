@@ -149,11 +149,21 @@ defmodule NeuZeitWeb.RoomLive.Index do
     assigns = assign(assigns, :visible, visible_rooms(assigns.rooms, assigns.building_filter))
 
     ~H"""
-    <Layouts.app flash={@flash} nav={Nav.sections(@navigation_term)} current_path={~p"/rooms"} terms={@navigation_terms} current_term={@navigation_term}>
+    <Layouts.app
+      flash={@flash}
+      nav={Nav.sections(@navigation_term)}
+      current_path={~p"/rooms"}
+      terms={@navigation_terms}
+      current_term={@navigation_term}
+    >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
       <.page_header
         title={gettext("Rooms")}
-        subtitle={gettext("Capacity and equipment are not checked automatically. Include only suitable rooms.")}
+        subtitle={
+          gettext(
+            "Capacity and equipment are not checked automatically. Include only suitable rooms."
+          )
+        }
       >
         <:actions>
           <.link patch={~p"/rooms/buildings/new"} class="btn">{gettext("New building")}</.link>
@@ -179,7 +189,9 @@ defmodule NeuZeitWeb.RoomLive.Index do
           <.toolbar>
             <form phx-change="filter_building" id="building-filter">
               <select name="building_id" class="select select-bordered">
-                <option value="all" selected={@building_filter == "all"}>{gettext("All buildings")}</option>
+                <option value="all" selected={@building_filter == "all"}>
+                  {gettext("All buildings")}
+                </option>
                 <option
                   :for={building <- @buildings}
                   value={building.id}
@@ -231,7 +243,11 @@ defmodule NeuZeitWeb.RoomLive.Index do
             </:col>
             <:action :let={room}>
               <.link patch={~p"/rooms/#{room}/edit"} class="btn btn-ghost">{gettext("Edit")}</.link>
-              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={room.id}>
+              <button
+                class="btn btn-ghost text-error"
+                phx-click="delete_prompt"
+                phx-value-id={room.id}
+              >
                 {gettext("Delete")}
               </button>
             </:action>
@@ -239,14 +255,15 @@ defmodule NeuZeitWeb.RoomLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@editing}
+          class="order-first lg:order-last"
           title={inspector_title(@kind, @editing)}
         >
           <.form
             :if={@kind == :building}
             for={@form}
-            id="building-form" phx-mounted={JS.focus_first(to: "#building-form")}
+            id="building-form"
+            phx-mounted={JS.focus_first(to: "#building-form")}
             phx-change="validate"
             phx-submit="save"
           >
@@ -257,7 +274,14 @@ defmodule NeuZeitWeb.RoomLive.Index do
             </div>
           </.form>
 
-          <.form :if={@kind == :room} for={@form} id="room-form" phx-mounted={JS.focus_first(to: "#room-form")} phx-change="validate" phx-submit="save">
+          <.form
+            :if={@kind == :room}
+            for={@form}
+            id="room-form"
+            phx-mounted={JS.focus_first(to: "#room-form")}
+            phx-change="validate"
+            phx-submit="save"
+          >
             <.input field={@form[:name]} type="text" label={gettext("Room name")} />
             <.input
               field={@form[:building_id]}

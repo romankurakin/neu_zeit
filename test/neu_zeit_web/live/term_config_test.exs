@@ -23,6 +23,9 @@ defmodule NeuZeitWeb.TermConfigTest do
     profile
   end
 
+  defp starts(profile),
+    do: Catalog.get_slot_profile!(profile.id).cells |> Enum.map(&{&1.day, &1.slot}) |> Enum.sort()
+
   # Use at least one group, as required by session creation.
   defp session_fixture(term, teacher, opts) do
     {:ok, cohort} = Catalog.create_cohort(%{"name" => "G#{System.unique_integer([:positive])}"})
@@ -116,21 +119,27 @@ defmodule NeuZeitWeb.TermConfigTest do
       assert same.name == "Наши будни"
     end
 
-    test "painting the grid replaces the profile's starts", %{conn: conn, term: term} do
+    test "painting the grid adds starts", %{conn: conn, term: term} do
       profile = profile(term, "NARROW", [%{"day" => 1, "slot" => 1}])
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}/slot-profiles/#{profile}/edit")
 
       render_hook(live, "grid_changed", %{
-        "id" => "profile-grid-#{profile.id}",
-        "cells" => [%{"day" => 2, "slot" => 3}, %{"day" => 2, "slot" => 4}]
+        "cells" => [%{"day" => 2, "slot" => 3}, %{"day" => 2, "slot" => 4}],
+        "selected" => true
       })
 
-      cells =
-        Catalog.get_slot_profile!(profile.id).cells
-        |> Enum.map(&{&1.day, &1.slot})
-        |> Enum.sort()
+      assert starts(profile) == [{1, 1}, {2, 3}, {2, 4}]
+    end
 
-      assert cells == [{2, 3}, {2, 4}]
+    test "clicking a start removes it", %{conn: conn, term: term} do
+      profile = profile(term, "NARROW", [%{"day" => 1, "slot" => 1}, %{"day" => 2, "slot" => 1}])
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}/slot-profiles/#{profile}/edit")
+
+      live
+      |> element(~s{#profile-grid-#{profile.id} [data-cell][data-day="1"][data-slot="1"]})
+      |> render_click()
+
+      assert starts(profile) == [{2, 1}]
     end
 
     test "warns when no start leaves room for a longer session", %{conn: conn, term: term} do
@@ -174,8 +183,8 @@ defmodule NeuZeitWeb.TermConfigTest do
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}/availability/#{teacher}")
 
       render_hook(live, "grid_changed", %{
-        "id" => "availability-#{teacher.id}",
-        "cells" => [%{"day" => 6, "slot" => 1}, %{"day" => 6, "slot" => 2}]
+        "cells" => [%{"day" => 6, "slot" => 1}, %{"day" => 6, "slot" => 2}],
+        "selected" => true
       })
 
       cells =
@@ -213,12 +222,12 @@ defmodule NeuZeitWeb.TermConfigTest do
       # the session would have nowhere legal to start.
       html =
         render_hook(live, "grid_changed", %{
-          "id" => "availability-#{teacher.id}",
-          "cells" => [%{"day" => 1, "slot" => 1}]
+          "cells" => [%{"day" => 1, "slot" => 1}],
+          "selected" => true
         })
 
       assert Catalog.list_teacher_availability(term.id, teacher.id) == []
-      refute html =~ "1 cell allowed"
+      refute html =~ "1 time slot allowed"
     end
   end
 end

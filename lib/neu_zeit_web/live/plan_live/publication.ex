@@ -8,41 +8,53 @@ defmodule NeuZeitWeb.PlanLive.Publication do
 
   def confirmation(assigns) do
     ~H"""
-      <.dialog id="publish-gate" title={gettext("Publish this plan?")} on_cancel="publish_cancel" class="max-w-2xl"
-        description={gettext("This plan will replace the published timetable. The previous plan will be archived. One-off changes will be kept.")}>
-            <.check_results id="publication-checks">
-              <:item :for={row <- gate_rows(@gate)} status={row.status} label={row.label}>
-                {row.detail}
-              </:item>
-            </.check_results>
+    <.dialog
+      id="publish-gate"
+      title={gettext("Publish this plan?")}
+      on_cancel="publish_cancel"
+      class="max-w-2xl"
+      description={
+        gettext(
+          "This plan will replace the published timetable. The previous plan will be archived. One-off changes will be kept."
+        )
+      }
+    >
+      <.check_results id="publication-checks">
+        <:item :for={row <- gate_rows(@gate)} status={row.status} label={row.label}>
+          {row.detail}
+        </:item>
+      </.check_results>
 
-          <div class="flex flex-col gap-2">
-            <label :for={{key, label} <- acknowledgements(@advisory_count)} class="flex cursor-pointer items-start gap-2 type-detail">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-sm mt-0.5"
-                checked={Map.get(@acknowledged, key, false)}
-                phx-click="acknowledge"
-                phx-value-key={key}
-              />
-              <span>{label}</span>
-            </label>
-          </div>
+      <div class="flex flex-col gap-2">
+        <label
+          :for={{key, label} <- acknowledgements(@advisory_count)}
+          class="flex cursor-pointer items-start gap-2 type-detail"
+        >
+          <input
+            type="checkbox"
+            class="checkbox checkbox-sm mt-0.5"
+            checked={Map.get(@acknowledged, key, false)}
+            phx-click="acknowledge"
+            phx-value-key={key}
+          />
+          <span>{label}</span>
+        </label>
+      </div>
 
-          <:actions>
-            <button type="button" class="btn btn-soft" phx-click="publish_cancel" autofocus>
-              {gettext("Cancel")}
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              phx-click="publish_confirm"
-              disabled={not publishable?(@gate, @acknowledged)}
-            >
-              {gettext("Publish plan")}
-            </button>
-          </:actions>
-      </.dialog>
+      <:actions>
+        <button type="button" class="btn btn-soft" phx-click="publish_cancel" autofocus>
+          {gettext("Cancel")}
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          phx-click="publish_confirm"
+          disabled={not publishable?(@gate, @acknowledged)}
+        >
+          {gettext("Publish plan")}
+        </button>
+      </:actions>
+    </.dialog>
     """
   end
 

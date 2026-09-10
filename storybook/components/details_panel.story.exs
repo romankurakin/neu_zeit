@@ -17,7 +17,9 @@ defmodule NeuZeitWeb.Stories.DetailsPanel do
     <.details_panel :if={@open} title="Programmierung I" subtitle={gettext("Lab")} on_close="close">
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 type-detail">
         <dt>{gettext("Teacher")}</dt><dd>Anna Weber</dd>
-        <dt>{gettext("Weeks")}</dt><dd><.teaching_weeks weeks={[1, 2, 3, 4, 5, 6, 7]} total={15} /></dd>
+        <dt>{gettext("Weeks")}</dt><dd>
+          <.teaching_weeks weeks={[1, 2, 3, 4, 5, 6, 7]} total={15} />
+        </dd>
       </dl>
     </.details_panel>
     """

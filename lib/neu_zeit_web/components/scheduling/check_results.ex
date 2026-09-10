@@ -5,7 +5,10 @@ defmodule NeuZeitWeb.Scheduling.CheckResults do
   import NeuZeitWeb.UI.Status
 
   @doc """
-  Renders checklist results with details and links to the relevant settings.
+  Renders checklist results with details.
+
+  Pass `navigate` only on a row that asks for work, and name its destination in
+  `action_label`.
   """
   attr :id, :string, required: true
 
@@ -32,8 +35,7 @@ defmodule NeuZeitWeb.Scheduling.CheckResults do
       </:col>
       <:action :let={item} :if={Enum.any?(@item, & &1[:navigate])}>
         <.link :if={item[:navigate]} navigate={item[:navigate]} class="btn btn-ghost">
-          {item[:action_label] || gettext("Open")}
-          <.icon name="hero-arrow-right" class="size-3" />
+          {item[:action_label]}
         </.link>
       </:action>
     </.table>

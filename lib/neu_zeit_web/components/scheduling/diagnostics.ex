@@ -54,7 +54,10 @@ defmodule NeuZeitWeb.Scheduling.Diagnostics do
           </:col>
           <:col :let={entry} :if={Enum.any?(entries, & &1[:cohorts])} label={gettext("Groups")}>
             <span class="flex flex-wrap gap-1">
-              <span :for={name <- List.flatten(entry[:cohorts] || [])} class="badge badge-ghost badge-md">
+              <span
+                :for={name <- List.flatten(entry[:cohorts] || [])}
+                class="badge badge-ghost badge-md"
+              >
                 {name}
               </span>
             </span>
@@ -107,7 +110,10 @@ defmodule NeuZeitWeb.Scheduling.Diagnostics do
         {gettext("Placement rules")}
       </h3>
 
-      <div :if={@explanation.locked} class="flex items-center justify-between gap-2 rounded-field border border-warning/40 bg-warning/10 px-2 py-1">
+      <div
+        :if={@explanation.locked}
+        class="flex items-center justify-between gap-2 rounded-field border border-warning/40 bg-warning/10 px-2 py-1"
+      >
         <span class="flex items-center gap-1">
           <.icon name="hero-lock-closed" class="size-4 text-warning" />
           {gettext("Locked in place by hand")}
@@ -121,21 +127,38 @@ defmodule NeuZeitWeb.Scheduling.Diagnostics do
         <span>
           {gettext("Time profile: %{name}", name: slot_profile_label(@explanation.slot_profile))}
           <span class="text-base-content">
-            ({ngettext("%{count} start time", "%{count} start times", @explanation.slot_profile.starts,
+            ({ngettext(
+              "%{count} start time",
+              "%{count} start times",
+              @explanation.slot_profile.starts,
               count: @explanation.slot_profile.starts
             )})
           </span>
         </span>
-        <.link navigate={~p"/terms/#{@term}/slot-profiles/#{@explanation.slot_profile.id}/edit?return_to=#{@return_to}"} class="link type-detail shrink-0">
+        <.link
+          navigate={
+            ~p"/terms/#{@term}/slot-profiles/#{@explanation.slot_profile.id}/edit?return_to=#{@return_to}"
+          }
+          class="link type-detail shrink-0"
+        >
           {gettext("Edit rule")}
         </.link>
       </div>
 
       <div :if={@explanation.availability} class="flex flex-wrap items-start gap-x-2 gap-y-1">
         <span>
-          {ngettext("Teacher available in %{count} time slot", "Teacher available in %{count} time slots", @explanation.availability.cells)}
+          {ngettext(
+            "Teacher available in %{count} time slot",
+            "Teacher available in %{count} time slots",
+            @explanation.availability.cells
+          )}
         </span>
-        <.link navigate={~p"/terms/#{@term}/availability/#{@explanation.availability.teacher_id}?return_to=#{@return_to}"} class="link type-detail shrink-0">
+        <.link
+          navigate={
+            ~p"/terms/#{@term}/availability/#{@explanation.availability.teacher_id}?return_to=#{@return_to}"
+          }
+          class="link type-detail shrink-0"
+        >
           {gettext("Edit rule")}
         </.link>
       </div>
@@ -149,7 +172,10 @@ defmodule NeuZeitWeb.Scheduling.Diagnostics do
             count: length(@explanation.room_pool.rooms)
           )}
         </span>
-        <.link navigate={~p"/courses/#{@explanation.room_pool.course_id}?return_to=#{@return_to}"} class="link type-detail shrink-0">{gettext("Edit rule")}</.link>
+        <.link
+          navigate={~p"/courses/#{@explanation.room_pool.course_id}?return_to=#{@return_to}"}
+          class="link type-detail shrink-0"
+        >{gettext("Edit rule")}</.link>
       </div>
 
       <p class="type-detail text-base-content">
@@ -183,7 +209,9 @@ defmodule NeuZeitWeb.Scheduling.Diagnostics do
       </h3>
 
       <p class="mb-2 type-detail text-base-content">
-        {if @status in ["INFEASIBLE", "TIMEOUT", "BUSY"], do: advice_for(@status), else: @message || advice_for(@status)}
+        {if @status in ["INFEASIBLE", "TIMEOUT", "BUSY"],
+          do: advice_for(@status),
+          else: @message || advice_for(@status)}
       </p>
 
       <ul :if={@status in ["INFEASIBLE", "TIMEOUT"]} class="flex flex-col gap-1 type-detail">

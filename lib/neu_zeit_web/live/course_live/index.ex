@@ -110,7 +110,13 @@ defmodule NeuZeitWeb.CourseLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={Nav.sections(@navigation_term)} current_path={~p"/courses"} terms={@navigation_terms} current_term={@navigation_term}>
+    <Layouts.app
+      flash={@flash}
+      nav={Nav.sections(@navigation_term)}
+      current_path={~p"/courses"}
+      terms={@navigation_terms}
+      current_term={@navigation_term}
+    >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
       <.page_header title={gettext("Courses")}>
         <:actions>
@@ -131,7 +137,10 @@ defmodule NeuZeitWeb.CourseLive.Index do
 
           <.table :if={@courses != []} id="courses" rows={@courses} row_id={&"course-#{&1.id}"}>
             <:col :let={course} label={gettext("Code")} class="whitespace-nowrap">
-              <.link navigate={Nav.with_return(~p"/courses/#{course}", @return_to)} class="link link-hover font-semibold inline-block">
+              <.link
+                navigate={Nav.with_return(~p"/courses/#{course}", @return_to)}
+                class="link link-hover font-semibold inline-block"
+              >
                 {course.code}
               </.link>
             </:col>
@@ -147,7 +156,9 @@ defmodule NeuZeitWeb.CourseLive.Index do
                 </span>
               </span>
             </:col>
-            <:col :let={course} label={gettext("Sessions")} numeric>{session_count(course, @usage)}</:col>
+            <:col :let={course} label={gettext("Sessions")} numeric>
+              {session_count(course, @usage)}
+            </:col>
             <:action :let={course}>
               <.link patch={~p"/courses/#{course}/edit"} class="btn btn-ghost">
                 {gettext("Edit")}
@@ -164,14 +175,26 @@ defmodule NeuZeitWeb.CourseLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@editing}
+          class="order-first lg:order-last"
           title={if @editing.id, do: gettext("Edit course"), else: gettext("New course")}
         >
-          <.form for={@form} id="course-form" phx-mounted={JS.focus_first(to: "#course-form")} phx-change="validate" phx-submit="save">
-            <.input field={@form[:code]} type="text" label={gettext("Code")} placeholder="INF110" />
+          <.form
+            for={@form}
+            id="course-form"
+            phx-mounted={JS.focus_first(to: "#course-form")}
+            phx-change="validate"
+            phx-submit="save"
+          >
+            <.input field={@form[:code]} type="text" label={gettext("Code")} />
             <.input field={@form[:title]} type="text" label={gettext("Title")} />
-            <.input field={@form[:credits]} type="number" label={gettext("Credits")} step="0.5" min="0" />
+            <.input
+              field={@form[:credits]}
+              type="number"
+              label={gettext("Credits")}
+              step="0.5"
+              min="0"
+            />
             <div class="flex gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
               <.link patch={~p"/courses"} class="btn btn-ghost">{gettext("Cancel")}</.link>
@@ -184,9 +207,7 @@ defmodule NeuZeitWeb.CourseLive.Index do
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.code)}
         message={
-          gettext(
-            "Teaching types will also be deleted. Courses used by sessions cannot be deleted."
-          )
+          gettext("Teaching types will also be deleted. Courses used by sessions cannot be deleted.")
         }
         confirm_label={gettext("Delete")}
         on_confirm="delete_confirm"

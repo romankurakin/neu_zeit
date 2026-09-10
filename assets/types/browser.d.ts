@@ -4,11 +4,13 @@ interface LiveReloader {
   openEditorAtDef(target: Element): void;
 }
 
+declare var formatDates: (root: ParentNode) => void;
 declare var liveSocket: import("phoenix_live_view").LiveSocket;
 declare var liveReloader: LiveReloader;
 declare var storybook: { Hooks: import("phoenix_live_view").HooksOptions };
 
 interface Window {
+  formatDates: (root: ParentNode) => void;
   liveSocket: import("phoenix_live_view").LiveSocket;
   liveReloader: LiveReloader;
   storybook: { Hooks: import("phoenix_live_view").HooksOptions };

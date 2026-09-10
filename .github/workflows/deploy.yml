@@ -63,6 +63,7 @@ jobs:
             --size "${{ inputs.size }}" \
             --region "${{ inputs.region }}" \
             --user-data-file /tmp/cloud-init.yaml \
+            --enable-monitoring \
             --wait "$@"
 
       - name: Report the address

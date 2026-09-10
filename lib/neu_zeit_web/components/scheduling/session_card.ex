@@ -39,7 +39,9 @@ defmodule NeuZeitWeb.Scheduling.SessionCard do
           <.icon :if={@placement && @placement.locked} name="hero-lock-closed" class="size-4" />
           {@session.course_component.course.code}
           <span class="block">{@session.course_component.course.title}</span>
-          <span class="block type-detail font-normal">{component_kind_label(@session.course_component.kind)}</span>
+          <span class="block type-detail font-normal">{component_kind_label(
+            @session.course_component.kind
+          )}</span>
         </span>
         <span :if={@placement} class="flex items-start gap-2 tabular-nums">
           <.icon name="hero-clock" class="size-4 shrink-0 self-center" />

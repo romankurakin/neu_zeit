@@ -24,13 +24,26 @@ defmodule NeuZeitWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <div id="app-drawer" class="drawer lg:drawer-open" data-term-id={@current_term && @current_term.id} phx-hook=".Navigation">
+    <div
+      id="app-drawer"
+      class="drawer lg:drawer-open"
+      data-term-id={@current_term && @current_term.id}
+      phx-hook=".Navigation"
+    >
       <input id="nav-drawer" type="checkbox" tabindex="-1" aria-hidden="true" class="drawer-toggle" />
 
       <div class="drawer-content min-w-0 flex min-h-dvh flex-col bg-base-200">
         <header class="navbar sticky top-0 z-30 gap-2 border-b border-base-300 bg-base-100 px-4">
-          <button id="nav-toggle" type="button" aria-expanded="false" aria-controls="main-navigation"
-            phx-click={JS.toggle_class("drawer-open", to: "#app-drawer") |> JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "#nav-toggle") |> JS.focus(to: "#nav-close")}
+          <button
+            id="nav-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="main-navigation"
+            phx-click={
+              JS.toggle_class("drawer-open", to: "#app-drawer")
+              |> JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "#nav-toggle")
+              |> JS.focus(to: "#nav-close")
+            }
             aria-label={gettext("Open navigation")}
             class="btn btn-square btn-ghost lg:hidden"
           >
@@ -45,19 +58,37 @@ defmodule NeuZeitWeb.Layouts do
           <.theme_toggle />
         </header>
 
-        <main id="main-content" class="flex-1 min-w-0 p-4">
+        <main id="main-content" phx-hook=".LocalDates" class="flex-1 min-w-0 p-4">
           {render_slot(@inner_block)}
         </main>
       </div>
 
       <div class="drawer-side z-40">
-        <button type="button" tabindex="-1" aria-label={gettext("Close navigation")} class="drawer-overlay" phx-click={close_navigation()}></button>
+        <%!-- Open beside the content, the panel sits in flow, where an inline overlay adds a line box. --%>
+        <button
+          type="button"
+          tabindex="-1"
+          aria-label={gettext("Close navigation")}
+          class="drawer-overlay block"
+          phx-click={close_navigation()}
+        ></button>
 
-        <nav id="main-navigation" phx-window-keydown={JS.exec("phx-click", to: "#app-drawer.drawer-open #nav-close")} phx-key="escape" class="flex min-h-full w-72 flex-col border-r border-base-300 bg-base-100">
+        <nav
+          id="main-navigation"
+          phx-window-keydown={JS.exec("phx-click", to: "#app-drawer.drawer-open #nav-close")}
+          phx-key="escape"
+          class="flex min-h-full w-72 flex-col border-r border-base-300 bg-base-100"
+        >
           <div class="flex h-16 items-center gap-2 border-b border-base-300 px-4">
             <.icon name="hero-calendar-days" class="size-5 text-primary" />
             <span class="font-semibold ">NeuZeit</span>
-            <button id="nav-close" type="button" class="btn btn-ghost btn-square ml-auto lg:hidden" phx-click={close_navigation()} aria-label={gettext("Close navigation")}><.icon name="hero-x-mark" class="size-5" /></button>
+            <button
+              id="nav-close"
+              type="button"
+              class="btn btn-ghost btn-square ml-auto lg:hidden"
+              phx-click={close_navigation()}
+              aria-label={gettext("Close navigation")}
+            ><.icon name="hero-x-mark" class="size-5" /></button>
           </div>
 
           <ul class="menu w-full grow gap-1 px-3 py-4">
@@ -68,7 +99,10 @@ defmodule NeuZeitWeb.Layouts do
                   :if={item.path}
                   navigate={item.path}
                   aria-current={NeuZeitWeb.Nav.active?(item.path, @current_path) && "page"}
-                  class={["justify-between", NeuZeitWeb.Nav.active?(item.path, @current_path) && "menu-active"]}
+                  class={[
+                    "justify-between",
+                    NeuZeitWeb.Nav.active?(item.path, @current_path) && "menu-active"
+                  ]}
                 >
                   <span class="flex items-center gap-2">
                     <.icon name={item.icon} class="size-4" />
@@ -89,17 +123,32 @@ defmodule NeuZeitWeb.Layouts do
     </div>
 
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Navigation">
-      import {defineHook} from "@/js/hook-dom.js"
+      import { defineHook } from "@/js/hook-dom.js";
 
       export default defineHook({
         mounted() {
-          this.updated()
+          this.updated();
         },
 
         updated() {
-          sessionStorage.setItem("navigation-term", this.el.dataset.termId ?? "")
+          sessionStorage.setItem("navigation-term", this.el.dataset.termId ?? "");
         },
-      })
+      });
+    </script>
+
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".LocalDates">
+      import { defineHook } from "@/js/hook-dom.js";
+
+      // The root layout installs the formatter and runs it before the first paint.
+      // A patch drops the ready mark, so every replaced date is written again.
+      export default defineHook({
+        mounted() {
+          globalThis.formatDates(this.el);
+        },
+        updated() {
+          globalThis.formatDates(this.el);
+        },
+      });
     </script>
 
     <.flash_group flash={@flash} />
@@ -153,7 +202,11 @@ defmodule NeuZeitWeb.Layouts do
     <form id="term-switcher-form" phx-change="switch_term" class="flex min-w-0 items-center gap-2">
       <label for="term-switcher" class="sr-only">{gettext("Current term")}</label>
       <select id="term-switcher" name="term_id" class="select select-ghost font-semibold max-w-full">
-        <option :for={term <- @terms} value={term.id} selected={@current_term && term.id == @current_term.id}>
+        <option
+          :for={term <- @terms}
+          value={term.id}
+          selected={@current_term && term.id == @current_term.id}
+        >
           {term.name}
         </option>
       </select>
@@ -209,11 +262,13 @@ defmodule NeuZeitWeb.Layouts do
     ~H"""
     <div id="theme-toggle" class="join" phx-hook=".ThemeToggle">
       <button
-        :for={{theme, icon, label} <- [
-          {"system", "hero-computer-desktop", gettext("Follow the system theme")},
-          {"light", "hero-sun", gettext("Light theme")},
-          {"dark", "hero-moon", gettext("Dark theme")}
-        ]}
+        :for={
+          {theme, icon, label} <- [
+            {"system", "hero-computer-desktop", gettext("Follow the system theme")},
+            {"light", "hero-sun", gettext("Light theme")},
+            {"dark", "hero-moon", gettext("Dark theme")}
+          ]
+        }
         type="button"
         class="btn btn-square join-item"
         phx-click={JS.dispatch("phx:set-theme")}
@@ -226,32 +281,32 @@ defmodule NeuZeitWeb.Layouts do
       </button>
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".ThemeToggle">
-      import {defineHook, htmlElements} from "@/js/hook-dom.js"
+      import { defineHook, htmlElements } from "@/js/hook-dom.js";
 
       export default defineHook({
         destroyed() {
-          globalThis.removeEventListener("phx:theme-changed", this.syncTheme)
+          globalThis.removeEventListener("phx:theme-changed", this.syncTheme);
         },
 
         mounted() {
-          this.syncTheme = this.syncTheme.bind(this)
-          globalThis.addEventListener("phx:theme-changed", this.syncTheme)
-          this.syncTheme()
+          this.syncTheme = this.syncTheme.bind(this);
+          globalThis.addEventListener("phx:theme-changed", this.syncTheme);
+          this.syncTheme();
         },
 
         syncTheme() {
-          const selected = document.documentElement.dataset.theme ?? "system"
+          const selected = document.documentElement.dataset.theme ?? "system";
           for (const button of htmlElements(this.el, "[data-phx-theme]")) {
-            const active = button.dataset.phxTheme === selected
-            button.classList.toggle("btn-neutral", active)
-            button.setAttribute("aria-pressed", String(active))
+            const active = button.dataset.phxTheme === selected;
+            button.classList.toggle("btn-neutral", active);
+            button.setAttribute("aria-pressed", String(active));
           }
         },
 
         updated() {
-          this.syncTheme()
+          this.syncTheme();
         },
-      })
+      });
     </script>
     """
   end

@@ -17,14 +17,27 @@ defmodule NeuZeitWeb.Stories.Card do
   def render(assigns) do
     ~H"""
     <div class="grid items-start gap-4 md:grid-cols-2">
-      <.card title="Teacher"><p>Anna Weber</p></.card>
+      <.card title="Teacher">
+        <p>Anna Weber</p>
+      </.card>
       <.card title="Teacher" subtitle="Contact details">
-        <:header_actions><.button type="button" variant="ghost" phx-click="toggle">{if @editing, do: "Cancel", else: "Edit"}</.button></:header_actions>
+        <:header_actions>
+          <.button type="button" variant="ghost" phx-click="toggle">{if @editing,
+            do: "Cancel",
+            else: "Edit"}</.button>
+        </:header_actions>
         <p :if={!@editing}>{@name}</p>
         <form :if={@editing} id="card-name-form" phx-submit="save">
-          <label class="fieldset"><span class="fieldset-legend">Name</span><input name="name" value={@name} class="input w-full" required /></label>
+          <label class="fieldset"><span class="fieldset-legend">Name</span><input
+            name="name"
+            value={@name}
+            class="input w-full"
+            required
+          /></label>
         </form>
-        <:footer :if={@editing}><.button type="submit" form="card-name-form" variant="primary">Save</.button></:footer>
+        <:footer :if={@editing}>
+          <.button type="submit" form="card-name-form" variant="primary">Save</.button>
+        </:footer>
       </.card>
     </div>
     """

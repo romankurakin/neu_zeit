@@ -15,6 +15,7 @@ defmodule NeuZeit.Catalog.Building do
     building
     |> cast(attrs, [:name])
     |> validate_required([:name])
+    |> validate_length(:name, min: 1, max: 100)
     |> unique_constraint(:name)
   end
 end

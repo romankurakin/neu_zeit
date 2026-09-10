@@ -24,10 +24,13 @@ defmodule NeuZeitWeb.Stories.TransferList do
   @impl true
   def render(assigns) do
     ~H"""
-    <.transfer_list id="room-selection"
+    <.transfer_list
+      id="room-selection"
       available={Enum.reject(@rooms, &(&1.id in @selected_room_ids))}
       selected={Enum.filter(@rooms, &(&1.id in @selected_room_ids))}
-      available_label={gettext("Other rooms")} selected_label={gettext("Allowed rooms")} />
+      available_label={gettext("Other rooms")}
+      selected_label={gettext("Allowed rooms")}
+    />
     """
   end
 end

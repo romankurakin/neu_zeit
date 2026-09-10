@@ -22,7 +22,7 @@ config :neu_zeit, NeuZeitWeb.Endpoint,
 
 config :volt, :server,
   prefix: "/assets",
-  watch_dirs: ["lib/", "dev/", "storybook/"],
+  watch_dirs: ["assets/", "lib/", "dev/", "storybook/"],
   watch_ignored: ["colocated/test/**", "colocated/prod/**"]
 
 # Watch static and templates for browser reloading.

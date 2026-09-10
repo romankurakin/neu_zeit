@@ -15,15 +15,24 @@ defmodule NeuZeitWeb.UI.Card do
 
   def card(assigns) do
     ~H"""
-    <.dynamic_tag tag_name={@tag_name} {@rest}
-      class={["card card-border min-w-0 border-base-300 bg-base-100", card_size(@size), @class]}>
-      <div :if={@title || @subtitle || @header_actions != []}
-        class="card-body flex-none flex-row items-start justify-between gap-4 border-b border-base-300">
+    <.dynamic_tag
+      tag_name={@tag_name}
+      {@rest}
+      class={["card card-border min-w-0 border-base-300 bg-base-100", card_size(@size), @class]}
+    >
+      <div
+        :if={@title || @subtitle || @header_actions != []}
+        class="card-body flex-none flex-row items-start justify-between gap-4 border-b border-base-300"
+      >
         <div :if={@title || @subtitle} class="min-w-0">
-          <.dynamic_tag :if={@title} tag_name={@title_tag} class="type-heading break-words">{@title}</.dynamic_tag>
+          <.dynamic_tag :if={@title} tag_name={@title_tag} class="type-heading break-words">
+            {@title}
+          </.dynamic_tag>
           <p :if={@subtitle} class="type-detail break-words">{@subtitle}</p>
         </div>
-        <div :if={@header_actions != []} class="flex shrink-0 items-center gap-2">{render_slot(@header_actions)}</div>
+        <div :if={@header_actions != []} class="flex shrink-0 items-center gap-2">
+          {render_slot(@header_actions)}
+        </div>
       </div>
       <div class="card-body type-body gap-4">{render_slot(@inner_block)}</div>
       <div :if={@footer != []} class="card-body flex-none border-t border-base-300">

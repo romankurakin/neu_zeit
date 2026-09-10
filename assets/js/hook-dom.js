@@ -26,6 +26,17 @@ export const acknowledgePatch = () => {
   // LiveView applies the server reply through its DOM patch.
 };
 
+const animationDisabled = 0;
+const animationDuration = 120;
+
+/** Reordering time in milliseconds. Readers who ask for less motion get none. */
+export const dragAnimation = () => {
+  if (globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return animationDisabled;
+  }
+  return animationDuration;
+};
+
 /**
  * Object hooks work across the application and Storybook LiveView runtimes.
  * @template {object} Definition

@@ -16,10 +16,22 @@ defmodule NeuZeitWeb.UI.DetailsPanel do
 
   def details_panel(assigns) do
     ~H"""
-    <.card tag_name="aside" title={@title} subtitle={@subtitle}
-      class={["w-full", @class]} aria-label={@title} {@rest}>
+    <.card
+      tag_name="aside"
+      title={@title}
+      subtitle={@subtitle}
+      class={["w-full motion-safe:enter", @class]}
+      aria-label={@title}
+      {@rest}
+    >
       <:header_actions :if={@on_close}>
-        <.button type="button" variant="ghost" class="btn-square" phx-click={@on_close} aria-label={gettext("Close")}>
+        <.button
+          type="button"
+          variant="ghost"
+          class="btn-square"
+          phx-click={@on_close}
+          aria-label={gettext("Close")}
+        >
           <.icon name="hero-x-mark" class="size-4" />
         </.button>
       </:header_actions>

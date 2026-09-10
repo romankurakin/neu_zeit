@@ -24,6 +24,7 @@ defmodule NeuZeit.Planning.Plan do
     |> reject_fields(attrs, [:status, :published_at])
     |> cast(attrs, [:term_id, :name])
     |> validate_required([:term_id, :name, :status])
+    |> validate_length(:name, min: 1, max: 100)
     |> foreign_key_constraint(:term_id)
   end
 

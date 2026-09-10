@@ -2,24 +2,25 @@ defmodule NeuZeitWeb.ReportActionsTest do
   use NeuZeitWeb.ConnCase, async: true
   import NeuZeit.Fixtures
 
-  test "overview identifies its plan and links to its checks", %{conn: conn} do
+  test "overview identifies its plan and links to the unplaced sessions", %{conn: conn} do
     term = term_fixture()
     session_fixture(term: term)
     plan = plan_fixture(term: term)
     {:ok, view, _html} = live(conn, "/terms/#{term.id}?plan_id=#{plan.id}")
     assert has_element?(view, "#main-content a", plan.name)
+    assert has_element?(view, "#readiness a[href='/terms/#{term.id}/plans/#{plan.id}?tab=board']")
 
-    assert has_element?(
+    # The plan holds no conflicts yet, so those rows offer nothing to open.
+    refute has_element?(
              view,
              "#readiness a[href='/terms/#{term.id}/plans/#{plan.id}?tab=checks']"
            )
 
-    assert has_element?(
+    refute has_element?(
              view,
              "#readiness a[href='/terms/#{term.id}/plans/#{plan.id}?tab=advisories']"
            )
 
-    assert has_element?(view, "#readiness a[href='/terms/#{term.id}/plans/#{plan.id}?tab=board']")
     refute has_element?(view, "#main-content .stat")
   end
 

@@ -6,7 +6,12 @@
     <meta name="csrf-token" content={get_csrf_token()} />
     <.live_title default="Admin" suffix=" - NeuZeit" phx-no-format>{assigns[:page_title]}</.live_title>
     <link phx-track-static rel="stylesheet" href={Volt.static_path(@conn, "/assets/css/app.css")} />
-    <script defer phx-track-static type="module" src={Volt.static_path(@conn, "/assets/js/app.js")}>
+    <script
+      defer
+      phx-track-static
+      type="module"
+      src={Volt.static_path(@conn, "/assets/js/app.js")}
+    >
     </script>
     <script>
       (() => {
@@ -23,9 +28,42 @@
         if (!document.documentElement.hasAttribute("data-theme")) {
           setTheme(localStorage.getItem("phx:theme") || "system");
         }
-        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-        
+        window.addEventListener(
+          "storage",
+          (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"),
+        );
+
         window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
+    </script>
+    <script>
+      (() => {
+        // The region set in the browser decides the order of day, month and year.
+        // Formatting runs before the first paint, so the ISO value never shows.
+        const formats = {
+          date: { year: "numeric", month: "2-digit", day: "2-digit" },
+          day_month: { month: "2-digit", day: "2-digit" },
+          moment: {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          },
+        };
+        const formatters = {};
+        globalThis.formatDates = (root) => {
+          for (const element of root.querySelectorAll("time[data-format]:not([data-ready])")) {
+            const format = element.dataset.format;
+            formatters[format] ||= new Intl.DateTimeFormat(undefined, formats[format]);
+            const iso = element.getAttribute("datetime");
+            // A bare date parses as UTC, which lands on the day before in the west.
+            const value = iso.includes("T") ? new Date(iso) : new Date(`${iso}T00:00`);
+            element.textContent = formatters[format].format(value);
+            element.dataset.ready = "";
+          }
+        };
+        document.addEventListener("DOMContentLoaded", () => globalThis.formatDates(document));
       })();
     </script>
   </head>

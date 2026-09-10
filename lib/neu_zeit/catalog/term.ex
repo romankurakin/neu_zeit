@@ -24,6 +24,7 @@ defmodule NeuZeit.Catalog.Term do
     term
     |> cast(attrs, [:name, :starts_on, :ends_on, :excluded_dates, :academic_hour_minutes])
     |> validate_required([:name, :starts_on, :ends_on, :academic_hour_minutes])
+    |> validate_length(:name, min: 1, max: 100)
     |> validate_number(:academic_hour_minutes, greater_than: 0, less_than_or_equal_to: 60)
     |> validate_starts_on_week_start()
     |> validate_change(:ends_on, fn :ends_on, ends_on ->

@@ -182,15 +182,18 @@ defmodule NeuZeitWeb.TermLiveTest do
 
       assert has_element?(
                live,
-               ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/people?tab=teachers", "/terms/#{term.id}")}"]}
-             )
-
-      assert has_element?(
-               live,
                ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/courses", "/terms/#{term.id}")}"]}
              )
 
-      assert has_element?(live, ~s{#readiness a[href="/terms/#{term.id}/slot-profiles"]})
+      assert has_element?(live, ~s{#readiness a[href="/terms/#{term.id}/availability"]})
+      # A profile belongs to a session, so the row opens the sessions.
+      assert has_element?(live, ~s{#readiness a[href="/terms/#{term.id}/sessions"]})
+
+      # The teacher names read as full names, so that row offers nothing to open.
+      refute has_element?(
+               live,
+               ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/people?tab=teachers", "/terms/#{term.id}")}"]}
+             )
     end
 
     test "refreshes when a non-teaching day is toggled", %{conn: conn} do

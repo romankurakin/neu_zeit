@@ -117,9 +117,7 @@ defmodule NeuZeitWeb.PlanLive.Index do
       terms={@terms}
       current_term={@term}
     >
-      <.page_header
-        title={gettext("Plans")}
-      >
+      <.page_header title={gettext("Plans")}>
         <:actions>
           <button class="btn btn-primary" phx-click="create">
             <.icon name="hero-plus" class="size-4" /> {gettext("New draft")}
@@ -160,7 +158,7 @@ defmodule NeuZeitWeb.PlanLive.Index do
         </:col>
         <:col :let={plan} label={gettext("Status")}><.status_indicator status={plan.status} /></:col>
         <:col :let={plan} label={gettext("Published")}>
-          {plan.published_at && Calendar.strftime(plan.published_at, "%Y-%m-%d %H:%M")}
+          <.date value={plan.published_at} format="moment" />
         </:col>
         <:action :let={plan}>
           <.link patch={~p"/terms/#{@term}/plans/#{plan}/rename"} class="btn btn-ghost">
@@ -183,7 +181,11 @@ defmodule NeuZeitWeb.PlanLive.Index do
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.name)}
-        message={gettext("Deleting this plan also deletes its placements. The active plan cannot be deleted.")}
+        message={
+          gettext(
+            "Deleting this plan also deletes its placements. The active plan cannot be deleted."
+          )
+        }
         confirm_label={gettext("Delete plan")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"

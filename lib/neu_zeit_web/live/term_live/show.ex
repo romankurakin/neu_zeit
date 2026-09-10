@@ -136,7 +136,14 @@ defmodule NeuZeitWeb.TermLive.Show do
     >
       <.page_header title={@term.name} subtitle={"#{@term.starts_on} - #{@term.ends_on}"}>
         <:actions>
-          <.link navigate={if @latest_plan, do: ~p"/terms/#{@term}/plans/#{@latest_plan}", else: ~p"/terms/#{@term}/plans"} class="btn btn-primary">{if @latest_plan, do: gettext("Open timetable"), else: gettext("Plans")}</.link>
+          <.link
+            navigate={
+              if @latest_plan,
+                do: ~p"/terms/#{@term}/plans/#{@latest_plan}",
+                else: ~p"/terms/#{@term}/plans"
+            }
+            class="btn btn-primary"
+          >{if @latest_plan, do: gettext("Open timetable"), else: gettext("Plans")}</.link>
         </:actions>
       </.page_header>
 
@@ -147,19 +154,28 @@ defmodule NeuZeitWeb.TermLive.Show do
         icon="hero-academic-cap"
       >
         <:actions>
-          <.link navigate={~p"/terms/#{@term}/workload/new"} class="btn btn-primary">{gettext("Add teaching load")}</.link>
+          <.link navigate={~p"/terms/#{@term}/workload/new"} class="btn btn-primary">{gettext(
+            "Add teaching load"
+          )}</.link>
         </:actions>
       </.empty_state>
-      <.card :if={count_for(@report, :week_masks, [:detail, :total]) > 0} class="mb-4" title={gettext("Checks")}>
-
-        <p :if={@plan} class="type-detail">{gettext("Plan")}: <.link navigate={~p"/terms/#{@term}/plans/#{@plan}"} class="link">{@plan.name}</.link></p>
+      <.card
+        :if={count_for(@report, :week_masks, [:detail, :total]) > 0}
+        class="mb-4"
+        title={gettext("Checks")}
+      >
+        <p :if={@plan} class="type-detail">
+          {gettext("Plan")}:
+          <.link navigate={~p"/terms/#{@term}/plans/#{@plan}"} class="link">{@plan.name}</.link>
+        </p>
         <.check_results id="readiness">
           <:item
             :for={row <- @report}
             status={row.status}
             label={label_for(row.key)}
             detail={detail_for(row)}
-            navigate={route_for(row.key, @term, @plan)}
+            navigate={route_for(row, @term, @plan)}
+            action_label={action_label_for(row.key)}
           >
             {row.count}
           </:item>
@@ -167,20 +183,47 @@ defmodule NeuZeitWeb.TermLive.Show do
       </.card>
 
       <.card title={gettext("Timetable")} class="mb-4">
-        <.form for={%{}} id="generation-plan" phx-change="generation_plan" class="flex flex-wrap items-end gap-4">
-          <.input type="select" name="plan_id" value={@generation_plan} label={gettext("Plan")} options={[{gettext("New draft"), ""} | Enum.map(@drafts, &{&1.name, &1.id})]} />
-          <.button type="button" variant="primary" phx-click="generate" phx-disable-with={gettext("Generating timetable")} disabled={@generation_blocked || count_for(@report, :week_masks, [:detail, :total]) == 0}>
+        <.form
+          for={%{}}
+          id="generation-plan"
+          phx-change="generation_plan"
+          class="flex flex-wrap items-end gap-4"
+        >
+          <.input
+            type="select"
+            name="plan_id"
+            value={@generation_plan}
+            label={gettext("Plan")}
+            options={[{gettext("New draft"), ""} | Enum.map(@drafts, &{&1.name, &1.id})]}
+          />
+          <.button
+            type="button"
+            variant="primary"
+            phx-click="generate"
+            phx-disable-with={gettext("Generating timetable")}
+            disabled={@generation_blocked || count_for(@report, :week_masks, [:detail, :total]) == 0}
+          >
             {gettext("Generate timetable")}
           </.button>
         </.form>
-        <p :if={@generation_blocked} class="mt-4">{gettext("Resolve rule violations on the Checks tab before generating the timetable.")}</p>
-        <p :if={@generation_plan != ""} class="mt-4">{gettext("Calculation replaces unlocked placements in this draft. Locked sessions stay in place.")}</p>
+        <p :if={@generation_blocked} class="mt-4">
+          {gettext("Resolve rule violations on the Checks tab before generating the timetable.")}
+        </p>
+        <p :if={@generation_plan != ""} class="mt-4">
+          {gettext(
+            "Calculation replaces unlocked placements in this draft. Locked sessions stay in place."
+          )}
+        </p>
       </.card>
 
       <.card id="teaching-calendar" title={gettext("Teaching calendar")}>
-        <:header_actions><.link navigate={~p"/terms/#{@term}/edit"} class="btn">{gettext("Edit dates")}</.link></:header_actions>
+        <:header_actions>
+          <.link navigate={~p"/terms/#{@term}/edit"} class="btn">{gettext("Edit dates")}</.link>
+        </:header_actions>
         <p class="mb-4 type-detail text-base-content">
-          {gettext("Select non-teaching dates. Dated sessions on these dates are omitted. You cannot add or move dated sessions to them.")}
+          {gettext(
+            "Select non-teaching dates. Dated sessions on these dates are omitted. You cannot add or move dated sessions to them."
+          )}
         </p>
 
         <.term_calendar term={@term} />
@@ -335,23 +378,19 @@ defmodule NeuZeitWeb.TermLive.Show do
 
   defp detail_for(_row), do: nil
 
-  defp route_for(key, term, plan) when key in [:unplaced, :locks, :hard_checks, :advisories] do
-    if plan do
-      tab =
-        case key do
-          :hard_checks -> "checks"
-          :advisories -> "advisories"
-          _ -> "board"
-        end
+  # An action helps only where the row asks for work, and the work is done elsewhere.
+  defp route_for(%{status: :ok}, _term, _plan), do: nil
 
-      ~p"/terms/#{term}/plans/#{plan}?#{%{tab: tab}}"
-    else
-      ~p"/terms/#{term}/plans"
-    end
+  defp route_for(%{key: key}, term, plan) when key in [:unplaced, :hard_checks, :advisories] do
+    # Without a plan these rows have nothing to open. The timetable card below picks one.
+    plan && ~p"/terms/#{term}/plans/#{plan}?#{%{tab: plan_tab(key)}}"
   end
 
-  defp route_for(:term_dates, term, _plan), do: ~p"/terms/#{term}" <> "#teaching-calendar"
-  defp route_for(key, term, _plan), do: route_for(key, term)
+  defp route_for(%{key: key}, term, _plan), do: route_for(key, term)
+
+  defp plan_tab(:hard_checks), do: "checks"
+  defp plan_tab(:advisories), do: "advisories"
+  defp plan_tab(:unplaced), do: "board"
 
   defp route_for(:placeholder_teachers, term),
     do: Nav.with_return(~p"/people?tab=teachers", ~p"/terms/#{term}")
@@ -361,8 +400,24 @@ defmodule NeuZeitWeb.TermLive.Show do
 
   defp route_for(:room_pools, term), do: Nav.with_return(~p"/courses", ~p"/terms/#{term}")
   defp route_for(:teacher_availability, term), do: ~p"/terms/#{term}/availability"
-  defp route_for(:slot_profiles, term), do: ~p"/terms/#{term}/slot-profiles"
+  # A profile belongs to a session, so the work is on the session, not on the profile.
+  defp route_for(:slot_profiles, term), do: ~p"/terms/#{term}/sessions"
   defp route_for(:merge_candidates, term), do: ~p"/terms/#{term}/sessions"
   defp route_for(:week_masks, term), do: ~p"/terms/#{term}/workload"
   defp route_for(_key, _term), do: nil
+
+  # Each action carries the name of the page it opens.
+  defp action_label_for(key) when key in [:placeholder_teachers, :aggregate_cohorts],
+    do: gettext("Teachers and groups")
+
+  defp action_label_for(key) when key in [:slot_profiles, :merge_candidates],
+    do: gettext("Sessions")
+
+  defp action_label_for(:room_pools), do: gettext("Courses")
+  defp action_label_for(:teacher_availability), do: gettext("Availability")
+  defp action_label_for(:week_masks), do: gettext("Teaching load")
+  defp action_label_for(:unplaced), do: gettext("Semester template")
+  defp action_label_for(:hard_checks), do: gettext("Checks")
+  defp action_label_for(:advisories), do: gettext("Warnings")
+  defp action_label_for(_key), do: nil
 end

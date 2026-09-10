@@ -32,11 +32,24 @@ defmodule NeuZeitWeb.TermLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={Nav.sections(@term)} current_path={~p"/terms/#{@term}/settings"} terms={@terms} current_term={@term}>
+    <Layouts.app
+      flash={@flash}
+      nav={Nav.sections(@term)}
+      current_path={~p"/terms/#{@term}/settings"}
+      terms={@terms}
+      current_term={@term}
+    >
       <.page_header title={gettext("Settings")} />
       <.card title={gettext("Teaching hours")}>
         <.form for={@form} id="term-settings" phx-submit="save" class="flex flex-col gap-4 max-w-lg">
-          <.input field={@form[:academic_hour_minutes]} type="number" label={gettext("Minutes per academic hour")} min="1" max="60" required />
+          <.input
+            field={@form[:academic_hour_minutes]}
+            type="number"
+            label={gettext("Minutes per academic hour")}
+            min="1"
+            max="60"
+            required
+          />
           <p>{gettext("Used for teaching load and hour reports. Session times stay unchanged.")}</p>
           <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
         </.form>

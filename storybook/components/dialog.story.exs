@@ -19,7 +19,13 @@ defmodule NeuZeitWeb.Stories.Dialog do
     <p class="mt-2">{@name}</p>
     <.dialog :if={@open} id="teacher-dialog" title="Edit teacher" on_cancel="close">
       <form id="dialog-name-form" phx-submit="save">
-        <label class="fieldset"><span class="fieldset-legend">Name</span><input class="input w-full" name="name" value={@name} required autofocus /></label>
+        <label class="fieldset"><span class="fieldset-legend">Name</span><input
+          class="input w-full"
+          name="name"
+          value={@name}
+          required
+          autofocus
+        /></label>
       </form>
       <:actions>
         <.button type="button" phx-click="close">Cancel</.button>

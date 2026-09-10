@@ -46,6 +46,7 @@ defmodule NeuZeit.Catalog.Session do
       :week_mask,
       :duration_slots
     ])
+    |> validate_length(:sequence_group, max: 100)
     |> validate_number(:duration_slots,
       greater_than: 0,
       less_than_or_equal_to: length(NeuZeit.Config.grid!().slots)
@@ -83,6 +84,7 @@ defmodule NeuZeit.Catalog.Session do
       :week_mask,
       :duration_slots
     ])
+    |> validate_length(:sequence_group, max: 100)
     |> validate_number(:duration_slots,
       greater_than: 0,
       less_than_or_equal_to: length(NeuZeit.Config.grid!().slots)

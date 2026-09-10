@@ -111,6 +111,8 @@ defmodule NeuZeitWeb do
       import NeuZeitWeb.Scheduling.Timetable
       import NeuZeitWeb.Scheduling.WeekPicker
       import NeuZeitWeb.UI.Card
+      import NeuZeitWeb.UI.DateField
+      import NeuZeitWeb.UI.Dates
       import NeuZeitWeb.UI.DetailsPanel
       import NeuZeitWeb.UI.Dialog
       import NeuZeitWeb.UI.EmptyState

@@ -3,6 +3,7 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
   use NeuZeitWeb, :ui_component
   alias NeuZeit.Config
   import NeuZeitWeb.Scheduling.Labels
+  import NeuZeitWeb.UI.Dates
 
   @doc """
   Renders one row per teaching week, with dated cells for marking non-teaching days.
@@ -43,7 +44,7 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
                 aria-pressed={to_string(MapSet.member?(@excluded, date))}
                 title={excluded_title(@excluded, date)}
                 class={[
-                  "w-full rounded-field px-1.5 py-1 tabular-nums type-detail transition-colors",
+                  "w-full rounded-field px-1.5 py-1 tabular-nums type-detail motion-safe:transition-colors",
                   if(MapSet.member?(@excluded, date),
                     do: "bg-error/15 text-error line-through",
                     else: "text-base-content hover:bg-base-200"
@@ -51,7 +52,7 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
                   !@readonly && "cursor-pointer"
                 ]}
               >
-                {Calendar.strftime(date, "%d.%m")}
+                <.date value={date} format="day_month" />
               </button>
             </td>
           </tr>

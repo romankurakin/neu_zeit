@@ -49,5 +49,8 @@ write_files:
       printf 'https://%s\n' "${HOST}" > /opt/neu-zeit/address
 
 runcmd:
+  # DigitalOcean's metrics agent. --enable-monitoring already installs it, so
+  # this only covers a host created without the flag.
+  - [sh, -c, "command -v /opt/digitalocean/bin/do-agent >/dev/null 2>&1 || curl -fsSL https://repos.insights.digitalocean.com/install.sh | bash"]
   - [sh, -c, "curl -fsSL https://get.docker.com | sh"]
   - [sh, -c, "/opt/neu-zeit/start 2>&1 | tee /var/log/neu-zeit-start.log"]

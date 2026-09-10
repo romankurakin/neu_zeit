@@ -193,7 +193,13 @@ defmodule NeuZeitWeb.CourseLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={Nav.sections(@navigation_term)} current_path={~p"/courses"} terms={@navigation_terms} current_term={@navigation_term}>
+    <Layouts.app
+      flash={@flash}
+      nav={Nav.sections(@navigation_term)}
+      current_path={~p"/courses"}
+      terms={@navigation_terms}
+      current_term={@navigation_term}
+    >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
       <.page_header title={@course.code} subtitle={@course.title}>
         <:actions>
@@ -205,9 +211,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
       <div class="flex flex-col gap-4">
         <.card title={gettext("Teaching types and allowed rooms")}>
           <p class="mb-4 type-detail text-base-content">
-            {gettext(
-              "Create separate sessions for parallel groups."
-            )}
+            {gettext("Create separate sessions for parallel groups.")}
           </p>
 
           <div :if={@components == []} class="mb-4">
@@ -264,9 +268,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
             class="mt-6 rounded-box border border-dashed border-base-300 p-4"
           >
             <p class="mb-4 type-detail text-base-content">
-              {gettext(
-                "Choose at least one allowed room."
-              )}
+              {gettext("Choose at least one allowed room.")}
             </p>
 
             <div class="flex flex-wrap items-start gap-4">
@@ -282,8 +284,16 @@ defmodule NeuZeitWeb.CourseLive.Show do
               <fieldset class="min-w-64 flex-1">
                 <legend class="label-text mb-1 block type-detail">{gettext("Allowed rooms")}</legend>
                 <div class="flex max-h-32 flex-wrap gap-x-4 gap-y-1 overflow-y-auto rounded-field border border-base-300 p-2">
-                  <label :for={room <- @rooms} class="flex cursor-pointer items-center gap-1 type-detail">
-                    <input type="checkbox" name="room_ids[]" value={room.id} class="checkbox checkbox-xs" />
+                  <label
+                    :for={room <- @rooms}
+                    class="flex cursor-pointer items-center gap-1 type-detail"
+                  >
+                    <input
+                      type="checkbox"
+                      name="room_ids[]"
+                      value={room.id}
+                      class="checkbox checkbox-xs"
+                    />
                     {room.name}
                   </label>
                 </div>
@@ -335,7 +345,11 @@ defmodule NeuZeitWeb.CourseLive.Show do
               options={Enum.map(@locales, &{String.upcase(&1), &1})}
             />
             <div class="min-w-64 flex-1">
-              <.input field={@translation_form[:title]} type="text" label={gettext("Translated title")} />
+              <.input
+                field={@translation_form[:title]}
+                type="text"
+                label={gettext("Translated title")}
+              />
             </div>
             <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save title")}</.button>
           </.form>
@@ -346,7 +360,9 @@ defmodule NeuZeitWeb.CourseLive.Show do
         :if={@deleting}
         title={gettext("Delete this teaching type?")}
         message={
-          gettext("Its allowed room list will also be deleted. Teaching types used by sessions cannot be deleted.")
+          gettext(
+            "Its allowed room list will also be deleted. Teaching types used by sessions cannot be deleted."
+          )
         }
         confirm_label={gettext("Delete teaching type")}
         on_confirm="delete_component_confirm"

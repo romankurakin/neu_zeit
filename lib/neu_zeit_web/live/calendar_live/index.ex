@@ -246,9 +246,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
       current_term={@term}
       page_path={calendar_path(assigns)}
     >
-      <.page_header
-        title={gettext("Calendar by date")}
-      />
+      <.page_header title={gettext("Calendar by date")} />
 
       <.empty_state
         :if={is_nil(@plan)}
@@ -287,7 +285,9 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                 </option>
               </optgroup>
               <optgroup label={gettext("Rooms")}>
-                <option :for={room <- @room_options} value={room.id} selected={@scope == room.id}>{room.name}</option>
+                <option :for={room <- @room_options} value={room.id} selected={@scope == room.id}>
+                  {room.name}
+                </option>
               </optgroup>
             </select>
           </form>
@@ -306,14 +306,18 @@ defmodule NeuZeitWeb.CalendarLive.Index do
         </.toolbar>
 
         <p :if={@plan.status != "active"} class="mb-4 type-detail text-base-content">
-          {gettext(
-            "One-off changes are shown only for the published plan."
-          )}
+          {gettext("One-off changes are shown only for the published plan.")}
         </p>
 
         <div class="flex flex-wrap gap-2 mb-4">
-          <.link navigate={~p"/terms/#{@term}/plans/#{@plan}?week=#{@week}"} class="btn">{gettext("Semester template")}</.link>
-          <.link :if={@plan.status == "active"} navigate={~p"/terms/#{@term}/exceptions/new?kind=add&return_to=#{calendar_path(assigns)}"} class="btn">{gettext("Add a dated session")}</.link>
+          <.link navigate={~p"/terms/#{@term}/plans/#{@plan}?week=#{@week}"} class="btn">{gettext(
+            "Semester template"
+          )}</.link>
+          <.link
+            :if={@plan.status == "active"}
+            navigate={~p"/terms/#{@term}/exceptions/new?kind=add&return_to=#{calendar_path(assigns)}"}
+            class="btn"
+          >{gettext("Add a dated session")}</.link>
         </div>
         <div
           id="calendar-grid"
@@ -341,7 +345,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
             <div class="mb-2 flex items-baseline justify-between gap-2 border-b border-base-300 pb-1">
               <span class="type-detail font-semibold">{day_label(Enum.at(@grid.days, index))}</span>
               <span class="tabular-nums type-detail text-base-content">
-                {Calendar.strftime(date, "%d.%m")}
+                <.date value={date} format="day_month" />
               </span>
             </div>
 
@@ -349,7 +353,12 @@ defmodule NeuZeitWeb.CalendarLive.Index do
               {gettext("Non-teaching date")}
             </p>
 
-            <div data-occurrences data-date={Date.to_iso8601(date)} data-excluded={to_string(MapSet.member?(@excluded, date))} class="flex flex-col gap-1 min-h-12">
+            <div
+              data-occurrences
+              data-date={Date.to_iso8601(date)}
+              data-excluded={to_string(MapSet.member?(@excluded, date))}
+              class="flex flex-col gap-1 min-h-12"
+            >
               <p
                 :if={occurrences_on(@projection, date, @scope, @sessions) == []}
                 class="py-2 text-center type-detail text-base-content"
@@ -377,19 +386,43 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                     {session && session.course_component.course.code}
                   </span>
                   <span class="tabular-nums text-base-content">
-                    {NeuZeitWeb.Scheduling.SessionCard.time_range(@grid, occurrence.slot, occurrence.duration_slots || 1)}
+                    {NeuZeitWeb.Scheduling.SessionCard.time_range(
+                      @grid,
+                      occurrence.slot,
+                      occurrence.duration_slots || 1
+                    )}
                   </span>
                 </div>
-                <div class="break-words font-semibold">{session && session.course_component.course.title}</div>
+                <div class="break-words font-semibold">
+                  {session && session.course_component.course.title}
+                </div>
                 <div class="break-words">{session && session.teacher.name}</div>
-                <span :if={occurrence.source != :template} class="badge badge-md badge-outline h-auto my-1">
-                  {case occurrence.source do :move -> gettext("Moved"); :add -> gettext("Added"); :cancel -> gettext("Cancelled") end}
+                <span
+                  :if={occurrence.source != :template}
+                  class="badge badge-md badge-outline h-auto my-1"
+                >
+                  {case occurrence.source do
+                    :move -> gettext("Moved")
+                    :add -> gettext("Added")
+                    :cancel -> gettext("Cancelled")
+                  end}
                 </span>
-                <p :if={occurrence.source in [:move, :cancel] && occurrence.exception_id && @exceptions[occurrence.exception_id]} class="type-detail my-1">
-                  {gettext("Original date: %{date}", date: @exceptions[occurrence.exception_id].occurrence_date)}
+                <p
+                  :if={
+                    occurrence.source in [:move, :cancel] && occurrence.exception_id &&
+                      @exceptions[occurrence.exception_id]
+                  }
+                  class="type-detail my-1"
+                >
+                  {gettext("Original date: %{date}",
+                    date: @exceptions[occurrence.exception_id].occurrence_date
+                  )}
                 </p>
                 <div class="flex flex-wrap items-center gap-1">
-                  <span :for={cohort <- (session && session.cohorts) || []} class="badge badge-ghost badge-md">
+                  <span
+                    :for={cohort <- (session && session.cohorts) || []}
+                    class="badge badge-ghost badge-md"
+                  >
                     {cohort.name}
                   </span>
                   <span class="ml-auto text-base-content">
@@ -397,8 +430,22 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                   </span>
                 </div>
                 <div :if={@plan.status == "active"} class="flex flex-wrap gap-1 mt-2">
-                  <.link navigate={if occurrence.exception_id, do: ~p"/terms/#{@term}/exceptions/#{occurrence.exception_id}/edit?return_to=#{calendar_path(assigns)}", else: action_path(assigns, occurrence, "move")} class="btn">{if occurrence.exception_id, do: gettext("Edit change"), else: gettext("Move dated session")}</.link>
-                  <.link :if={is_nil(occurrence.exception_id)} navigate={action_path(assigns, occurrence, "cancel")} class="btn">{gettext("Cancel dated session")}</.link>
+                  <.link
+                    navigate={
+                      if occurrence.exception_id,
+                        do:
+                          ~p"/terms/#{@term}/exceptions/#{occurrence.exception_id}/edit?return_to=#{calendar_path(assigns)}",
+                        else: action_path(assigns, occurrence, "move")
+                    }
+                    class="btn"
+                  >{if occurrence.exception_id,
+                    do: gettext("Edit change"),
+                    else: gettext("Move dated session")}</.link>
+                  <.link
+                    :if={is_nil(occurrence.exception_id)}
+                    navigate={action_path(assigns, occurrence, "cancel")}
+                    class="btn"
+                  >{gettext("Cancel dated session")}</.link>
                 </div>
               </div>
             </div>
@@ -406,25 +453,29 @@ defmodule NeuZeitWeb.CalendarLive.Index do
         </div>
       </div>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".CalendarDrag">
-        import {acknowledgePatch, defineHook, htmlElements, restoreDraggedItem} from "@/js/hook-dom.js"
-        import Sortable from "sortablejs"
-
-        const dragAnimation = 120
+        import {
+          acknowledgePatch,
+          defineHook,
+          dragAnimation,
+          htmlElements,
+          restoreDraggedItem,
+        } from "@/js/hook-dom.js";
+        import Sortable from "sortablejs";
 
         export default defineHook({
           destroyed() {
-            this.teardown()
+            this.teardown();
           },
 
           mounted() {
-            this.setup()
+            this.setup();
           },
 
           /** @param {import("sortablejs").SortableEvent} event */
           onDrop(event) {
-            const from = event.item.dataset.date
-            const to = event.to.dataset.date
-            restoreDraggedItem(event)
+            const from = event.item.dataset.date;
+            const to = event.to.dataset.date;
+            restoreDraggedItem(event);
             if (typeof to === "string" && to !== from && event.to.dataset.excluded !== "true") {
               this.pushEvent(
                 "move_occurrence",
@@ -435,27 +486,27 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                   to,
                 },
                 acknowledgePatch,
-              )
+              );
             }
           },
 
           setup() {
-            this.teardown()
+            this.teardown();
             if (this.el.dataset.readonly !== "true") {
               this.sorters = htmlElements(this.el, '[data-dropzone="day"] [data-occurrences]').map((list) =>
                 Sortable.create(list, {
-                  animation: dragAnimation,
+                  animation: dragAnimation(),
                   draggable: '[data-session-id][data-cancelled="false"]',
                   filter: "a,button",
                   forceFallback: true,
                   ghostClass: "opacity-40",
                   group: "calendar",
                   onEnd: (event) => {
-                    this.onDrop(event)
+                    this.onDrop(event);
                   },
                   preventOnFilter: false,
                 }),
-              )
+              );
             }
           },
 
@@ -464,15 +515,15 @@ defmodule NeuZeitWeb.CalendarLive.Index do
 
           teardown() {
             for (const sorter of this.sorters) {
-              sorter.destroy()
+              sorter.destroy();
             }
-            this.sorters = []
+            this.sorters = [];
           },
 
           updated() {
-            this.setup()
+            this.setup();
           },
-        })
+        });
       </script>
     </Layouts.app>
     """

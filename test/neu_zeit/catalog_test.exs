@@ -792,4 +792,24 @@ defmodule NeuZeit.CatalogTest do
     assert {:ok, term} = Catalog.update_term(term, %{ends_on: ~D[2026-09-12]})
     assert term.weeks_count == 2
   end
+
+  test "over-long free text is rejected instead of reaching the database" do
+    # A curriculum header pasted into the teacher name reached varchar(255),
+    # raised Postgrex.Error and took the LiveView process down with it.
+    pasted = String.duplicate("Ministry of Science and Higher Education\t", 40)
+
+    assert {:error, changeset} = Catalog.create_teacher(%{name: pasted})
+    assert %{name: ["should be at most 100 character(s)"]} = errors_on(changeset)
+
+    assert {:error, changeset} = Catalog.create_cohort(%{name: pasted})
+    assert %{name: ["should be at most 100 character(s)"]} = errors_on(changeset)
+
+    assert {:error, changeset} =
+             Catalog.create_course(%{code: pasted, title: pasted, credits: 5})
+
+    assert %{
+             code: ["should be at most 50 character(s)"],
+             title: ["should be at most 200 character(s)"]
+           } = errors_on(changeset)
+  end
 end

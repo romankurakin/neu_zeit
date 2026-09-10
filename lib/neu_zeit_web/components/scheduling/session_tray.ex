@@ -12,10 +12,22 @@ defmodule NeuZeitWeb.Scheduling.SessionTray do
 
   def session_tray(assigns) do
     ~H"""
-    <div id={@id} data-dropzone="tray" class="min-h-12 flex flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-2">
-      <p :if={@sessions == []} class="type-detail text-base-content">{@empty_message || gettext("Everything is placed.")}</p>
-      <.session_card :for={session <- @sessions} id={"#{@id}-session-#{session.id}"}
-        session={session} weeks_count={@weeks_count} selected={@selected_session_id == session.id} on_select={@on_select} />
+    <div
+      id={@id}
+      data-dropzone="tray"
+      class="min-h-12 flex flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-2"
+    >
+      <p :if={@sessions == []} class="type-detail text-base-content">
+        {@empty_message || gettext("Everything is placed.")}
+      </p>
+      <.session_card
+        :for={session <- @sessions}
+        id={"#{@id}-session-#{session.id}"}
+        session={session}
+        weeks_count={@weeks_count}
+        selected={@selected_session_id == session.id}
+        on_select={@on_select}
+      />
     </div>
     """
   end

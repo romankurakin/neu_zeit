@@ -62,23 +62,18 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
     end
   end
 
-  # Replaces the complete profile selection sent by the grid editor.
-  def handle_event("grid_changed", %{"cells" => cells}, socket) do
+  # Applies one grid event to the starts the profile allows.
+  def handle_event("grid_changed", params, socket) do
     profile = socket.assigns.selected
-    attrs = %{"cells" => Enum.map(cells, &%{"day" => &1["day"], "slot" => &1["slot"]})}
+    attrs = %{"cells" => apply_cells(profile.cells, params)}
 
     case Catalog.update_slot_profile(profile, attrs) do
       {:ok, profile} ->
-        saved = Catalog.get_slot_profile!(profile.id)
-
-        {:reply, %{cells: Enum.map(saved.cells, &Map.take(&1, [:day, :slot]))},
-         socket |> assign(:selected, saved) |> load()}
+        {:noreply, socket |> assign(:selected, Catalog.get_slot_profile!(profile.id)) |> load()}
 
       {:error, reason} ->
-        saved = Catalog.get_slot_profile!(profile.id)
-
-        {:reply, %{cells: Enum.map(saved.cells, &Map.take(&1, [:day, :slot]))},
-         socket |> assign(:selected, saved) |> Errors.put(reason)}
+        # The assigns still hold the stored profile, so a refusal renders it again.
+        {:noreply, Errors.put(socket, reason)}
     end
   end
 
@@ -196,7 +191,12 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
         subtitle={gettext("Sessions with this profile can start only at the selected times.")}
       >
         <:actions>
-          <button :if={!@has_weekday_profile} id="create-default-profiles" class="btn" phx-click="create_defaults">
+          <button
+            :if={!@has_weekday_profile}
+            id="create-default-profiles"
+            class="btn"
+            phx-click="create_defaults"
+          >
             {gettext("Add weekday profile")}
           </button>
           <.link
@@ -216,7 +216,12 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
             icon="hero-table-cells"
           />
 
-          <.table :if={@profiles != []} id="slot-profiles" rows={@profiles} row_id={&"profile-#{&1.id}"}>
+          <.table
+            :if={@profiles != []}
+            id="slot-profiles"
+            rows={@profiles}
+            row_id={&"profile-#{&1.id}"}
+          >
             <:col :let={profile} label={gettext("Profile")}>
               <.link
                 patch={~p"/terms/#{@term}/slot-profiles/#{profile}/edit"}
@@ -228,10 +233,12 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
             <:col :let={profile} label={gettext("Starts")} numeric>{length(profile.cells)}</:col>
             <:col :let={profile} label={gettext("Longest session")}>
               {ngettext("%{count} time slot", "%{count} time slots", longest_fit(profile, @grid),
-                    count: longest_fit(profile, @grid)
-                  )}
+                count: longest_fit(profile, @grid)
+              )}
             </:col>
-            <:col :let={profile} label={gettext("Sessions")} numeric>{Map.get(@usage, profile.id, 0)}</:col>
+            <:col :let={profile} label={gettext("Sessions")} numeric>
+              {Map.get(@usage, profile.id, 0)}
+            </:col>
             <:action :let={profile}>
               <button
                 class="btn btn-ghost text-error"
@@ -245,13 +252,19 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@selected}
+          class="order-first lg:order-last"
           title={slot_profile_label(@selected) || gettext("New profile")}
           subtitle={gettext("Select allowed start times.")}
           on_close={JS.patch(~p"/terms/#{@term}/slot-profiles")}
         >
-          <.form for={@form} id="profile-form" phx-mounted={JS.focus_first(to: "#profile-form")} phx-submit="save" class="mb-4">
+          <.form
+            for={@form}
+            id="profile-form"
+            phx-mounted={JS.focus_first(to: "#profile-form")}
+            phx-submit="save"
+            class="mb-4"
+          >
             <div class="flex items-end gap-2">
               <div class="flex-1">
                 <.input field={@form[:name]} type="text" label={gettext("Name")} />

@@ -170,7 +170,13 @@ defmodule NeuZeitWeb.PeopleLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={Nav.sections(@navigation_term)} current_path={~p"/people"} terms={@navigation_terms} current_term={@navigation_term}>
+    <Layouts.app
+      flash={@flash}
+      nav={Nav.sections(@navigation_term)}
+      current_path={~p"/people"}
+      terms={@navigation_terms}
+      current_term={@navigation_term}
+    >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
       <.page_header title={gettext("Teachers and groups")}>
         <:actions>
@@ -198,8 +204,12 @@ defmodule NeuZeitWeb.PeopleLive.Index do
             row_id={&"teacher-#{&1.id}"}
             empty_message={gettext("No teachers yet.")}
           >
-            <:col :let={teacher} label={gettext("Name")}><span class="font-semibold">{teacher.name}</span></:col>
-            <:col :let={teacher} label={gettext("Sessions")} numeric>{Map.get(@teacher_usage, teacher.id, 0)}</:col>
+            <:col :let={teacher} label={gettext("Name")}>
+              <span class="font-semibold">{teacher.name}</span>
+            </:col>
+            <:col :let={teacher} label={gettext("Sessions")} numeric>
+              {Map.get(@teacher_usage, teacher.id, 0)}
+            </:col>
             <:col :let={teacher} label={gettext("Review")}>
               <span :if={placeholder?(teacher)}>{gettext("Check full name")}</span>
             </:col>
@@ -224,8 +234,12 @@ defmodule NeuZeitWeb.PeopleLive.Index do
             row_id={&"cohort-#{&1.id}"}
             empty_message={gettext("No groups yet.")}
           >
-            <:col :let={cohort} label={gettext("Name")}><span class="font-semibold">{cohort.name}</span></:col>
-            <:col :let={cohort} label={gettext("Sessions")} numeric>{Map.get(@cohort_usage, cohort.id, 0)}</:col>
+            <:col :let={cohort} label={gettext("Name")}>
+              <span class="font-semibold">{cohort.name}</span>
+            </:col>
+            <:col :let={cohort} label={gettext("Sessions")} numeric>
+              {Map.get(@cohort_usage, cohort.id, 0)}
+            </:col>
             <:col :let={cohort} label={gettext("Review")}>
               <span :if={aggregate?(cohort)}>{gettext("Check group membership")}</span>
               <span :if={subgroup?(cohort)}>{gettext("Language subgroup")}</span>
@@ -246,19 +260,20 @@ defmodule NeuZeitWeb.PeopleLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@editing}
+          class="order-first lg:order-last"
           title={inspector_title(@kind, @editing)}
           on_close={JS.patch(~p"/people?tab=#{@tab}")}
         >
           <.form
             :if={@kind == :teacher}
             for={@form}
-            id="teacher-form" phx-mounted={JS.focus_first(to: "#teacher-form")}
+            id="teacher-form"
+            phx-mounted={JS.focus_first(to: "#teacher-form")}
             phx-change="validate"
             phx-submit="save"
           >
-            <.input field={@form[:name]} type="text" label={gettext("Full name")} placeholder="Anna Weber" />
+            <.input field={@form[:name]} type="text" label={gettext("Full name")} />
             <div class="flex gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
               <.link patch={~p"/people?tab=teachers"} class="btn btn-ghost">{gettext("Cancel")}</.link>
@@ -268,11 +283,12 @@ defmodule NeuZeitWeb.PeopleLive.Index do
           <.form
             :if={@kind == :cohort}
             for={@form}
-            id="cohort-form" phx-mounted={JS.focus_first(to: "#cohort-form")}
+            id="cohort-form"
+            phx-mounted={JS.focus_first(to: "#cohort-form")}
             phx-change="validate"
             phx-submit="save"
           >
-            <.input field={@form[:name]} type="text" label={gettext("Group name")} placeholder="WI-1" />
+            <.input field={@form[:name]} type="text" label={gettext("Group name")} />
             <div class="flex gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
               <.link patch={~p"/people?tab=cohorts"} class="btn btn-ghost">{gettext("Cancel")}</.link>

@@ -241,9 +241,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
       current_term={@term}
     >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
-      <.page_header
-        title={gettext("One-off changes")}
-      >
+      <.page_header title={gettext("One-off changes")}>
         <:actions>
           <.link patch={~p"/terms/#{@term}/exceptions/new"} class="btn btn-primary">
             <.icon name="hero-plus" class="size-4" /> {gettext("Record a change")}
@@ -268,11 +266,22 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
             <:col :let={row} label={gettext("Change")}>
               {kind_label(row.kind)}
             </:col>
-            <:col :let={row} label={gettext("Session")}>{session_label(row.session, (Enum.find_index(@sessions, &(&1.id == row.session_id)) || 0) + 1, @term.weeks_count, @placement_weeks)}</:col>
+            <:col :let={row} label={gettext("Session")}>
+              {session_label(
+                row.session,
+                (Enum.find_index(@sessions, &(&1.id == row.session_id)) || 0) + 1,
+                @term.weeks_count,
+                @placement_weeks
+              )}
+            </:col>
             <:col :let={row} label={gettext("Date")}>{row.occurrence_date}</:col>
             <:col :let={row} label={gettext("Moved to")}>
               <span :if={row.new_date}>{row.new_date}</span>
-              <span :if={row.new_slot}>{NeuZeitWeb.Scheduling.SessionCard.time_range(@grid, row.new_slot, row.session.duration_slots)}</span>
+              <span :if={row.new_slot}>{NeuZeitWeb.Scheduling.SessionCard.time_range(
+                @grid,
+                row.new_slot,
+                row.session.duration_slots
+              )}</span>
               <span :if={row.new_room} class="text-base-content">, {row.new_room.name}</span>
             </:col>
             <:col :let={row} label={gettext("Reason")}>{row.reason}</:col>
@@ -280,11 +289,17 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
             <:col :let={row} label={gettext("Status")}>
               <.status_indicator
                 status={if row.status == "active", do: :active, else: :unknown}
-                label={if row.status == "active", do: gettext("In force"), else: gettext("Change reverted")}
+                label={
+                  if row.status == "active", do: gettext("In force"), else: gettext("Change reverted")
+                }
               />
             </:col>
             <:action :let={row}>
-              <.link :if={row.status == "active"} patch={~p"/terms/#{@term}/exceptions/#{row.id}/edit?return_to=#{@return_to || ""}"} class="btn btn-ghost">{gettext("Edit")}</.link>
+              <.link
+                :if={row.status == "active"}
+                patch={~p"/terms/#{@term}/exceptions/#{row.id}/edit?return_to=#{@return_to || ""}"}
+                class="btn btn-ghost"
+              >{gettext("Edit")}</.link>
               <button
                 :if={row.status == "active"}
                 class="btn btn-ghost"
@@ -298,19 +313,34 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
         </div>
 
         <.details_panel
-          class="order-first lg:order-last"
           :if={@editing}
-          title={if @editing.id, do: gettext("Edit change"), else: change_action(to_string(@form[:kind].value))}
+          class="order-first lg:order-last"
+          title={
+            if @editing.id,
+              do: gettext("Edit change"),
+              else: change_action(to_string(@form[:kind].value))
+          }
           on_close={JS.patch(~p"/terms/#{@term}/exceptions")}
         >
-          <.form for={@form} id="exception-form" phx-mounted={JS.focus_first(to: "#exception-form")} phx-change="validate" phx-submit="save" class="flex flex-col gap-2">
+          <.form
+            for={@form}
+            id="exception-form"
+            phx-mounted={JS.focus_first(to: "#exception-form")}
+            phx-change="validate"
+            phx-submit="save"
+            class="flex flex-col gap-2"
+          >
             <.input
               field={@form[:session_id]}
               disabled={@editing.id != nil}
               type="select"
               label={gettext("Session")}
               prompt={gettext("Choose a session")}
-              options={Enum.map(Enum.with_index(@sessions, 1), fn {s, index} -> {session_label(s, index, @term.weeks_count, @placement_weeks), s.id} end)}
+              options={
+                Enum.map(Enum.with_index(@sessions, 1), fn {s, index} ->
+                  {session_label(s, index, @term.weeks_count, @placement_weeks), s.id}
+                end)
+              }
             />
             <.input
               field={@form[:kind]}
@@ -322,21 +352,41 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
                 {gettext("Add a dated session"), "add"}
               ]}
             />
-            <.input field={@form[:occurrence_date]} type="date" label={gettext("Date")} />
+            <.date_field
+              field={@form[:occurrence_date]}
+              label={gettext("Date")}
+              min={@term.starts_on}
+              max={@term.ends_on}
+            />
 
             <div :if={to_string(@form[:kind].value) in ["move", "add"]} class="flex flex-col gap-2">
-              <.input :if={to_string(@form[:kind].value) == "move"} field={@form[:new_date]} type="date" label={gettext("New date")} />
+              <.date_field
+                :if={to_string(@form[:kind].value) == "move"}
+                field={@form[:new_date]}
+                label={gettext("New date")}
+                min={@term.starts_on}
+                max={@term.ends_on}
+                disallowed={@term.excluded_dates || []}
+              />
               <.input
                 field={@form[:new_slot]}
                 type="select"
-                label={if to_string(@form[:kind].value) == "move", do: gettext("New time"), else: gettext("Time")}
+                label={
+                  if to_string(@form[:kind].value) == "move",
+                    do: gettext("New time"),
+                    else: gettext("Time")
+                }
                 prompt={gettext("Choose a time")}
                 options={slot_options(@grid)}
               />
               <.input
                 field={@form[:new_room_id]}
                 type="select"
-                label={if to_string(@form[:kind].value) == "move", do: gettext("New room"), else: gettext("Room")}
+                label={
+                  if to_string(@form[:kind].value) == "move",
+                    do: gettext("New room"),
+                    else: gettext("Room")
+                }
                 prompt={gettext("Choose a room")}
                 options={Enum.map(@rooms, &{"#{&1.name}, #{&1.building.name}", &1.id})}
               />
@@ -345,26 +395,33 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
             <.input field={@form[:reason]} type="text" label={gettext("Reason")} required />
             <.input field={@form[:created_by]} type="text" label={gettext("Author")} required />
 
-            <p class="type-detail font-semibold">{gettext("Applies only to this date. The semester template stays the same.")}</p>
+            <p class="type-detail font-semibold">
+              {gettext("Applies only to this date. The semester template stays the same.")}
+            </p>
             <div class="flex flex-wrap gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>
-                {if @editing.id, do: gettext("Save"), else: change_action(to_string(@form[:kind].value))}
+                {if @editing.id,
+                  do: gettext("Save"),
+                  else: change_action(to_string(@form[:kind].value))}
               </.button>
               <.link patch={~p"/terms/#{@term}/exceptions"} class="btn btn-ghost">
                 {gettext("Cancel")}
               </.link>
             </div>
           </.form>
-          <button :if={@editing.id && @editing.status == "active"} class="btn" phx-click="revert_prompt" phx-value-id={@editing.id}>{gettext("Revert change")}</button>
+          <button
+            :if={@editing.id && @editing.status == "active"}
+            class="btn"
+            phx-click="revert_prompt"
+            phx-value-id={@editing.id}
+          >{gettext("Revert change")}</button>
         </.details_panel>
       </div>
 
       <.alert_dialog
         :if={@reverting}
         title={gettext("Revert this change?")}
-        message={
-          gettext("The change will no longer apply. Its record will remain in the history.")
-        }
+        message={gettext("The change will no longer apply. Its record will remain in the history.")}
         confirm_label={gettext("Revert change")}
         on_confirm="revert_confirm"
         on_cancel="revert_cancel"

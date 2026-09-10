@@ -1,158 +1,6 @@
 {
   "lockfileVersion": 1,
   "packages": {
-    "@oxfmt/binding-android-arm-eabi": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-2olh3ioEmc4gRzQm7jxyB1b/PFBoFvTq8KdgYySeNpysDtA6DEg2Mvya4/I6flhL7G0eOrE8RD7JCNCIMhE16Q==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-android-arm-eabi/-/binding-android-arm-eabi-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-android-arm64": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-ulfw8EHN1MBq/MFFDXw2/M1VAFu5mRUcnuZ8Hqbv9viAnFzO9t1jKSAsDqKYYDGMlytF/uj6Z5z5n/tHupnKhw==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-android-arm64/-/binding-android-arm64-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-darwin-arm64": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-MfONZx/O2o9M5v2jDFol556G9+A+P9xCuJ4DZ+qhE+RnaCdoscy6Eu5nq1dbuNxhwdJyZ6kLI7fnG9mwEeOeGg==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-darwin-arm64/-/binding-darwin-arm64-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-darwin-x64": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-CYnIx5LvFVJnyJcCqwH2jxMKjFjqo5678MPjdmNFoSGMhlOvZ/xRZqvhDcolKrXc8fezW3AKh+C4wyoFuWOSSg==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-darwin-x64/-/binding-darwin-x64-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-freebsd-x64": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-7/iF1orvIS9mxhKUqnmtMgm+OrSQ5acPwuvdQrm6ECgqbwPmC+Pw9cdke3sNfVN6pT2hbJ58+jP8BCThl5HXOg==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-freebsd-x64/-/binding-freebsd-x64-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-arm-gnueabihf": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-yy+OGys07IZOpOmYPZoObKyUQLkfxeQqeCypk+1jaZd8HGo77hzvU1Jg8X3+W75o+9lszOjBfg0nkGtlwYywXw==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-arm-musleabihf": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-wPIeeigXgJpwNw3wydYRt3U9iN9Y/ejpOZuYL9IA7igxWs7LIQMOkhKxTumRvy6dIv0iXKk3RTw3Vmjg0i+2sg==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-arm-musleabihf/-/binding-linux-arm-musleabihf-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-arm64-gnu": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-0+XNxcdbkTfxdcD4qW6Ci9n+mBNJ8xTBumnxKvKBmRFOdx0Wf8/KiHjCJayooXmYkqRpRVd98Q5egvzx5BLSgQ==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-arm64-musl": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-I75LKPJyNOYUzkqAiAMIE31+Ye7xtQXZdoty1IXn4B+bw5Zpmez5wfG19ejGpNnS/BzQ7LFS+7jxuTPb+vHiZw==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-arm64-musl/-/binding-linux-arm64-musl-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-ppc64-gnu": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-c2M5iRpe1QMZSRE/UvZoPdXBWb5Ic/ycvOyNiKCqPwQ/OyOKIMiJs02ynlNnjb7ZZJnRXYLmGcohoINOcwDK3w==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-riscv64-gnu": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-dQzzYlV24Udhfm5ECuSdgqRvFJU/CGHzcYYEO3dLM6W6+CHiBFrq9OjIllkdCcPhsoSQ8o223Dja84MOSzed9A==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-riscv64-gnu/-/binding-linux-riscv64-gnu-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-riscv64-musl": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-rFNq1CgX4qMJANOq42LkAs90JE80GpiaEohAV2qn/gT2hGjQTW1zBO5zQBxArI4926pM1OSzo3CN0tBszGBIaA==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-riscv64-musl/-/binding-linux-riscv64-musl-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-s390x-gnu": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-Sky6rEdz2o5IGq01lPhS12yEvDdChVEcaYrcLHkveh4Fx0qPjljE/Iul6SX/bRMl6lNc8J7J/mDQdzgBdA++Pg==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-x64-gnu": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-vPXmlNORV8AZq2Ocxh07pxwMjfENUWCV/eZArnao0qC3NO/hDeTVkQvee7SJJUbIiF5PZbBa4kYmaXnu7Rk58w==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-x64-gnu/-/binding-linux-x64-gnu-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-linux-x64-musl": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-x/WAtFqYtVr3vZ9ni8nr4kn9whSitg8fOljq/pZzBpxopRdY1BMLZCZkrbIbaBcYkm46qGbqVea2FCWmtQ2P9w==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-linux-x64-musl/-/binding-linux-x64-musl-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-openharmony-arm64": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-eRw9Neh4/aA6i+q/R3WU1gGQINhVM0J4fXIm6t27caOamkr/37uAkp1IdBx4zlJH97hmXR63z/q9n5c5dN7MzA==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-openharmony-arm64/-/binding-openharmony-arm64-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-win32-arm64-msvc": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-YIMvb+sGNYN2uc6+QK2HLPeEKM2vl7QZ5onQzpAJRb6pnf0DwUFP5R8tdS9R0l8hdUil2gu4Uxd0Yxrop0iT4w==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-win32-ia32-msvc": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-LzmU9MyACPzwNDIK0ItMedHPz735Ug7ELWguxo4/kuy6zWuDoeglOAEFCY8jLg0PzRpFO3hDyLFe2Gu2eFDeGA==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-win32-ia32-msvc/-/binding-win32-ia32-msvc-0.67.0.tgz",
-      "version": "0.67.0"
-    },
-    "@oxfmt/binding-win32-x64-msvc": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-sbQOIDNLUEeVZcAJcSL5VURn7kfjvilPviody4Yl5n8lQCDtUm+C9oHTTwZS/m4d/Z6Vv3jNEiAofH932NPPCg==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/@oxfmt/binding-win32-x64-msvc/-/binding-win32-x64-msvc-0.67.0.tgz",
-      "version": "0.67.0"
-    },
     "@oxlint-tsgolint/darwin-arm64": {
       "dependencies": {},
       "has_install_script": false,
@@ -539,6 +387,24 @@
       "tarball": "https://registry.npmjs.org/@typescript/typescript-win32-x64/-/typescript-win32-x64-7.0.2.tgz",
       "version": "7.0.2"
     },
+    "atomico": {
+      "dependencies": {},
+      "has_install_script": false,
+      "integrity": "sha512-mshhLRMeIltNYbnQnqgnrvJ/uDa8XDfTQcjw3ymOygQqwHIQ4Sp0LcNYMCbACkV3DtV+eDXb9szwU4qMUuGwYQ==",
+      "optional_dependencies": {},
+      "tarball": "https://registry.npmjs.org/atomico/-/atomico-1.79.2.tgz",
+      "version": "1.79.2"
+    },
+    "cally": {
+      "dependencies": {
+        "atomico": "^1.79.2"
+      },
+      "has_install_script": false,
+      "integrity": "sha512-zY/Ueh+p6O+LKPYqNB13dATgNuazAHS0n3JbtKyUmMoQfRq5mC2/zFI3UV2X3g+2lZn2BBwr1Z+HxyG9Dt/6lw==",
+      "optional_dependencies": {},
+      "tarball": "https://registry.npmjs.org/cally/-/cally-0.9.2.tgz",
+      "version": "0.9.2"
+    },
     "daisyui": {
       "dependencies": {},
       "has_install_script": false,
@@ -554,36 +420,6 @@
       "optional_dependencies": {},
       "tarball": "https://registry.npmjs.org/heroicons/-/heroicons-2.2.0.tgz",
       "version": "2.2.0"
-    },
-    "oxfmt": {
-      "dependencies": {
-        "tinypool": "2.1.2"
-      },
-      "has_install_script": false,
-      "integrity": "sha512-vV7sSiPsaO0mSxdoUdayipVDFPzW/UQ+hrezEHa20+Tx1dnMdZLSRHMT0PdS67FFbhd74M1n08asW21aLGeCrA==",
-      "optional_dependencies": {
-        "@oxfmt/binding-android-arm-eabi": "0.67.0",
-        "@oxfmt/binding-android-arm64": "0.67.0",
-        "@oxfmt/binding-darwin-arm64": "0.67.0",
-        "@oxfmt/binding-darwin-x64": "0.67.0",
-        "@oxfmt/binding-freebsd-x64": "0.67.0",
-        "@oxfmt/binding-linux-arm-gnueabihf": "0.67.0",
-        "@oxfmt/binding-linux-arm-musleabihf": "0.67.0",
-        "@oxfmt/binding-linux-arm64-gnu": "0.67.0",
-        "@oxfmt/binding-linux-arm64-musl": "0.67.0",
-        "@oxfmt/binding-linux-ppc64-gnu": "0.67.0",
-        "@oxfmt/binding-linux-riscv64-gnu": "0.67.0",
-        "@oxfmt/binding-linux-riscv64-musl": "0.67.0",
-        "@oxfmt/binding-linux-s390x-gnu": "0.67.0",
-        "@oxfmt/binding-linux-x64-gnu": "0.67.0",
-        "@oxfmt/binding-linux-x64-musl": "0.67.0",
-        "@oxfmt/binding-openharmony-arm64": "0.67.0",
-        "@oxfmt/binding-win32-arm64-msvc": "0.67.0",
-        "@oxfmt/binding-win32-ia32-msvc": "0.67.0",
-        "@oxfmt/binding-win32-x64-msvc": "0.67.0"
-      },
-      "tarball": "https://registry.npmjs.org/oxfmt/-/oxfmt-0.67.0.tgz",
-      "version": "0.67.0"
     },
     "oxlint": {
       "dependencies": {},
@@ -643,14 +479,6 @@
       "optional_dependencies": {},
       "tarball": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.3.tgz",
       "version": "4.3.3"
-    },
-    "tinypool": {
-      "dependencies": {},
-      "has_install_script": false,
-      "integrity": "sha512-9YodfrxS9g9IbFr/KOjE5bAeJ0p61n3bW6mqvy0jtoeKd1kTW1Cxm0oulm6KX2lyM9Gl6WIe8nEbY7LWv5ZJww==",
-      "optional_dependencies": {},
-      "tarball": "https://registry.npmjs.org/tinypool/-/tinypool-2.1.2.tgz",
-      "version": "2.1.2"
     },
     "topbar": {
       "dependencies": {},
