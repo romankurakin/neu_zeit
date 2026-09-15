@@ -12,9 +12,9 @@ defmodule NeuZeit.Catalog.SlotProfileCell do
     timestamps()
   end
 
-  def changeset(cell, attrs) do
-    days_count = length(NeuZeit.Config.grid!().days)
-    slots_count = length(NeuZeit.Config.grid!().slots)
+  def changeset(cell, attrs, grid \\ NeuZeit.Config.grid!()) do
+    days_count = length(grid.days)
+    slots_count = length(grid.slots)
 
     cell
     |> cast(attrs, [:day, :slot])

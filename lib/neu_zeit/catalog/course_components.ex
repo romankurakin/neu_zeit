@@ -15,12 +15,14 @@ defmodule NeuZeit.Catalog.CourseComponents do
     Repo.all(
       from c in CourseComponent,
         order_by: [asc: c.course_id, asc: c.kind],
-        preload: [:course, :allowed_rooms]
+        preload: [:allowed_rooms, course: :translations, teaching_type: :translations]
     )
   end
 
   def get_course_component!(id) do
-    CourseComponent |> Repo.get!(id) |> Repo.preload([:course, :allowed_rooms])
+    CourseComponent
+    |> Repo.get!(id)
+    |> Repo.preload([:allowed_rooms, course: :translations, teaching_type: :translations])
   end
 
   def create_course_component(attrs) do

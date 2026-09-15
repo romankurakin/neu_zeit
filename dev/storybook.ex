@@ -11,8 +11,18 @@ defmodule NeuZeitWeb.Storybook do
     sandbox_class: "neu-zeit app-typography font-sans bg-base-100 text-base-content",
     color_mode: true
 
-  # Volt serves source modules in development; there is no static file to hash.
-  defoverridable asset_hash: 1
-  def asset_hash(:js_path), do: nil
-  def asset_hash(asset), do: super(asset)
+  # Volt resolves development modules and the hashed files from a build.
+  defoverridable config: 2, asset_hash: 1
+
+  def config(:css_path, _default),
+    do: Volt.static_path(NeuZeitWeb.Endpoint, "/assets/css/app.css")
+
+  def config(:js_path, _default),
+    do:
+      Volt.static_path(NeuZeitWeb.Endpoint, "/assets/js/storybook.js",
+        entry: "assets/js/storybook.ts"
+      )
+
+  def config(key, default), do: super(key, default)
+  def asset_hash(_asset), do: nil
 end

@@ -25,7 +25,7 @@ defmodule NeuZeitWeb.PlanLiveTest do
   end
 
   defp component(rooms, code) do
-    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code, "credits" => 5})
+    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -41,7 +41,7 @@ defmodule NeuZeitWeb.PlanLiveTest do
     {:ok, teacher} = Catalog.create_teacher(%{"name" => teacher_name})
 
     {:ok, session} =
-      Catalog.create_session(
+      NeuZeit.Fixtures.create_session(
         Map.merge(
           %{
             "term_id" => ctx.term.id,
@@ -165,7 +165,7 @@ defmodule NeuZeitWeb.PlanLiveTest do
 
     test "a drop onto an illegal cell is refused and explains itself", %{conn: conn} = ctx do
       only = [hd(ctx.rooms)]
-      {:ok, course} = Catalog.create_course(%{"code" => "ONE", "title" => "One", "credits" => 5})
+      {:ok, course} = Catalog.create_course(%{"code" => "ONE", "title" => "One"})
 
       {:ok, shared_component} =
         Catalog.create_course_component(%{
@@ -185,8 +185,11 @@ defmodule NeuZeitWeb.PlanLiveTest do
         "cohort_ids" => [ctx.cohort.id]
       }
 
-      {:ok, first} = Catalog.create_session(Map.put(attrs, "teacher_id", first_teacher.id))
-      {:ok, second} = Catalog.create_session(Map.put(attrs, "teacher_id", second_teacher.id))
+      {:ok, first} =
+        NeuZeit.Fixtures.create_session(Map.put(attrs, "teacher_id", first_teacher.id))
+
+      {:ok, second} =
+        NeuZeit.Fixtures.create_session(Map.put(attrs, "teacher_id", second_teacher.id))
 
       live = board(conn, ctx)
       live |> element("#board-tray-session-#{first.id}") |> render_click()
@@ -371,18 +374,29 @@ defmodule NeuZeitWeb.PlanLiveTest do
       refute has_element?(live, "#publish-gate")
     end
 
-    test "publication is blocked while sessions are unplaced", %{conn: conn} = ctx do
+    test "partial publication requires its own confirmation", %{conn: conn} = ctx do
       _created = session(ctx, "INF110", "Anna Weber")
 
       {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/plans/#{ctx.plan}")
       live |> element("#publish-button") |> render_click()
 
       assert has_element?(live, "#publish-gate")
-      # Both acknowledgements ticked, but a hard condition still fails.
+      # General review does not confirm partial publication.
       live |> element(~s{input[phx-value-key="advisories"]}) |> render_click()
       live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
 
       assert has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
+      render_hook(live, "publish_confirm", %{})
+      assert Planning.get_plan!(ctx.plan.id).status == "draft"
+      live |> element("#publish-button") |> render_click()
+
+      for key <- ["advisories", "registers", "partial"] do
+        live |> element(~s{input[phx-value-key="#{key}"]}) |> render_click()
+      end
+
+      refute has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
+      live |> element(~s{#publish-gate button}, "Publish") |> render_click()
+      assert Planning.get_plan!(ctx.plan.id).status == "active"
     end
 
     test "the soft conditions must be confirmed by a person", %{conn: conn} = ctx do
@@ -492,10 +506,10 @@ defmodule NeuZeitWeb.PlanLiveTest do
 
       {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/plans/#{ctx.plan}?tab=board")
 
-      assert {:error, _} = NeuZeit.Solver.PlanRuns.solve(ctx.plan.id)
-
       assert render(live) =~
                "Resolve rule violations on the Checks tab before generating the timetable."
+
+      assert {:error, _} = NeuZeit.Solver.PlanRuns.solve(ctx.plan.id)
     end
 
     test "a run is announced and reflected in the page", %{conn: conn} = ctx do

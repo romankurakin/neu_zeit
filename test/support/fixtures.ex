@@ -39,7 +39,7 @@ defmodule NeuZeit.Fixtures do
   def course_fixture(attrs \\ %{}) do
     {:ok, course} =
       attrs
-      |> Enum.into(%{code: unique("CS101"), title: "Algorithms", credits: Decimal.new("6")})
+      |> Enum.into(%{title: "Algorithms"})
       |> Catalog.create_course()
 
     course
@@ -120,8 +120,76 @@ defmodule NeuZeit.Fixtures do
         cohort_ids: Enum.map(cohorts, & &1.id)
       })
 
-    {:ok, session} = Catalog.create_session(attrs)
+    {:ok, session} = create_session(attrs)
     Catalog.get_session!(session.id)
+  end
+
+  # Fixtures can represent existing fixed repetitions. All production creation uses Workload.save.
+  def create_session(attrs) do
+    attrs =
+      Map.new(attrs, fn {key, value} ->
+        {if(is_binary(key), do: String.to_existing_atom(key), else: key), value}
+      end)
+
+    term = Catalog.get_term!(attrs.term_id)
+
+    fields =
+      Map.merge(
+        %{
+          duration_slots: 1,
+          week_mask: [],
+          automatic_weeks: false,
+          sequence_group: nil,
+          slot_profile_id: nil
+        },
+        attrs
+      )
+
+    repeats = if fields.automatic_weeks, do: 1, else: max(length(fields.week_mask), 1)
+    duration = if is_integer(fields.duration_slots), do: max(fields.duration_slots, 1), else: 1
+    slot = hd(term.grid.slots)
+
+    slot_minutes =
+      NeuZeit.Scheduling.Grid.minutes(slot.end) - NeuZeit.Scheduling.Grid.minutes(slot.start)
+
+    hours = Decimal.from_float(duration * repeats * slot_minutes / term.academic_hour_minutes)
+
+    Repo.transaction(fn ->
+      requirement =
+        struct(
+          NeuZeit.Catalog.Workload,
+          Map.take(fields, [
+            :term_id,
+            :course_component_id,
+            :teacher_id,
+            :slot_profile_id,
+            :week_mask,
+            :duration_slots,
+            :automatic_weeks,
+            :sequence_group
+          ])
+        )
+        |> Ecto.Changeset.change(
+          contact_hours: hours,
+          academic_hour_minutes: term.academic_hour_minutes
+        )
+        |> Repo.insert!()
+
+      case NeuZeit.Catalog.Sessions.create_generated_session(requirement.id, attrs) do
+        {:ok, session} ->
+          for id <- Enum.uniq(Map.get(attrs, :cohort_ids, [])) do
+            Repo.insert!(%NeuZeit.Catalog.WorkloadCohort{
+              workload_id: requirement.id,
+              cohort_id: id
+            })
+          end
+
+          session
+
+        {:error, error} ->
+          Repo.rollback(error)
+      end
+    end)
   end
 
   def plan_fixture(attrs \\ %{}) do
@@ -144,7 +212,7 @@ defmodule NeuZeit.Fixtures do
   end
 
   def placement_fixture(attrs \\ %{}) do
-    {:ok, placement} = Planning.create_placement(attrs)
+    {:ok, placement} = Planning.create_placement(Map.new(attrs))
     Planning.get_placement!(placement.id)
   end
 

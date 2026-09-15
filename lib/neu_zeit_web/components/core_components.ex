@@ -264,6 +264,8 @@ defmodule NeuZeitWeb.CoreComponents do
     """
   end
 
+  def input(%{type: "time"} = assigns), do: NeuZeitWeb.UI.TimeField.time_field(assigns)
+
   # Handles the remaining HTML input types.
   def input(assigns) do
     ~H"""

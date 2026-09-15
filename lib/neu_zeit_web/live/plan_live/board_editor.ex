@@ -192,8 +192,8 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
       class="min-w-0 order-first lg:order-last lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
     >
       <.details_panel
-        title={"#{@selected_session.course_component.course.code}, #{@selected_session.course_component.course.title}"}
-        subtitle={component_kind_label(@selected_session.course_component.kind)}
+        title={course_title(@selected_session.course_component.course)}
+        subtitle={component_kind_label(@selected_session.course_component)}
         on_close="clear_selection"
       >
         <section class="flex flex-col gap-2">
@@ -218,19 +218,11 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
             )}
           </p>
           <.link
-            :if={@selected_session.automatic_weeks}
             navigate={
-              ~p"/terms/#{@term}/workload/#{@selected_session.id}/edit?return_to=#{workspace_path(@workspace)}"
+              ~p"/terms/#{@term}/workload/#{@selected_session.workload_id}/edit?return_to=#{workspace_path(@workspace)}"
             }
             class="link type-detail"
           >{gettext("Edit teaching load")}</.link>
-          <.link
-            :if={!@selected_session.automatic_weeks}
-            navigate={
-              ~p"/terms/#{@term}/sessions/#{@selected_session.id}/edit?return_to=#{workspace_path(@workspace)}"
-            }
-            class="link type-detail"
-          >{gettext("Edit session weeks and duration")}</.link>
         </section>
         <section class="border-t border-base-300 pt-4">
           <.placement_rules

@@ -30,13 +30,7 @@ defmodule NeuZeitWeb.SessionController do
     }
   end
 
-  def create(conn, params) do
-    with {:ok, session} <- Catalog.create_session(params["session"] || params) do
-      conn
-      |> put_status(:created)
-      |> json(%{data: ApiJSON.data(session)})
-    end
-  end
+  def create(_conn, _params), do: Catalog.create_session(%{})
 
   def show(conn, %{"id" => id}) do
     with :ok <- RequestParams.require_uuid(id),
@@ -45,26 +39,17 @@ defmodule NeuZeitWeb.SessionController do
     end
   end
 
-  def update(conn, %{"id" => id}) do
+  def update(_conn, %{"id" => id}) do
     with :ok <- RequestParams.require_uuid(id),
-         {:ok, session} <- RequestParams.fetch_not_found(fn -> Catalog.get_session!(id) end),
-         {:ok, session} <-
-           Catalog.update_session(session, conn.body_params["session"] || conn.body_params) do
-      json(conn, %{data: ApiJSON.data(session)})
+         {:ok, session} <- RequestParams.fetch_not_found(fn -> Catalog.get_session!(id) end) do
+      Catalog.update_session(session, %{})
     end
   end
 
-  def delete(conn, %{"id" => id}) do
+  def delete(_conn, %{"id" => id}) do
     with :ok <- RequestParams.require_uuid(id),
-         {:ok, session} <- RequestParams.fetch_not_found(fn -> Catalog.get_session!(id) end),
-         {:ok, _session} <- delete_session(session) do
-      send_resp(conn, :no_content, "")
+         {:ok, session} <- RequestParams.fetch_not_found(fn -> Catalog.get_session!(id) end) do
+      Catalog.delete_session(session)
     end
-  end
-
-  defp delete_session(session) do
-    Catalog.delete_session(session)
-  rescue
-    Ecto.ConstraintError -> {:error, {:conflict, "Resource is referenced by other records"}}
   end
 end

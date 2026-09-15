@@ -8,7 +8,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
   use NeuZeitWeb, :live_view
 
   alias NeuZeit.Catalog
-  alias NeuZeit.Catalog.{CourseComponent, CourseTranslation}
+  alias NeuZeit.Catalog.CourseTranslation
   alias NeuZeitWeb.Nav
 
   @impl true
@@ -16,7 +16,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
     {:ok,
      socket
      |> assign(:rooms, Catalog.list_rooms())
-     |> assign(:locales, NeuZeit.Config.load!().institution.supported_locales)
+     |> assign(:locales, NeuZeitWeb.Locale.supported())
      |> assign(
        :translation_form,
        to_form(Catalog.change_course_translation(%CourseTranslation{}))
@@ -30,10 +30,17 @@ defmodule NeuZeitWeb.CourseLive.Show do
     components = Enum.map(course.components, &Catalog.get_course_component!(&1.id))
 
     socket
-    |> assign(:page_title, course.code)
+    |> assign(:page_title, course_title(course))
     |> assign(:course, course)
     |> assign(:components, components)
-    |> assign(:translations, Catalog.list_course_translations(course.id))
+    |> assign(:teaching_types, Catalog.list_teaching_types())
+    |> assign(
+      :translations,
+      Enum.filter(
+        Catalog.list_course_translations(course.id),
+        &(&1.locale in socket.assigns.locales)
+      )
+    )
     |> assign(:usage, Catalog.usage_counts().components)
   end
 
@@ -66,12 +73,14 @@ defmodule NeuZeitWeb.CourseLive.Show do
     }
 
     case Catalog.create_course_component(attrs) do
-      {:ok, _component} ->
+      {:ok, component} ->
         {:noreply,
          socket
          |> put_flash(
            :info,
-           gettext("Teaching type added: %{kind}.", kind: component_kind_label(kind))
+           gettext("Teaching type added: %{kind}.",
+             kind: component_kind_label(Catalog.get_course_component!(component.id))
+           )
          )
          |> load(socket.assigns.course.id)}
 
@@ -104,7 +113,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
          |> assign(:deleting, nil)
          |> put_flash(
            :info,
-           gettext("Teaching type removed: %{kind}.", kind: component_kind_label(component.kind))
+           gettext("Teaching type removed: %{kind}.", kind: component_kind_label(component))
          )
          |> load(socket.assigns.course.id)}
 
@@ -166,8 +175,9 @@ defmodule NeuZeitWeb.CourseLive.Show do
       {:error, {:conflict, gettext("Sessions still use this teaching type.")}}
   end
 
-  defp missing_kinds(components) do
-    CourseComponent.kinds() -- Enum.map(components, & &1.kind)
+  defp missing_types(teaching_types, components) do
+    used = MapSet.new(components, & &1.kind)
+    Enum.reject(teaching_types, &MapSet.member?(used, &1.id))
   end
 
   # Room counts are advice; they do not impose a scheduling constraint.
@@ -201,7 +211,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
       current_term={@navigation_term}
     >
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
-      <.page_header title={@course.code} subtitle={@course.title}>
+      <.page_header title={course_title(@course)} subtitle={@course.code}>
         <:actions>
           <.link navigate={~p"/courses"} class="btn btn-ghost">{gettext("All courses")}</.link>
           <.link patch={~p"/courses/#{@course}/edit"} class="btn">{gettext("Edit course")}</.link>
@@ -210,9 +220,12 @@ defmodule NeuZeitWeb.CourseLive.Show do
 
       <div class="flex flex-col gap-4">
         <.card title={gettext("Teaching types and allowed rooms")}>
-          <p class="mb-4 type-detail text-base-content">
-            {gettext("Create separate sessions for parallel groups.")}
-          </p>
+          <.link
+            navigate={Nav.with_return(~p"/teaching-types", ~p"/courses/#{@course}")}
+            class="btn btn-ghost mb-4"
+          >
+            {gettext("Manage teaching types")}
+          </.link>
 
           <div :if={@components == []} class="mb-4">
             <.empty_state
@@ -226,7 +239,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
             <div :for={component <- @components} id={"component-#{component.id}"}>
               <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h3 class="flex items-center gap-2 type-heading">
-                  {component_kind_label(component.kind)}
+                  {component_kind_label(component)}
                   <span class="badge badge-ghost badge-md">
                     {ngettext(
                       "%{count} session",
@@ -262,7 +275,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
           </div>
 
           <form
-            :if={missing_kinds(@components) != []}
+            :if={missing_types(@teaching_types, @components) != []}
             id="add-component-form"
             phx-submit="add_component"
             class="mt-6 rounded-box border border-dashed border-base-300 p-4"
@@ -275,8 +288,8 @@ defmodule NeuZeitWeb.CourseLive.Show do
               <label class="form-control">
                 <span class="label-text mb-1 block type-detail">{gettext("Kind")}</span>
                 <select name="kind" class="select select-bordered">
-                  <option :for={kind <- missing_kinds(@components)} value={kind}>
-                    {component_kind_label(kind)}
+                  <option :for={type <- missing_types(@teaching_types, @components)} value={type.id}>
+                    {teaching_type_label(type)}
                   </option>
                 </select>
               </label>
@@ -342,7 +355,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
               field={@translation_form[:locale]}
               type="select"
               label={gettext("Language")}
-              options={Enum.map(@locales, &{String.upcase(&1), &1})}
+              options={Enum.map(@locales, &{NeuZeitWeb.Locale.label(&1), &1})}
             />
             <div class="min-w-64 flex-1">
               <.input

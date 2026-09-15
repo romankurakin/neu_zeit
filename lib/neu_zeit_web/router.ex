@@ -23,6 +23,10 @@ defmodule NeuZeitWeb.Router do
 
     live_session :default, on_mount: [NeuZeitWeb.Locale, NeuZeitWeb.NavigationContext] do
       live "/terms", TermLive.Index, :index
+      live "/settings", SettingsLive.Index, :index
+      live "/teaching-types", TeachingTypeLive.Index, :index
+      live "/teaching-types/new", TeachingTypeLive.Index, :new
+      live "/teaching-types/:id/edit", TeachingTypeLive.Index, :edit
       live "/terms/new", TermLive.Index, :new
       live "/terms/:id/edit", TermLive.Index, :edit
       live "/terms/:id", TermLive.Show, :show
@@ -75,6 +79,7 @@ defmodule NeuZeitWeb.Router do
     pipe_through :api
 
     resources "/terms", TermController, except: [:new, :edit] do
+      resources "/workloads", WorkloadController, except: [:new, :edit]
       get "/occurrences", ScheduleController, :occurrences
       get "/coverage", CurriculumController, :term_coverage
       get "/courses/:course_id/coverage", CurriculumController, :coverage
@@ -98,6 +103,7 @@ defmodule NeuZeitWeb.Router do
     end
 
     resources "/course_components", CourseComponentController, except: [:new, :edit]
+    resources "/teaching_types", TeachingTypeController, except: [:new, :edit]
 
     resources "/teachers", TeacherController, except: [:new, :edit]
 

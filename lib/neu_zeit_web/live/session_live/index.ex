@@ -1,14 +1,8 @@
 defmodule NeuZeitWeb.SessionLive.Index do
-  @moduledoc """
-  Edits the sessions required for a term.
-
-  Each session has a teacher, attending groups, weeks and duration.
-  A shared lecture is one session with all attending groups.
-  """
+  @moduledoc "Read-only sessions generated from teaching load."
   use NeuZeitWeb, :live_view
 
   alias NeuZeit.{Catalog, Planning}
-  alias NeuZeit.Catalog.Session
   alias NeuZeitWeb.Nav
 
   @empty_filters %{
@@ -36,9 +30,6 @@ defmodule NeuZeitWeb.SessionLive.Index do
      |> assign(:cohorts, Catalog.list_cohorts())
      |> assign(:plans, Planning.list_plans(term_id))
      |> assign(:profiles, Catalog.list_slot_profiles(term_id))
-     |> assign(:components, component_options())
-     |> assign(:editing, nil)
-     |> assign(:deleting, nil)
      |> assign(:count, 0)
      |> assign(:pages, 1)
      |> stream(:sessions, [])}
@@ -76,32 +67,25 @@ defmodule NeuZeitWeb.SessionLive.Index do
   end
 
   defp apply_action(socket, :new, _params) do
-    session = %Session{
-      term_id: socket.assigns.term.id,
-      week_mask: all_weeks(socket),
-      duration_slots: 1
-    }
-
-    open_form(socket, session, [])
+    push_navigate(socket,
+      to:
+        Nav.with_return(~p"/terms/#{socket.assigns.term}/workload/new", socket.assigns.return_to)
+    )
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     session = Catalog.get_session!(id, socket.assigns.term.id)
-    open_form(socket, session, Enum.map(session.cohorts, & &1.id))
+
+    push_navigate(socket,
+      to:
+        Nav.with_return(
+          ~p"/terms/#{socket.assigns.term}/workload/#{session.workload_id}/edit",
+          socket.assigns.return_to
+        )
+    )
   end
 
-  defp apply_action(socket, :index, _params),
-    do: socket |> assign(:editing, nil) |> assign(:form, nil)
-
-  defp open_form(socket, session, cohort_ids) do
-    socket
-    |> assign(:editing, session)
-    |> assign(:week_mask, session.week_mask || all_weeks(socket))
-    |> assign(:cohort_ids, cohort_ids)
-    |> assign(:form, to_form(Catalog.change_session(session)))
-  end
-
-  defp all_weeks(socket), do: Enum.to_list(1..socket.assigns.term.weeks_count)
+  defp apply_action(socket, :index, _params), do: socket
 
   @impl true
   def handle_event("filter", params, socket) do
@@ -113,76 +97,6 @@ defmodule NeuZeitWeb.SessionLive.Index do
     do:
       {:noreply,
        push_patch(socket, to: sessions_path(socket.assigns, @empty_filters), replace: true)}
-
-  def handle_event("week_mask_changed", %{"preset" => preset}, socket) do
-    weeks = all_weeks(socket)
-
-    mask =
-      case preset do
-        "odd" -> Enum.filter(weeks, &(rem(&1, 2) == 1))
-        "even" -> Enum.filter(weeks, &(rem(&1, 2) == 0))
-        _all -> weeks
-      end
-
-    {:noreply, assign(socket, :week_mask, mask)}
-  end
-
-  def handle_event("week_mask_changed", %{"week" => week}, socket) do
-    week = String.to_integer(week)
-    mask = socket.assigns.week_mask
-
-    mask = if week in mask, do: List.delete(mask, week), else: Enum.sort([week | mask])
-    {:noreply, assign(socket, :week_mask, mask)}
-  end
-
-  def handle_event("selection_changed", %{"selected" => cohort_ids}, socket),
-    do: {:noreply, assign(socket, :cohort_ids, cohort_ids)}
-
-  def handle_event("save", %{"session" => params}, socket) do
-    attrs =
-      params
-      |> Map.put("term_id", socket.assigns.term.id)
-      |> Map.put("week_mask", socket.assigns.week_mask)
-      |> Map.put("cohort_ids", socket.assigns.cohort_ids)
-
-    result =
-      case socket.assigns.editing do
-        %Session{id: nil} -> Catalog.create_session(attrs)
-        session -> Catalog.update_session(session, Map.delete(attrs, "term_id"))
-      end
-
-    case result do
-      {:ok, _session} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Session saved."))
-         |> push_patch(to: sessions_path(socket.assigns, socket.assigns.filters))
-         |> load_sessions()}
-
-      {:error, reason} ->
-        {:noreply, Errors.put(socket, reason, as: :form)}
-    end
-  end
-
-  def handle_event("delete_prompt", %{"id" => id}, socket),
-    do: {:noreply, assign(socket, :deleting, Catalog.get_session!(id, socket.assigns.term.id))}
-
-  def handle_event("delete_cancel", _params, socket),
-    do: {:noreply, assign(socket, :deleting, nil)}
-
-  def handle_event("delete_confirm", _params, socket) do
-    case Catalog.delete_session(socket.assigns.deleting) do
-      {:ok, _session} ->
-        {:noreply,
-         socket
-         |> assign(:deleting, nil)
-         |> put_flash(:info, gettext("Session deleted."))
-         |> load_sessions()}
-
-      {:error, reason} ->
-        {:noreply, socket |> assign(:deleting, nil) |> Errors.put(reason)}
-    end
-  end
 
   defp load_sessions(socket) do
     filters = query_filters(socket.assigns.filters)
@@ -220,15 +134,6 @@ defmodule NeuZeitWeb.SessionLive.Index do
     ~p"/terms/#{assigns.term}/sessions?#{params}"
   end
 
-  # Course components are shared across terms.
-  defp component_options do
-    Catalog.list_course_components()
-    |> Enum.map(fn component ->
-      {"#{component.course.code}: #{component_kind_label(component.kind)}", component.id}
-    end)
-    |> Enum.sort()
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -242,13 +147,13 @@ defmodule NeuZeitWeb.SessionLive.Index do
       <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
       <.page_header title={gettext("Sessions")}>
         <:actions>
-          <.link patch={~p"/terms/#{@term}/sessions/new"} class="btn btn-primary">
-            <.icon name="hero-plus" class="size-4" /> {gettext("New session")}
+          <.link navigate={~p"/terms/#{@term}/workload/new"} class="btn btn-primary">
+            <.icon name="hero-plus" class="size-4" /> {gettext("Add teaching load")}
           </.link>
         </:actions>
       </.page_header>
 
-      <div class={["grid gap-4", @editing && "lg:grid-cols-[3fr_2fr]"]}>
+      <div class="grid gap-4">
         <div class="min-w-0">
           <.toolbar>
             <form id="session-filters" phx-change="filter" class="flex flex-wrap items-center gap-2">
@@ -259,7 +164,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
                   value={course.id}
                   selected={@filters["course_id"] == course.id}
                 >
-                  {course.code}
+                  {course_title(course)}
                 </option>
               </select>
               <select aria-label={gettext("Teacher")} name="teacher_id" class="select select-bordered">
@@ -348,9 +253,9 @@ defmodule NeuZeitWeb.SessionLive.Index do
             empty_message={gettext("No matching sessions. Change the filters.")}
           >
             <:col :let={session} label={gettext("Course")}>
-              <span class="font-semibold">{session.course_component.course.code}</span>
+              <span class="font-semibold">{course_title(session.course_component.course)}</span>
               <span class="ml-1 type-detail text-base-content">
-                {component_kind_label(session.course_component.kind)}
+                {component_kind_label(session.course_component)}
               </span>
             </:col>
             <:col :let={session} label={gettext("Teacher")}>{session.teacher.name}</:col>
@@ -379,117 +284,22 @@ defmodule NeuZeitWeb.SessionLive.Index do
               </span>
             </:col>
             <:action :let={session}>
-              <.link patch={~p"/terms/#{@term}/sessions/#{session}/edit"} class="btn btn-ghost">
+              <.link
+                navigate={
+                  Nav.with_return(
+                    ~p"/terms/#{@term}/workload/#{session.workload_id}/edit",
+                    @return_to
+                  )
+                }
+                class="btn btn-ghost"
+              >
                 {gettext("Edit")}
               </.link>
-              <button
-                class="btn btn-ghost text-error"
-                phx-click="delete_prompt"
-                phx-value-id={session.id}
-              >
-                {gettext("Delete")}
-              </button>
             </:action>
           </.table>
         </div>
-
-        <.details_panel
-          :if={@editing}
-          class="order-first lg:order-last"
-          title={if @editing.id, do: gettext("Edit session"), else: gettext("New session")}
-          subtitle={gettext("Create a separate session for each parallel group.")}
-          on_close={JS.patch(~p"/terms/#{@term}/sessions")}
-        >
-          <.form
-            for={@form}
-            id="session-form"
-            phx-mounted={JS.focus_first(to: "#session-form")}
-            phx-submit="save"
-            class="flex flex-col gap-4"
-          >
-            <.input
-              field={@form[:course_component_id]}
-              type="select"
-              label={gettext("Teaching type")}
-              prompt={gettext("Choose a teaching type")}
-              options={@components}
-            />
-            <.input
-              field={@form[:teacher_id]}
-              type="select"
-              label={gettext("Teacher")}
-              prompt={gettext("Choose a teacher")}
-              options={Enum.map(@teachers, &{&1.name, &1.id})}
-            />
-            <div class="grid grid-cols-2 gap-2">
-              <.input
-                field={@form[:duration_slots]}
-                type="number"
-                label={gettext("Consecutive time slots")}
-                min="1"
-              />
-              <.input field={@form[:sequence_group]} type="text" label={gettext("Related blocks")} />
-            </div>
-            <.input
-              field={@form[:slot_profile_id]}
-              type="select"
-              label={gettext("Time profile")}
-              prompt={gettext("No restriction")}
-              options={Enum.map(@profiles, &{slot_profile_label(&1), &1.id})}
-            />
-
-            <div>
-              <p class="label-text mb-1 block type-detail">
-                {if @editing.automatic_weeks,
-                  do: gettext("Restrict available weeks"),
-                  else: gettext("Teaching weeks")}
-              </p>
-              <.week_selector id="session-weeks" weeks={@week_mask} total={@term.weeks_count} />
-            </div>
-
-            <div>
-              <p class="label-text mb-1 block type-detail">{gettext("Groups")}</p>
-              <p class="mb-2 type-detail text-base-content">
-                {gettext("For a shared session, select all attending groups.")}
-              </p>
-              <.transfer_list
-                id="session-cohorts"
-                available={cohort_items(@cohorts, @cohort_ids, false)}
-                selected={cohort_items(@cohorts, @cohort_ids, true)}
-                available_label={gettext("Other groups")}
-                selected_label={gettext("Attending")}
-              />
-            </div>
-
-            <div class="flex gap-2 pt-2">
-              <.button variant="primary" phx-disable-with={gettext("Saving")}>
-                {gettext("Save")}
-              </.button>
-              <.link patch={~p"/terms/#{@term}/sessions"} class="btn btn-ghost">
-                {gettext("Cancel")}
-              </.link>
-            </div>
-          </.form>
-        </.details_panel>
       </div>
-
-      <.alert_dialog
-        :if={@deleting}
-        title={gettext("Delete this session?")}
-        message={gettext("Sessions scheduled in a draft or published plan cannot be deleted.")}
-        confirm_label={gettext("Delete session")}
-        on_confirm="delete_confirm"
-        on_cancel="delete_cancel"
-      />
     </Layouts.app>
     """
-  end
-
-  defp cohort_items(cohorts, selected_ids, selected?) do
-    ids = MapSet.new(selected_ids)
-
-    cohorts
-    |> Enum.filter(&(MapSet.member?(ids, &1.id) == selected?))
-    |> Enum.map(&%{id: &1.id, label: &1.name})
   end
 end

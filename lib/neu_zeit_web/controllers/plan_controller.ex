@@ -84,7 +84,10 @@ defmodule NeuZeitWeb.PlanController do
     id = plan_id(params)
 
     with :ok <- RequestParams.require_uuid(id),
-         {:ok, plan} <- RequestParams.handle_not_found(fn -> Planning.publish_plan(id) end) do
+         {:ok, plan} <-
+           RequestParams.handle_not_found(fn ->
+             Planning.publish_plan(id, allow_partial: params["allow_partial"] in [true, "true"])
+           end) do
       json(conn, %{data: ApiJSON.data(plan)})
     end
   end

@@ -169,7 +169,7 @@ defmodule NeuZeit.PlanningTest do
     })
 
     assert {:error, %{errors: errors}} =
-             NeuZeit.Catalog.update_session(first, %{duration_slots: 2})
+             NeuZeit.Catalog.Sessions.update_generated_session(first, %{duration_slots: 2})
 
     assert Enum.any?(errors, &(&1.type == "cohort_conflict"))
     assert NeuZeit.Catalog.get_session!(first.id).duration_slots == 1
@@ -387,7 +387,9 @@ defmodule NeuZeit.PlanningTest do
     })
 
     assert {:ok, _replacement} = Planning.publish_plan(replacement.id)
-    assert {:ok, _session} = NeuZeit.Catalog.update_session(session, %{week_mask: [1, 2, 3]})
+
+    assert {:ok, _session} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{week_mask: [1, 2, 3]})
 
     assert {:ok, clone} = Planning.clone_plan(source.id)
     assert [%{week_mask: [1, 2, 3]}] = placements_for(clone)

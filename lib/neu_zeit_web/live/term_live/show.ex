@@ -97,33 +97,6 @@ defmodule NeuZeitWeb.TermLive.Show do
     end
   end
 
-  def handle_event("toggle_excluded_date", %{"date" => iso}, socket) do
-    date = Date.from_iso8601!(iso)
-    term = socket.assigns.term
-
-    result =
-      if date in term.excluded_dates do
-        Catalog.remove_excluded_date(term, date)
-      else
-        Catalog.add_excluded_date(term, date)
-      end
-
-    case result do
-      {:ok, term} ->
-        {:noreply,
-         socket
-         |> assign(:term, term)
-         |> assign(
-           :report,
-           Readiness.report(term.id, socket.assigns.plan && socket.assigns.plan.id)
-         )}
-
-      {:error, reason} ->
-        # Show the context error when a dated change prevents excluding the date.
-        {:noreply, Errors.put(socket, reason)}
-    end
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -136,6 +109,7 @@ defmodule NeuZeitWeb.TermLive.Show do
     >
       <.page_header title={@term.name} subtitle={"#{@term.starts_on} - #{@term.ends_on}"}>
         <:actions>
+          <.link navigate={~p"/terms/#{@term}/settings"} class="btn">{gettext("Term settings")}</.link>
           <.link
             navigate={
               if @latest_plan,
@@ -215,24 +189,6 @@ defmodule NeuZeitWeb.TermLive.Show do
           )}
         </p>
       </.card>
-
-      <.card id="teaching-calendar" title={gettext("Teaching calendar")}>
-        <:header_actions>
-          <.link navigate={~p"/terms/#{@term}/edit"} class="btn">{gettext("Edit dates")}</.link>
-        </:header_actions>
-        <p class="mb-4 type-detail text-base-content">
-          {gettext(
-            "Select non-teaching dates. Dated sessions on these dates are omitted. You cannot add or move dated sessions to them."
-          )}
-        </p>
-
-        <.term_calendar term={@term} />
-
-        <p class="mt-4 flex items-center gap-2 type-detail text-base-content">
-          <span class="inline-block h-3 w-6 rounded-field bg-error/15"></span>
-          {gettext("Non-teaching dates")}
-        </p>
-      </.card>
     </Layouts.app>
     """
   end
@@ -289,8 +245,8 @@ defmodule NeuZeitWeb.TermLive.Show do
 
   defp detail_for(%{key: :merge_candidates, detail: detail}),
     do:
-      gettext("Same teaching type, teacher, weeks and duration: %{codes}",
-        codes: Enum.map_join(detail.groups, ", ", & &1.course_code)
+      gettext("Same teaching type, teacher, weeks and duration: %{courses}",
+        courses: Enum.map_join(detail.groups, ", ", &course_title(&1.course))
       )
 
   defp detail_for(%{key: :aggregate_cohorts, count: 0}),

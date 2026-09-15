@@ -215,9 +215,6 @@ msgstr "Entfernen Sie überzählige Termine aus dem Stundenplan, bevor Sie den L
 msgid "The workload changed. Reload it before saving."
 msgstr "Der Lehrumfang wurde geändert. Laden Sie ihn vor dem Speichern neu."
 
-msgid "This workload already exists. Edit its quantity."
-msgstr "Dieser Lehrumfang ist bereits vorhanden. Ändern Sie die Anzahl der Termine."
-
 msgid "A generated meeting must fall on a teaching date."
 msgstr "Der Termin muss auf einen Unterrichtstag fallen."
 
@@ -226,3 +223,51 @@ msgstr "Die Stunden müssen ohne Rest durch die Dauer eines Termins teilbar sein
 
 msgid "Teaching load exceeds the available time."
 msgstr "Der Lehrumfang überschreitet die verfügbare Unterrichtszeit."
+
+msgid "Edit teaching load instead of individual sessions."
+msgstr "Bearbeiten Sie den Lehrumfang. Die Einheiten werden dabei aktualisiert."
+
+msgid "Teaching load and sessions differ. Run the scheduler again."
+msgstr "Die Einheiten stimmen nicht mit dem Lehrumfang überein. Starten Sie die Berechnung erneut."
+
+msgid "Remove placements before deleting this teaching load."
+msgstr "Entfernen Sie die Platzierungen, bevor Sie diesen Lehrumfang löschen."
+
+msgid "This teaching load already exists. Edit its hours."
+msgstr "Dieser Lehrumfang ist bereits vorhanden. Bearbeiten Sie die Stunden im bestehenden Eintrag."
+
+msgid "must be blank for teacher substitutions"
+msgstr "muss bei einer Vertretung leer bleiben"
+
+msgid "is used by a one-off change"
+msgstr "wird in einer einmaligen Änderung verwendet"
+
+msgid "This teaching type is used by courses. Remove it from those courses first."
+msgstr "Diese Lehrform wird von Kursen verwendet. Entfernen Sie sie zuerst aus diesen Kursen."
+
+msgid "Enter a name in at least one language."
+msgstr "Geben Sie einen Namen in mindestens einer Sprache ein."
+
+msgid "Some sessions are unplaced. Confirm publication of this partial timetable."
+msgstr "Einige Einheiten sind noch nicht platziert. Bestätigen Sie die Veröffentlichung dieses unvollständigen Stundenplans."
+
+msgid "Teaching days must start on Monday and follow calendar order."
+msgstr "Unterrichtstage müssen aufeinanderfolgen und mit Montag beginnen."
+
+msgid "Enter between 1 and 24 time slots."
+msgstr "Geben Sie 1 bis 24 Zeitfenster an."
+
+msgid "Enter a valid start and end time for every slot."
+msgstr "Geben Sie gültige Anfangs- und Endzeiten für jedes Zeitfenster an. Das Ende muss nach dem Beginn liegen."
+
+msgid "Time slots must be ordered and must not overlap."
+msgstr "Ordnen Sie die Zeitfenster chronologisch und entfernen Sie Überschneidungen."
+
+msgid "Use the same duration for every time slot."
+msgstr "Verwenden Sie dieselbe Dauer für alle Zeitfenster."
+
+msgid "Time settings cannot change after teaching load, availability or time profiles have been entered."
+msgstr "Zeiten können nach der Eingabe von Lehrumfang, Verfügbarkeit oder Zeitprofilen nicht mehr geändert werden."
+
+msgid "Choose a valid time zone."
+msgstr "Wählen Sie eine Zeitzone aus der Liste."

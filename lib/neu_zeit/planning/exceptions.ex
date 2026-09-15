@@ -22,7 +22,15 @@ defmodule NeuZeit.Planning.Exceptions do
       from e in ScheduleException,
         where: e.term_id == ^term_id,
         order_by: [desc: e.occurrence_date, asc: e.inserted_at],
-        preload: [:new_room, session: [:cohorts, :teacher, course_component: :course]]
+        preload: [
+          :new_room,
+          :new_teacher,
+          session: [
+            :cohorts,
+            :teacher,
+            course_component: [course: :translations, teaching_type: :translations]
+          ]
+        ]
     )
   end
 
@@ -134,7 +142,7 @@ defmodule NeuZeit.Planning.Exceptions do
       candidate.status != "active" ->
         :ok
 
-      candidate.kind in ["move", "cancel"] and
+      candidate.kind in ["move", "cancel", "substitute"] and
           not Projection.template_occurrence?(
             term,
             placements,
@@ -148,7 +156,8 @@ defmodule NeuZeit.Planning.Exceptions do
            "does not match any scheduled occurrence"
          )}
 
-      candidate.kind == "cancel" and MapSet.member?(excluded_dates, candidate.occurrence_date) ->
+      candidate.kind in ["cancel", "substitute"] and
+          MapSet.member?(excluded_dates, candidate.occurrence_date) ->
         {:error,
          Ecto.Changeset.add_error(
            changeset,
@@ -179,8 +188,8 @@ defmodule NeuZeit.Planning.Exceptions do
   end
 
   defp exception_dates_valid?(term, exception) do
-    days_count = length(NeuZeit.Config.grid!().days)
-    slots_count = length(NeuZeit.Config.grid!().slots)
+    days_count = length(NeuZeit.Config.grid!(term).days)
+    slots_count = length(NeuZeit.Config.grid!(term).slots)
 
     duration_slots =
       case Repo.get(Session, exception.session_id) do

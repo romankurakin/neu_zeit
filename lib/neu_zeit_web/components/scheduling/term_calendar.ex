@@ -14,7 +14,7 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
   attr :grid, :map, default: nil
 
   def term_calendar(assigns) do
-    grid = assigns.grid || Config.grid!()
+    grid = assigns.grid || Config.grid!(assigns.term)
     excluded = MapSet.new(assigns.term.excluded_dates || [])
 
     assigns =
@@ -38,8 +38,8 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
               <% date = date_at(@term, week, day_index) %>
               <button
                 type="button"
-                disabled={@readonly}
-                phx-click={!@readonly && @event}
+                disabled={@readonly || Date.after?(date, @term.ends_on)}
+                phx-click={!@readonly && !Date.after?(date, @term.ends_on) && @event}
                 phx-value-date={Date.to_iso8601(date)}
                 aria-pressed={to_string(MapSet.member?(@excluded, date))}
                 title={excluded_title(@excluded, date)}
@@ -49,7 +49,7 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
                     do: "bg-error/15 text-error line-through",
                     else: "text-base-content hover:bg-base-200"
                   ),
-                  !@readonly && "cursor-pointer"
+                  !@readonly && !Date.after?(date, @term.ends_on) && "cursor-pointer"
                 ]}
               >
                 <.date value={date} format="day_month" />

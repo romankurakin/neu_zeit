@@ -20,7 +20,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
      |> assign(:page_title, gettext("Calendar"))
      |> assign(:term, term)
      |> assign(:terms, Catalog.list_terms())
-     |> assign(:grid, NeuZeit.Config.grid!())
+     |> assign(:grid, NeuZeit.Config.grid!(term))
      |> assign(:plans, plans)
      |> assign(:week, 1)
      |> assign(:scope, "all")
@@ -115,7 +115,9 @@ defmodule NeuZeitWeb.CalendarLive.Index do
 
       params = %{
         "return_to" => calendar_path(assigns),
-        "new_date" => new_date,
+        "new_date" => new_date || Date.to_iso8601(occurrence.date),
+        "new_slot" => occurrence.slot,
+        "new_room_id" => occurrence.room_id,
         "kind" => if(exception.kind == "add", do: "add", else: kind)
       }
 
@@ -200,16 +202,19 @@ defmodule NeuZeitWeb.CalendarLive.Index do
     projection.occurrences
     |> Enum.filter(fn occurrence ->
       occurrence.date == date and
-        (occurrence.room_id == scope or in_scope?(Map.get(sessions, occurrence.session_id), scope))
+        (occurrence.room_id == scope or
+           in_scope?(Map.get(sessions, occurrence.session_id), occurrence, scope))
     end)
     |> Enum.sort_by(& &1.slot)
   end
 
-  defp in_scope?(_session, "all"), do: true
-  defp in_scope?(nil, _scope), do: false
+  defp in_scope?(_session, _occurrence, "all"), do: true
+  defp in_scope?(nil, _occurrence, _scope), do: false
 
-  defp in_scope?(session, scope),
-    do: Enum.any?(session.cohorts, &(&1.id == scope)) or session.teacher_id == scope
+  defp in_scope?(session, occurrence, scope),
+    do:
+      Enum.any?(session.cohorts, &(&1.id == scope)) or
+        (occurrence.teacher_id || session.teacher_id) == scope
 
   # Find the week containing the first excluded date.
   defp holiday_week(term) do
@@ -246,7 +251,10 @@ defmodule NeuZeitWeb.CalendarLive.Index do
       current_term={@term}
       page_path={calendar_path(assigns)}
     >
-      <.page_header title={gettext("Calendar by date")} />
+      <.page_header
+        title={gettext("Calendar by date")}
+        subtitle={gettext("Times in %{timezone}", timezone: NeuZeit.Settings.snapshot().timezone)}
+      />
 
       <.empty_state
         :if={is_nil(@plan)}
@@ -374,7 +382,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                 data-cancelled={to_string(occurrence.cancelled?)}
                 class={[
                   "rounded-field border px-2 py-1 type-detail",
-                  if(occurrence.source in [:move, :add, :cancel],
+                  if(occurrence.source in [:move, :add, :cancel, :substitute],
                     do: "border-info/50 bg-info/10",
                     else: "border-base-300"
                   )
@@ -383,7 +391,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                 <% session = Map.get(@sessions, occurrence.session_id) %>
                 <div class="flex flex-wrap items-baseline justify-between gap-1">
                   <span class="font-semibold">
-                    {session && session.course_component.course.code}
+                    {session && course_title(session.course_component.course)}
                   </span>
                   <span class="tabular-nums text-base-content">
                     {NeuZeitWeb.Scheduling.SessionCard.time_range(
@@ -393,10 +401,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                     )}
                   </span>
                 </div>
-                <div class="break-words font-semibold">
-                  {session && session.course_component.course.title}
-                </div>
-                <div class="break-words">{session && session.teacher.name}</div>
+                <div class="break-words">{teacher_name(@teachers, occurrence, session)}</div>
                 <span
                   :if={occurrence.source != :template}
                   class="badge badge-md badge-outline h-auto my-1"
@@ -405,6 +410,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                     :move -> gettext("Moved")
                     :add -> gettext("Added")
                     :cancel -> gettext("Cancelled")
+                    :substitute -> gettext("Teacher replaced")
                   end}
                 </span>
                 <p
@@ -441,6 +447,11 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                   >{if occurrence.exception_id,
                     do: gettext("Edit change"),
                     else: gettext("Move dated session")}</.link>
+                  <.link
+                    :if={is_nil(occurrence.exception_id)}
+                    navigate={action_path(assigns, occurrence, "substitute")}
+                    class="btn"
+                  >{gettext("Replace teacher")}</.link>
                   <.link
                     :if={is_nil(occurrence.exception_id)}
                     navigate={action_path(assigns, occurrence, "cancel")}
@@ -527,6 +538,15 @@ defmodule NeuZeitWeb.CalendarLive.Index do
       </script>
     </Layouts.app>
     """
+  end
+
+  defp teacher_name(teachers, occurrence, session) do
+    teacher_id = occurrence.teacher_id || (session && session.teacher_id)
+
+    case Enum.find(teachers, &(&1.id == teacher_id)) do
+      nil -> ""
+      teacher -> teacher.name
+    end
   end
 
   defp room_name(rooms, room_id) do

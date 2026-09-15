@@ -11,6 +11,7 @@ defmodule NeuZeit.Catalog.Term do
     field :excluded_dates, {:array, :date}, default: []
     field :weeks_count, :integer
     field :academic_hour_minutes, :integer, default: 45
+    field :grid, NeuZeit.Scheduling.Grid, default: NeuZeit.Scheduling.Defaults.policy().grid
 
     has_many :sessions, NeuZeit.Catalog.Session
     has_many :slot_profiles, NeuZeit.Catalog.SlotProfile
@@ -22,8 +23,15 @@ defmodule NeuZeit.Catalog.Term do
 
   def changeset(term, attrs) do
     term
-    |> cast(attrs, [:name, :starts_on, :ends_on, :excluded_dates, :academic_hour_minutes])
+    |> cast(attrs, [:name, :starts_on, :ends_on, :excluded_dates, :academic_hour_minutes, :grid])
     |> validate_required([:name, :starts_on, :ends_on, :academic_hour_minutes])
+    |> validate_required([:grid])
+    |> validate_change(:grid, fn :grid, grid ->
+      case NeuZeit.Scheduling.Grid.validate(grid) do
+        :ok -> []
+        {:error, message} -> [grid: message]
+      end
+    end)
     |> validate_length(:name, min: 1, max: 100)
     |> validate_number(:academic_hour_minutes, greater_than: 0, less_than_or_equal_to: 60)
     |> validate_starts_on_week_start()
@@ -43,6 +51,36 @@ defmodule NeuZeit.Catalog.Term do
     |> check_constraint(:starts_on, name: :terms_starts_on_monday_ck)
     |> check_constraint(:weeks_count, name: :terms_weeks_count_positive_ck)
     |> prepare_changes(&validate_weeks_cover_existing_masks/1)
+    |> prepare_changes(&protect_time_settings/1)
+  end
+
+  def time_settings_locked?(nil), do: false
+
+  def time_settings_locked?(term_id) do
+    NeuZeit.Repo.exists?(from w in NeuZeit.Catalog.Workload, where: w.term_id == ^term_id) or
+      NeuZeit.Repo.exists?(from s in NeuZeit.Catalog.Session, where: s.term_id == ^term_id) or
+      NeuZeit.Repo.exists?(from p in NeuZeit.Catalog.SlotProfile, where: p.term_id == ^term_id) or
+      NeuZeit.Repo.exists?(
+        from c in NeuZeit.Catalog.TeacherAvailabilityCell, where: c.term_id == ^term_id
+      )
+  end
+
+  defp protect_time_settings(changeset) do
+    changed = Enum.filter([:grid, :academic_hour_minutes], &Map.has_key?(changeset.changes, &1))
+
+    if changed != [] and time_settings_locked?(changeset.data.id) do
+      Enum.reduce(
+        changed,
+        changeset,
+        &add_error(
+          &2,
+          &1,
+          "Time settings cannot change after teaching load, availability or time profiles have been entered."
+        )
+      )
+    else
+      changeset
+    end
   end
 
   defp validate_weeks_cover_existing_masks(changeset) do
@@ -51,6 +89,11 @@ defmodule NeuZeit.Catalog.Term do
       session_masks =
         changeset.repo.all(
           from s in NeuZeit.Catalog.Session, where: s.term_id == ^term_id, select: s.week_mask
+        )
+
+      workload_masks =
+        changeset.repo.all(
+          from w in NeuZeit.Catalog.Workload, where: w.term_id == ^term_id, select: w.week_mask
         )
 
       placement_masks =
@@ -62,7 +105,10 @@ defmodule NeuZeit.Catalog.Term do
             select: p.week_mask
         )
 
-      max_used = [session_masks, placement_masks] |> List.flatten() |> Enum.max(fn -> 0 end)
+      max_used =
+        [session_masks, workload_masks, placement_masks]
+        |> List.flatten()
+        |> Enum.max(fn -> 0 end)
 
       if max_used > weeks_count do
         add_error(
@@ -113,7 +159,7 @@ defmodule NeuZeit.Catalog.Term do
     dates = get_field(changeset, :excluded_dates) || []
     starts_on = get_field(changeset, :starts_on)
     ends_on = get_field(changeset, :ends_on)
-    days_count = length(NeuZeit.Config.grid!().days)
+    days_count = length((get_field(changeset, :grid) || NeuZeit.Config.grid!()).days)
 
     cond do
       dates == [] ->

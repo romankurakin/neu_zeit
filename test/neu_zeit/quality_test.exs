@@ -26,7 +26,7 @@ defmodule NeuZeit.Planning.QualityTest do
   end
 
   defp session(ctx, code, teacher_name, rooms, overrides \\ %{}) do
-    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code, "credits" => 5})
+    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -38,7 +38,7 @@ defmodule NeuZeit.Planning.QualityTest do
     {:ok, teacher} = Catalog.create_teacher(%{"name" => teacher_name})
 
     {:ok, session} =
-      Catalog.create_session(
+      NeuZeit.Fixtures.create_session(
         Map.merge(
           %{
             "term_id" => ctx.term.id,
@@ -146,7 +146,7 @@ defmodule NeuZeit.Planning.QualityTest do
     {:ok, shared} = Catalog.create_teacher(%{"name" => "Anna Weber"})
 
     for {code, room, slot} <- [{"A", here, 1}, {"B", across, 2}] do
-      {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code, "credits" => 5})
+      {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code})
 
       {:ok, component} =
         Catalog.create_course_component(%{
@@ -156,7 +156,7 @@ defmodule NeuZeit.Planning.QualityTest do
         })
 
       {:ok, created} =
-        Catalog.create_session(%{
+        NeuZeit.Fixtures.create_session(%{
           "term_id" => ctx.term.id,
           "course_component_id" => component.id,
           "teacher_id" => shared.id,

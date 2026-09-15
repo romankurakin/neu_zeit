@@ -2,13 +2,28 @@ defmodule NeuZeitWeb.Scheduling.Labels do
   @moduledoc "Labels for teaching types, weekdays and built-in time profiles."
   use NeuZeitWeb, :ui_component
 
-  @doc """
-  Translates a teaching-type enum for display. Stored enum values remain unchanged.
-  """
-  def component_kind_label("lecture"), do: gettext("Lecture")
-  def component_kind_label("seminar"), do: gettext("Seminar")
-  def component_kind_label("lab"), do: gettext("Lab")
-  def component_kind_label(kind), do: kind
+  @doc "Uses the selected language, falling back to an available registry name."
+  def component_kind_label(%{teaching_type: teaching_type}),
+    do: teaching_type_label(teaching_type)
+
+  def teaching_type_label(type) do
+    NeuZeit.Catalog.Translation.text(
+      type.translations,
+      Gettext.get_locale(NeuZeitWeb.Gettext),
+      :name,
+      nil,
+      NeuZeitWeb.Locale.default()
+    )
+  end
+
+  def course_title(course) do
+    NeuZeit.Catalog.Translation.text(
+      course.translations,
+      Gettext.get_locale(NeuZeitWeb.Gettext),
+      :title,
+      course.title
+    )
+  end
 
   def slot_profile_label(%{preset_key: "weekday_daytime", name: name}) do
     if NeuZeit.Catalog.SlotProfile.daytime_name?(name),

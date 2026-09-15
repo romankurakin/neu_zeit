@@ -1,13 +1,10 @@
 defmodule NeuZeit.Curriculum do
-  import Ecto.Query
-
-  alias NeuZeit.Catalog.{Course, CourseComponent, Session, Term}
+  alias NeuZeit.Catalog.{Course, Term, Workload}
   alias NeuZeit.Config
   alias NeuZeit.Repo
 
   def course_contact_coverage(term_id, course_id) do
-    policy = Config.load!()
-    ects = policy.ects
+    policy = Config.load!(term_id)
 
     course = Repo.get!(Course, course_id)
     term = Repo.get!(Term, term_id)
@@ -18,66 +15,55 @@ defmodule NeuZeit.Curriculum do
 
     slot_occurrences = course_slot_occurrences(term_id, course_id)
 
-    credits = Decimal.to_float(course.credits)
+    workloads =
+      Workload.list(term_id)
+      |> Enum.filter(&(&1.session.course_component.course_id == course_id))
 
-    requirements =
-      NeuZeit.Catalog.Workload.list(term_id)
-      |> Enum.filter(&(&1.requirement && &1.session.course_component.course_id == course_id))
-
-    required_hours =
-      if requirements == [],
-        do: credits * ects.hours_per_credit * ects.contact_ratio,
-        else:
-          Enum.sum(
-            Enum.map(
-              requirements,
-              &(Decimal.to_float(&1.requirement.contact_hours) * term.academic_hour_minutes / 60)
-            )
-          )
+    required_hours = required_hours(workloads, term.academic_hour_minutes)
 
     scheduled_hours = slot_occurrences * slot_hours
-    delta_hours = scheduled_hours - required_hours
+    delta_hours = difference(scheduled_hours, required_hours)
 
-    required_sws = required_hours * 60 / term.academic_hour_minutes / term.weeks_count
+    required_sws =
+      if required_hours,
+        do: required_hours * 60 / term.academic_hour_minutes / term.weeks_count
+
     scheduled_sws = slot_occurrences * academic_hours_per_slot / term.weeks_count
 
     %{
       course_id: course.id,
       term_id: term.id,
-      credits: course.credits,
       required_hours: round1(required_hours),
       scheduled_hours: round1(scheduled_hours),
       delta_hours: round1(delta_hours),
       required_sws: round1(required_sws),
       scheduled_sws: round1(scheduled_sws),
+      missing_workload: is_nil(required_hours),
       status: status(delta_hours, slot_hours)
     }
   end
 
   @doc """
-  Returns contact-hour coverage for every course with sessions in a term.
+  Returns contact-hour coverage for every course with teaching load or sessions in a term.
   """
   def term_coverage(term_id) do
-    Course
-    |> join(:inner, [c], comp in CourseComponent, on: comp.course_id == c.id)
-    |> join(:inner, [_c, comp], s in Session, on: s.course_component_id == comp.id)
-    |> where([_c, _comp, s], s.term_id == ^term_id)
-    |> distinct(true)
-    |> select([c], c)
-    |> order_by([c], c.code)
-    |> Repo.all()
+    Workload.list(term_id)
+    |> Enum.map(& &1.session.course_component.course)
+    |> Enum.uniq_by(& &1.id)
+    |> Enum.sort_by(&{&1.title, &1.id})
     |> Enum.map(fn course ->
       term_id
       |> course_contact_coverage(course.id)
       |> Map.put(:code, course.code)
       |> Map.put(:title, course.title)
+      |> Map.put(:translations, course.translations)
     end)
   end
 
   @doc "Planned and dated contact hours for each course/cohort in one selected plan."
   def plan_coverage(plan_id) do
     projection = NeuZeit.Planning.project_plan(plan_id)
-    policy = Config.load!()
+    policy = Config.load!(projection.term)
     slot_hours = nominal_slot_minutes(policy.grid) / 60
     sessions = NeuZeit.Catalog.list_sessions(projection.term.id)
 
@@ -99,11 +85,10 @@ defmodule NeuZeit.Curriculum do
         {id, hours}
       end)
 
-    requirements =
-      NeuZeit.Catalog.Workload.list(projection.term.id) |> Enum.filter(& &1.requirement)
+    workloads = Workload.list(projection.term.id)
 
     required_groups =
-      requirements
+      workloads
       |> Enum.flat_map(fn row ->
         Enum.map(
           row.session.cohorts,
@@ -139,17 +124,7 @@ defmodule NeuZeit.Curriculum do
       course = session.course_component.course
 
       required =
-        if targets == [] do
-          Decimal.to_float(course.credits) * policy.ects.hours_per_credit *
-            policy.ects.contact_ratio
-        else
-          Enum.sum(
-            Enum.map(targets, fn {row, _} ->
-              Decimal.to_float(row.requirement.contact_hours) *
-                projection.term.academic_hour_minutes / 60
-            end)
-          )
-        end
+        required_hours(Enum.map(targets, &elem(&1, 0)), projection.term.academic_hour_minutes)
 
       planned =
         Enum.reduce(entries, 0.0, fn {s, _}, total ->
@@ -170,34 +145,48 @@ defmodule NeuZeit.Curriculum do
         plan_status: projection.plan.status,
         code: course.code,
         title: course.title,
-        credits: course.credits,
+        translations: course.translations,
         required_hours: round1(required),
         planned_hours: round1(planned),
         calendar_hours: round1(calendar),
         scheduled_hours: round1(calendar),
-        delta_hours: round1(calendar - required),
-        planned_delta_hours: round1(planned - required),
-        planned_status: if(cohort_id, do: status(planned - required, slot_hours), else: :unknown),
-        status: if(cohort_id, do: status(calendar - required, slot_hours), else: :unknown),
+        delta_hours: round1(difference(calendar, required)),
+        planned_delta_hours: round1(difference(planned, required)),
+        planned_status:
+          if(cohort_id, do: status(difference(planned, required), slot_hours), else: :unknown),
+        status:
+          if(cohort_id, do: status(difference(calendar, required), slot_hours), else: :unknown),
         exceptions_applied: projection.exceptions_applied,
+        missing_workload: is_nil(required),
         missing_cohort: is_nil(cohort_id)
       }
     end)
-    |> Enum.sort_by(&{&1.code, &1.cohort_name || ""})
+    |> Enum.sort_by(&{&1.title, &1.cohort_name || "", &1.course_id})
   end
 
   defp course_slot_occurrences(term_id, course_id) do
-    Session
-    |> join(:inner, [s], c in CourseComponent, on: s.course_component_id == c.id)
-    |> where([s, c], c.course_id == ^course_id and s.term_id == ^term_id)
-    |> select([s], {s.week_mask, s.duration_slots, s.automatic_weeks})
-    |> Repo.all()
-    |> Enum.map(fn {week_mask, duration_slots, automatic} ->
-      if(automatic, do: 1, else: length(week_mask)) * duration_slots
+    NeuZeit.Catalog.list_sessions(term_id)
+    |> Enum.filter(&(&1.course_component.course_id == course_id))
+    |> Enum.map(fn session ->
+      if(session.automatic_weeks, do: 1, else: length(session.week_mask)) * session.duration_slots
     end)
     |> Enum.sum()
   end
 
+  defp required_hours([], _academic_hour_minutes), do: nil
+
+  defp required_hours(workloads, academic_hour_minutes) do
+    Enum.sum(
+      Enum.map(workloads, fn row ->
+        Decimal.to_float(row.requirement.contact_hours) * academic_hour_minutes / 60
+      end)
+    )
+  end
+
+  defp difference(_hours, nil), do: nil
+  defp difference(hours, required), do: hours - required
+
+  defp status(nil, _tolerance), do: :unknown
   defp status(delta, tolerance) when delta < -tolerance, do: :under
   defp status(delta, tolerance) when delta > tolerance, do: :over
   defp status(_delta, _tolerance), do: :ok
@@ -214,5 +203,6 @@ defmodule NeuZeit.Curriculum do
     String.to_integer(hours) * 60 + String.to_integer(minutes)
   end
 
+  defp round1(nil), do: nil
   defp round1(value), do: Float.round(value * 1.0, 1)
 end

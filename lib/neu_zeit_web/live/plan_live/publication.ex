@@ -25,9 +25,14 @@ defmodule NeuZeitWeb.PlanLive.Publication do
         </:item>
       </.check_results>
 
+      <p :if={unplaced_count(@gate) > 0} class="mb-4 text-warning">
+        {gettext(
+          "Only placed sessions will appear in the published timetable. You can add the remaining sessions in a draft copy and publish it later."
+        )}
+      </p>
       <div class="flex flex-col gap-2">
         <label
-          :for={{key, label} <- acknowledgements(@advisory_count)}
+          :for={{key, label} <- acknowledgements(@advisory_count, @gate)}
           class="flex cursor-pointer items-start gap-2 type-detail"
         >
           <input
@@ -72,21 +77,46 @@ defmodule NeuZeitWeb.PlanLive.Publication do
   defp gate_detail(_key, 0), do: "0"
   defp gate_detail(_key, count), do: to_string(count)
 
-  defp acknowledgements(count) do
-    [
+  defp acknowledgements(count, gate) do
+    base = [
       {"advisories", gettext("I reviewed all warnings (%{count}).", count: count)},
       {"registers", gettext("I checked teacher names and group membership.")}
     ]
+
+    count = unplaced_count(gate)
+
+    if count > 0 do
+      base ++
+        [
+          {"partial",
+           ngettext(
+             "I want to publish with %{count} session still unplaced.",
+             "I want to publish with %{count} sessions still unplaced.",
+             count,
+             count: count
+           )}
+        ]
+    else
+      base
+    end
   end
 
-  defp publishable?(gate, acknowledged) do
+  defp unplaced_count(gate) do
+    case Enum.find(gate, &(&1.key == :unplaced)) do
+      nil -> 0
+      row -> row.count
+    end
+  end
+
+  def publishable?(gate, acknowledged) do
     blocking =
       Enum.any?(gate, fn row ->
-        row.key in [:unplaced, :hard_checks] and row.status != :ok
+        row.key == :hard_checks and row.status != :ok
       end)
 
     confirmed = Enum.all?(["advisories", "registers"], &Map.get(acknowledged, &1))
 
-    not blocking and confirmed
+    partial_confirmed = unplaced_count(gate) == 0 || Map.get(acknowledged, "partial") == true
+    not blocking and confirmed and partial_confirmed
   end
 end

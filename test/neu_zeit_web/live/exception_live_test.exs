@@ -18,7 +18,7 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     {:ok, plan} = Planning.create_plan(%{"term_id" => term.id, "name" => "Entwurf 1"})
     {:ok, cohort} = Catalog.create_cohort(%{"name" => "WI-1"})
     {:ok, teacher} = Catalog.create_teacher(%{"name" => "Anna Weber"})
-    {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "P", "credits" => 8})
+    {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "Programming"})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -28,7 +28,7 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
       })
 
     {:ok, session} =
-      Catalog.create_session(%{
+      NeuZeit.Fixtures.create_session(%{
         "term_id" => term.id,
         "course_component_id" => component.id,
         "teacher_id" => teacher.id,
@@ -71,6 +71,113 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     assert render(live) =~ "No one-off changes"
   end
 
+  @tag locale: "ru"
+  test "the replacement form uses the Russian scheduling terms", ctx do
+    {:ok, view, _} =
+      live(
+        ctx.conn,
+        ~p"/terms/#{ctx.term}/exceptions/new?kind=substitute&session_id=#{ctx.session.id}&date=2026-09-14"
+      )
+
+    assert has_element?(view, "#exception-form", "Заменяющий преподаватель")
+    assert has_element?(view, "#exception-form button", "Заменить преподавателя")
+    refute render(view) =~ "Rename teacher"
+  end
+
+  test "records a substitute from the calendar and shows its teacher on just that date", ctx do
+    teacher = NeuZeit.Fixtures.teacher_fixture(name: "Substitute teacher name")
+    {:ok, calendar, _} = live(ctx.conn, ~p"/terms/#{ctx.term}/calendar?week=2")
+    calendar |> element("#calendar-day-2026-09-14 a", "Replace teacher") |> render_click()
+    {path, _} = assert_redirect(calendar)
+    {:ok, view, _} = live(ctx.conn, path)
+    refute has_element?(view, "select[name='schedule_exception[new_room_id]']")
+    refute has_element?(view, "input[name='schedule_exception[new_date]']")
+    fill(view, %{new_teacher_id: teacher.id, reason: "Teacher absent", created_by: "Admin"})
+    [exception] = Planning.list_schedule_exceptions(ctx.term.id)
+    assert exception.kind == "substitute"
+    assert exception.new_teacher_id == teacher.id
+    assert {exception.new_date, exception.new_slot, exception.new_room_id} == {nil, nil, nil}
+    {return_path, _} = assert_redirect(view)
+    {:ok, calendar, _} = live(ctx.conn, return_path)
+    assert has_element?(calendar, "#calendar-day-2026-09-14", teacher.name)
+    assert has_element?(calendar, "#calendar-day-2026-09-14", "Teacher replaced")
+    refute has_element?(calendar, "#calendar-day-2026-09-14", "Anna Weber")
+
+    calendar
+    |> element("form[phx-change='select_scope']")
+    |> render_change(%{"scope" => ctx.session.teacher_id})
+
+    refute has_element?(calendar, "#calendar-day-2026-09-14", "Programming")
+
+    calendar
+    |> element("form[phx-change='select_scope']")
+    |> render_change(%{"scope" => teacher.id})
+
+    assert has_element?(calendar, "#calendar-day-2026-09-14", "Programming")
+  end
+
+  test "dragging a substituted class preserves the replacement and prefills its new position",
+       ctx do
+    teacher = NeuZeit.Fixtures.teacher_fixture()
+
+    {:ok, exception} =
+      Planning.create_schedule_exception(%{
+        session_id: ctx.session.id,
+        kind: "substitute",
+        occurrence_date: ~D[2026-09-14],
+        new_teacher_id: teacher.id,
+        reason: "Cover",
+        created_by: "Admin"
+      })
+
+    {:ok, calendar, _} = live(ctx.conn, ~p"/terms/#{ctx.term}/calendar?week=2")
+
+    render_hook(calendar, "move_occurrence", %{
+      "session-id" => ctx.session.id,
+      "exception-id" => exception.id,
+      "from" => "2026-09-14",
+      "to" => "2026-09-15"
+    })
+
+    {path, _} = assert_redirect(calendar)
+    {:ok, view, _} = live(ctx.conn, path)
+
+    assert has_element?(
+             view,
+             "select[name='schedule_exception[new_teacher_id]'] option[selected][value='#{teacher.id}']"
+           )
+
+    fill(view, %{reason: "Cover moved to Tuesday", created_by: "Admin"})
+    updated = Planning.get_schedule_exception!(exception.id)
+    assert updated.kind == "move"
+    assert updated.new_date == ~D[2026-09-15]
+    assert updated.new_slot == 1
+    assert updated.new_room_id == ctx.room.id
+    assert updated.new_teacher_id == teacher.id
+  end
+
+  test "changing a substitution to a cancellation clears the replacement", ctx do
+    teacher = NeuZeit.Fixtures.teacher_fixture()
+
+    {:ok, exception} =
+      Planning.create_schedule_exception(%{
+        session_id: ctx.session.id,
+        kind: "substitute",
+        occurrence_date: ~D[2026-09-14],
+        new_teacher_id: teacher.id,
+        reason: "Cover",
+        created_by: "Admin"
+      })
+
+    {:ok, view, _} = live(ctx.conn, ~p"/terms/#{ctx.term}/exceptions/#{exception.id}/edit")
+    choose_kind(view, "cancel")
+    refute has_element?(view, "select[name='schedule_exception[new_teacher_id]']")
+    fill(view, %{reason: "Class cancelled", created_by: "Admin"})
+    updated = Planning.get_schedule_exception!(exception.id)
+    assert updated.kind == "cancel"
+    assert updated.new_teacher_id == nil
+  end
+
   test "records a cancellation with its reason and author", %{conn: conn} = ctx do
     {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/exceptions/new")
 
@@ -90,7 +197,7 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
 
   test "automatic session choices show published weeks instead of eligible weeks", ctx do
     {:ok, session} =
-      Catalog.create_session(%{
+      NeuZeit.Fixtures.create_session(%{
         term_id: ctx.term.id,
         course_component_id: ctx.session.course_component_id,
         teacher_id: ctx.session.teacher_id,
@@ -254,10 +361,20 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     # Week 2's Monday is 2026-09-14, and it is the published plan, so the
     # exception applies there.
     calendar |> element(~s{button[aria-label="Next week"][phx-value-week="2"]}) |> render_click()
-    assert has_element?(calendar, "#calendar-day-2026-09-14 [data-cancelled='true']", "INF110")
-    refute has_element?(calendar, "#calendar-day-2026-09-14 [data-cancelled='false']", "INF110")
+
+    assert has_element?(
+             calendar,
+             "#calendar-day-2026-09-14 [data-cancelled='true']",
+             "Programming"
+           )
+
+    refute has_element?(
+             calendar,
+             "#calendar-day-2026-09-14 [data-cancelled='false']",
+             "Programming"
+           )
 
     calendar |> element(~s{button[phx-value-week="1"]}, "First") |> render_click()
-    assert has_element?(calendar, "#calendar-day-2026-09-07", "INF110")
+    assert has_element?(calendar, "#calendar-day-2026-09-07", "Programming")
   end
 end

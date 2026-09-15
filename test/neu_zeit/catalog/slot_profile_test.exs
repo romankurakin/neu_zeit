@@ -80,7 +80,7 @@ defmodule NeuZeit.Catalog.SlotProfileTest do
     other_profile = slot_profile_fixture(term: term_fixture())
 
     assert {:error, changeset} =
-             Catalog.create_session(%{
+             NeuZeit.Fixtures.create_session(%{
                term_id: term.id,
                course_component_id: component_fixture().id,
                teacher_id: teacher_fixture().id,
@@ -112,7 +112,7 @@ defmodule NeuZeit.Catalog.SlotProfileTest do
     impossible = slot_profile_fixture(term: term, cells: [%{day: 2, slot: 6}])
 
     assert {:error, changeset} =
-             Catalog.create_session(%{
+             NeuZeit.Fixtures.create_session(%{
                term_id: term.id,
                course_component_id: component_fixture().id,
                teacher_id: teacher_fixture().id,

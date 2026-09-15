@@ -18,7 +18,15 @@ defmodule NeuZeitWeb.Storybook.Fixtures do
         duration_slots: if(index == 1, do: 2, else: 1),
         course_component: %{
           kind: "lecture",
+          teaching_type: %{
+            translations: [
+              %{locale: "en", name: "Lecture"},
+              %{locale: "ru", name: "Лекция"},
+              %{locale: "de", name: "Vorlesung"}
+            ]
+          },
           course: %{
+            translations: [],
             code: "UX#{index}",
             title:
               "Einführung in die Betriebswirtschaftslehre und internationale Unternehmensführung"

@@ -24,7 +24,7 @@ defmodule NeuZeit.Planning.ReadinessTest do
   end
 
   defp component(_ctx, code, rooms) do
-    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code, "credits" => 5})
+    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -38,7 +38,7 @@ defmodule NeuZeit.Planning.ReadinessTest do
 
   defp session(ctx, component, teacher, overrides \\ %{}) do
     {:ok, session} =
-      Catalog.create_session(
+      NeuZeit.Fixtures.create_session(
         Map.merge(
           %{
             "term_id" => ctx.term.id,
@@ -172,15 +172,15 @@ defmodule NeuZeit.Planning.ReadinessTest do
       Map.put(ctx, :plan, plan)
     end
 
-    test "unplaced sessions block a solve", ctx do
+    test "unplaced sessions warn without blocking a solve", ctx do
       component = component(ctx, "INF110", [room(ctx, "101"), room(ctx, "102")])
       session(ctx, component, teacher("Anna Weber"))
 
       report = Readiness.report(ctx.term.id, ctx.plan.id)
 
-      assert row(report, :unplaced).status == :blocked
+      assert row(report, :unplaced).status == :warning
       assert row(report, :unplaced).count == 1
-      refute Readiness.solvable?(report)
+      assert Readiness.solvable?(report)
     end
 
     test "an empty term with an empty plan is solvable", ctx do

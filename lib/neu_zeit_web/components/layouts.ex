@@ -23,6 +23,8 @@ defmodule NeuZeitWeb.Layouts do
   slot :inner_block, required: true
 
   def app(assigns) do
+    assigns = assign(assigns, :institution, NeuZeit.Settings.snapshot())
+
     ~H"""
     <div
       id="app-drawer"
@@ -58,7 +60,12 @@ defmodule NeuZeitWeb.Layouts do
           <.theme_toggle />
         </header>
 
-        <main id="main-content" phx-hook=".LocalDates" class="flex-1 min-w-0 p-4">
+        <main
+          id="main-content"
+          data-time-zone={@institution.timezone}
+          phx-hook=".LocalDates"
+          class="flex-1 min-w-0 p-4"
+        >
           {render_slot(@inner_block)}
         </main>
       </div>
@@ -81,7 +88,10 @@ defmodule NeuZeitWeb.Layouts do
         >
           <div class="flex h-16 items-center gap-2 border-b border-base-300 px-4">
             <.icon name="hero-calendar-days" class="size-5 text-primary" />
-            <span class="font-semibold ">NeuZeit</span>
+            <div class="min-w-0">
+              <span class="font-semibold">NeuZeit</span>
+              <div class="truncate type-detail" title={@institution.name}>{@institution.name}</div>
+            </div>
             <button
               id="nav-close"
               type="button"

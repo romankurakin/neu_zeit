@@ -225,9 +225,6 @@ msgstr "Remove placements before reducing this workload."
 msgid "The workload changed. Reload it before saving."
 msgstr "The workload changed. Reload it before saving."
 
-msgid "This workload already exists. Edit its quantity."
-msgstr "This workload already exists. Edit its quantity."
-
 msgid "A generated meeting must fall on a teaching date."
 msgstr "A generated meeting must fall on a teaching date."
 
@@ -236,3 +233,51 @@ msgstr "Hours must cover a whole number of sessions of this duration."
 
 msgid "Teaching load exceeds the available time."
 msgstr "Teaching load exceeds the available time."
+
+msgid "Edit teaching load instead of individual sessions."
+msgstr "Edit teaching load instead of individual sessions."
+
+msgid "Teaching load and sessions differ. Run the scheduler again."
+msgstr "Teaching load and sessions differ. Run the scheduler again."
+
+msgid "Remove placements before deleting this teaching load."
+msgstr "Remove placements before deleting this teaching load."
+
+msgid "This teaching load already exists. Edit its hours."
+msgstr "This teaching load already exists. Edit its hours."
+
+msgid "must be blank for teacher substitutions"
+msgstr "must be blank for teacher substitutions"
+
+msgid "is used by a one-off change"
+msgstr "is used by a one-off change"
+
+msgid "This teaching type is used by courses. Remove it from those courses first."
+msgstr "This teaching type is used by courses. Remove it from those courses first."
+
+msgid "Enter a name in at least one language."
+msgstr "Enter a name in at least one language."
+
+msgid "Some sessions are unplaced. Confirm publication of this partial timetable."
+msgstr "Some sessions are unplaced. Confirm publication of this partial timetable."
+
+msgid "Teaching days must start on Monday and follow calendar order."
+msgstr "Teaching days must start on Monday and follow calendar order."
+
+msgid "Enter between 1 and 24 time slots."
+msgstr "Enter between 1 and 24 time slots."
+
+msgid "Enter a valid start and end time for every slot."
+msgstr "Enter a valid start and end time for every slot."
+
+msgid "Time slots must be ordered and must not overlap."
+msgstr "Time slots must be ordered and must not overlap."
+
+msgid "Use the same duration for every time slot."
+msgstr "Use the same duration for every time slot."
+
+msgid "Time settings cannot change after teaching load, availability or time profiles have been entered."
+msgstr "Time settings cannot change after teaching load, availability or time profiles have been entered."
+
+msgid "Choose a valid time zone."
+msgstr "Choose a valid time zone."

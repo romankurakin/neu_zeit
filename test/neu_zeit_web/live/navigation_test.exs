@@ -17,7 +17,7 @@ defmodule NeuZeitWeb.NavigationTest do
   test "navigation keeps all workflow groups without a term", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/rooms")
 
-    for heading <- ["Term", "Preparation", "Scheduling"] do
+    for heading <- ["Institution", "Term", "Scheduling"] do
       assert has_element?(view, "#main-navigation .menu-title", heading)
     end
 

@@ -26,7 +26,7 @@ defmodule NeuZeitWeb.RegistriesTest do
 
   defp course(code \\ "INF110") do
     {:ok, course} =
-      Catalog.create_course(%{"code" => code, "title" => "Programmierung I", "credits" => 8})
+      Catalog.create_course(%{"code" => code, "title" => "Programmierung I"})
 
     course
   end
@@ -98,6 +98,27 @@ defmodule NeuZeitWeb.RegistriesTest do
   end
 
   describe "courses" do
+    test "creates a course by title and can add or clear its code", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/courses/new")
+      refute has_element?(view, "[name='course[credits]']")
+      assert has_element?(view, "label", "Code (optional)")
+      view |> form("#course-form", course: %{title: "Mathematics"}) |> render_submit()
+      assert_patch(view, ~p"/courses")
+      assert [course] = Catalog.list_courses()
+      assert course.code == nil
+      assert has_element?(view, "#course-#{course.id} a", "Mathematics")
+
+      view |> element("#course-#{course.id} a", "Edit") |> render_click()
+      view |> form("#course-form", course: %{code: "MAT101"}) |> render_submit()
+      assert Catalog.get_course!(course.id).code == "MAT101"
+      view |> element("#course-#{course.id} a", "Edit") |> render_click()
+      view |> form("#course-form", course: %{code: ""}) |> render_submit()
+      assert Catalog.get_course!(course.id).code == nil
+
+      {:ok, detail, _html} = live(conn, ~p"/courses/#{course}")
+      assert has_element?(detail, "h1", "Mathematics")
+    end
+
     test "dragging a room into the pool updates the component", %{conn: conn} do
       main = building()
       first = room(main, "101")
@@ -253,7 +274,7 @@ defmodule NeuZeitWeb.RegistriesTest do
       {:ok, cohort} = Catalog.create_cohort(%{"name" => "WI-1"})
 
       {:ok, _session} =
-        Catalog.create_session(%{
+        NeuZeit.Fixtures.create_session(%{
           "term_id" => term().id,
           "course_component_id" => component.id,
           "teacher_id" => busy.id,

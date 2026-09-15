@@ -13,20 +13,25 @@ defmodule NeuZeitWeb.Nav do
 
     [
       %{
-        title: gettext("Term"),
+        title: gettext("Institution"),
         items: [
-          %{terms_item() | path: with_return(~p"/terms", return_to)},
-          term_item(term, gettext("Overview"), "", "hero-squares-2x2")
+          %{
+            label: gettext("Institution settings"),
+            path: ~p"/settings",
+            icon: "hero-cog-6-tooth"
+          },
+          rooms,
+          people,
+          courses
         ]
       },
       %{
-        title: gettext("Preparation"),
+        title: gettext("Term"),
         items: [
-          term_item(term, gettext("Settings"), "/settings", "hero-cog-6-tooth"),
-          rooms,
-          people,
+          %{terms_item() | path: with_return(~p"/terms", return_to)},
+          term_item(term, gettext("Overview"), "", "hero-squares-2x2"),
+          term_item(term, gettext("Term settings"), "/settings", "hero-cog-6-tooth"),
           term_item(term, gettext("Availability"), "/availability", "hero-clock"),
-          courses,
           term_item(term, gettext("Time profiles"), "/slot-profiles", "hero-table-cells"),
           term_item(term, gettext("Teaching load"), "/workload", "hero-rectangle-stack")
         ]
@@ -53,7 +58,11 @@ defmodule NeuZeitWeb.Nav do
     value = Map.get(params, "return_to", socket.assigns[:return_to])
 
     safe =
-      if is_binary(value) && Regex.match?(~r{\A/(terms|courses|rooms|people)(/|\?|$)}, value) &&
+      if is_binary(value) &&
+           Regex.match?(
+             ~r{\A/(terms|courses|rooms|people|teaching-types|settings)(/|\?|$)},
+             value
+           ) &&
            !String.contains?(value, "\\"), do: value, else: nil
 
     Phoenix.Component.assign(socket, :return_to, safe)

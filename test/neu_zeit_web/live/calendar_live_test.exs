@@ -19,7 +19,7 @@ defmodule NeuZeitWeb.CalendarLiveTest do
     {:ok, cohort} = Catalog.create_cohort(%{"name" => "WI-1"})
     {:ok, teacher} = Catalog.create_teacher(%{"name" => "Anna Weber"})
 
-    {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "P", "credits" => 8})
+    {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "Programming"})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -29,7 +29,7 @@ defmodule NeuZeitWeb.CalendarLiveTest do
       })
 
     {:ok, session} =
-      Catalog.create_session(%{
+      NeuZeit.Fixtures.create_session(%{
         "term_id" => term.id,
         "course_component_id" => component.id,
         "teacher_id" => teacher.id,
@@ -55,7 +55,7 @@ defmodule NeuZeitWeb.CalendarLiveTest do
     {:ok, live, _html} = live(conn, ~p"/terms/#{term}/calendar")
 
     # Week 1 Monday is 2026-09-07.
-    assert has_element?(live, "#calendar-day-2026-09-07", "INF110")
+    assert has_element?(live, "#calendar-day-2026-09-07", "Programming")
     assert has_element?(live, "#calendar-day-2026-09-07", "Anna Weber")
   end
 
@@ -71,27 +71,27 @@ defmodule NeuZeitWeb.CalendarLiveTest do
 
     # The third Monday is non-teaching, so the calendar omits its meeting.
     assert has_element?(live, "#calendar-day-2026-09-21", "Non-teaching date")
-    refute has_element?(live, "#calendar-day-2026-09-21", "INF110")
+    refute has_element?(live, "#calendar-day-2026-09-21", "Programming")
   end
 
   test "the week before the holiday still holds the class", %{conn: conn, term: term} do
     {:ok, live, _html} = live(conn, ~p"/terms/#{term}/calendar")
 
     live |> element(~s{button[aria-label="Next week"][phx-value-week="2"]}) |> render_click()
-    assert has_element?(live, "#calendar-day-2026-09-14", "INF110")
+    assert has_element?(live, "#calendar-day-2026-09-14", "Programming")
   end
 
   test "scoping to a cohort keeps only its classes", %{conn: conn, term: term, cohort: cohort} do
     {:ok, other} = Catalog.create_cohort(%{"name" => "IT-1"})
 
     {:ok, live, _html} = live(conn, ~p"/terms/#{term}/calendar")
-    assert has_element?(live, "#calendar-day-2026-09-07", "INF110")
+    assert has_element?(live, "#calendar-day-2026-09-07", "Programming")
 
     live |> element("form[phx-change='select_scope']") |> render_change(%{"scope" => other.id})
-    refute has_element?(live, "#calendar-day-2026-09-07", "INF110")
+    refute has_element?(live, "#calendar-day-2026-09-07", "Programming")
 
     live |> element("form[phx-change='select_scope']") |> render_change(%{"scope" => cohort.id})
-    assert has_element?(live, "#calendar-day-2026-09-07", "INF110")
+    assert has_element?(live, "#calendar-day-2026-09-07", "Programming")
   end
 
   describe "dragging an occurrence" do

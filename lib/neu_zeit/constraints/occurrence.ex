@@ -6,7 +6,7 @@ defmodule NeuZeit.Constraints.Occurrence do
 
   import Ecto.Query, warn: false
 
-  alias NeuZeit.Catalog.{Session, TeacherAvailabilityCell}
+  alias NeuZeit.Catalog.{Session, Teacher, TeacherAvailabilityCell}
   alias NeuZeit.Constraints.Projection
   alias NeuZeit.Repo
 
@@ -51,8 +51,8 @@ defmodule NeuZeit.Constraints.Occurrence do
     do: Enum.filter(occurrences, &MapSet.member?(dates, &1.date))
 
   defp exception_date_errors(term, exceptions, sessions_by_id) do
-    days_count = length(NeuZeit.Config.grid!().days)
-    slots_count = length(NeuZeit.Config.grid!().slots)
+    days_count = length(NeuZeit.Config.grid!(term).days)
+    slots_count = length(NeuZeit.Config.grid!(term).slots)
     excluded_dates = MapSet.new(term.excluded_dates || [])
 
     Enum.flat_map(exceptions, fn exception ->
@@ -87,7 +87,7 @@ defmodule NeuZeit.Constraints.Occurrence do
         end)
 
       excluded_target_errors =
-        if exception.kind in ["move", "add"] do
+        if exception.kind in ["move", "add", "substitute"] do
           target = exception.new_date || exception.occurrence_date
 
           if target && MapSet.member?(excluded_dates, target) do
@@ -135,7 +135,7 @@ defmodule NeuZeit.Constraints.Occurrence do
   defp orphaned_exception_errors(term, placements, exceptions, opts) do
     if Keyword.get(opts, :require_origins, false) do
       exceptions
-      |> Enum.filter(&(&1.status == "active" and &1.kind in ["move", "cancel"]))
+      |> Enum.filter(&(&1.status == "active" and &1.kind in ["move", "cancel", "substitute"]))
       |> Enum.reject(fn exception ->
         Projection.template_occurrence?(
           term,
@@ -211,9 +211,22 @@ defmodule NeuZeit.Constraints.Occurrence do
   end
 
   defp teacher_availability_errors(term, occurrences, sessions_by_id) do
+    ids = occurrences |> Enum.map(& &1.teacher_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    teachers =
+      Repo.all(from t in Teacher, where: t.id in ^ids, preload: [:availability_cells])
+      |> Map.new(&{&1.id, &1})
+
     Enum.flat_map(occurrences, fn occurrence ->
-      case Map.get(sessions_by_id, occurrence.session_id) do
-        %{teacher: %{availability_cells: cells}} ->
+      session = Map.get(sessions_by_id, occurrence.session_id)
+
+      teacher =
+        if occurrence.teacher_id,
+          do: teachers[occurrence.teacher_id],
+          else: session && session.teacher
+
+      case teacher do
+        %{availability_cells: cells} ->
           term_cells = Enum.filter(cells, &(&1.term_id == term.id))
 
           unavailable_slots =
@@ -302,7 +315,8 @@ defmodule NeuZeit.Constraints.Occurrence do
 
   defp resource_conflicts(left_session, right_session, left, right) do
     teacher =
-      if right_session.teacher_id == left_session.teacher_id do
+      if (right.teacher_id || right_session.teacher_id) ==
+           (left.teacher_id || left_session.teacher_id) do
         [
           pair_error(
             "teacher_conflict",

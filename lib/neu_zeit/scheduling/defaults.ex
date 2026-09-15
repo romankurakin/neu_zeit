@@ -2,7 +2,7 @@ defmodule NeuZeit.Scheduling.Defaults do
   @moduledoc """
   Default scheduling policy.
 
-  Future administrator-editable policy should be stored and versioned as domain data.
+  Institution settings and each term grid are stored as domain data. These values initialize them.
   """
 
   def policy do
@@ -10,13 +10,8 @@ defmodule NeuZeit.Scheduling.Defaults do
       institution: %{
         name: "DKU",
         timezone: "Asia/Almaty",
-        default_locale: "de",
+        default_locale: "en",
         supported_locales: ["de", "en", "ru"]
-      },
-      ects: %{
-        hours_per_credit: 30,
-        contact_ratio: 0.4,
-        academic_hour_minutes: 45
       },
       grid: %{
         days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],

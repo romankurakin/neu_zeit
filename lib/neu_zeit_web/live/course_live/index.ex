@@ -56,7 +56,7 @@ defmodule NeuZeitWeb.CourseLive.Index do
       {:ok, course} ->
         {:noreply,
          socket
-         |> put_flash(:info, gettext("Saved %{name}.", name: course.code))
+         |> put_flash(:info, gettext("Saved %{name}.", name: course_title(course)))
          |> push_patch(to: ~p"/courses")
          |> load()}
 
@@ -79,7 +79,7 @@ defmodule NeuZeitWeb.CourseLive.Index do
         {:noreply,
          socket
          |> assign(:deleting, nil)
-         |> put_flash(:info, gettext("Deleted %{name}.", name: course.code))
+         |> put_flash(:info, gettext("Deleted %{name}.", name: course_title(course)))
          |> load()}
 
       {:error, reason} ->
@@ -93,7 +93,8 @@ defmodule NeuZeitWeb.CourseLive.Index do
     Catalog.delete_course(course)
   rescue
     Ecto.ConstraintError ->
-      {:error, {:conflict, gettext("%{name} still has sessions in a term.", name: course.code)}}
+      {:error,
+       {:conflict, gettext("%{name} still has sessions in a term.", name: course_title(course))}}
   end
 
   defp load(socket) do
@@ -136,20 +137,19 @@ defmodule NeuZeitWeb.CourseLive.Index do
           />
 
           <.table :if={@courses != []} id="courses" rows={@courses} row_id={&"course-#{&1.id}"}>
-            <:col :let={course} label={gettext("Code")} class="whitespace-nowrap">
+            <:col :let={course} label={gettext("Title")}>
               <.link
                 navigate={Nav.with_return(~p"/courses/#{course}", @return_to)}
                 class="link link-hover font-semibold inline-block"
               >
-                {course.code}
+                {course_title(course)}
               </.link>
+              <div :if={course.code} class="type-detail text-base-content">{course.code}</div>
             </:col>
-            <:col :let={course} label={gettext("Title")}>{course.title}</:col>
-            <:col :let={course} label={gettext("Credits")} numeric>{course.credits}</:col>
             <:col :let={course} label={gettext("Teaching types")}>
               <span class="flex gap-1">
                 <span :for={component <- course.components} class="badge badge-ghost badge-md">
-                  {component_kind_label(component.kind)}
+                  {component_kind_label(component)}
                 </span>
                 <span :if={course.components == []} class="type-detail text-warning">
                   {gettext("none")}
@@ -186,15 +186,8 @@ defmodule NeuZeitWeb.CourseLive.Index do
             phx-change="validate"
             phx-submit="save"
           >
-            <.input field={@form[:code]} type="text" label={gettext("Code")} />
             <.input field={@form[:title]} type="text" label={gettext("Title")} />
-            <.input
-              field={@form[:credits]}
-              type="number"
-              label={gettext("Credits")}
-              step="0.5"
-              min="0"
-            />
+            <.input field={@form[:code]} type="text" label={gettext("Code (optional)")} />
             <div class="flex gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
               <.link patch={~p"/courses"} class="btn btn-ghost">{gettext("Cancel")}</.link>
@@ -205,7 +198,7 @@ defmodule NeuZeitWeb.CourseLive.Index do
 
       <.alert_dialog
         :if={@deleting}
-        title={gettext("Delete %{name}?", name: @deleting.code)}
+        title={gettext("Delete %{name}?", name: @deleting.title)}
         message={
           gettext("Teaching types will also be deleted. Courses used by sessions cannot be deleted.")
         }

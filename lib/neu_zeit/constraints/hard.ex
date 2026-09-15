@@ -6,7 +6,9 @@ defmodule NeuZeit.Constraints.Hard do
   alias NeuZeit.Catalog.{TeacherAvailabilityCell, WeekPattern}
   alias NeuZeit.Config
 
-  def check_placements(placements, grid \\ Config.grid!()) do
+  def check_placements(placements, grid \\ nil) do
+    grid = grid || Config.grid!(Enum.find_value(placements, &Map.get(&1, :term_id)))
+
     []
     |> Kernel.++(grid_errors(placements, grid))
     |> Kernel.++(week_mask_errors(placements))
@@ -18,7 +20,7 @@ defmodule NeuZeit.Constraints.Hard do
     |> Kernel.++(pairwise_errors(placements))
   end
 
-  def validate_placements(placements, grid \\ Config.grid!()) do
+  def validate_placements(placements, grid \\ nil) do
     case check_placements(placements, grid) do
       [] -> :ok
       errors -> {:error, errors}

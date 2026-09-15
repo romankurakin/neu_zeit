@@ -11,6 +11,7 @@ defmodule NeuZeit.Planning.Occurrence do
     :slot,
     :duration_slots,
     :room_id,
+    :teacher_id,
     :placement_id,
     :exception_id,
     :source,

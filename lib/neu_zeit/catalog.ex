@@ -69,7 +69,11 @@ defmodule NeuZeit.Catalog do
   def change_room(%Room{} = room, attrs \\ %{}), do: Room.changeset(room, attrs)
 
   def list_courses do
-    Repo.all(from c in Course, order_by: c.code, preload: [:components])
+    Repo.all(
+      from c in Course,
+        order_by: [c.title, c.id],
+        preload: [:translations, components: [teaching_type: :translations]]
+    )
   end
 
   def list_courses(locale) when is_binary(locale) do
@@ -77,22 +81,34 @@ defmodule NeuZeit.Catalog do
       from c in Course,
         left_join: t in CourseTranslation,
         on: t.course_id == c.id and t.locale == ^locale,
-        order_by: c.code,
+        order_by: [fragment("coalesce(?, ?)", t.title, c.title), c.id],
         select: %{
           id: c.id,
           code: c.code,
-          credits: c.credits,
           title: fragment("coalesce(?, ?)", t.title, c.title)
         }
     )
   end
 
-  def get_course!(id), do: Course |> Repo.get!(id) |> Repo.preload(:components)
+  def get_course!(id),
+    do:
+      Course
+      |> Repo.get!(id)
+      |> Repo.preload([:translations, components: [teaching_type: :translations]])
 
-  def create_course(attrs), do: %Course{} |> Course.changeset(attrs) |> Repo.insert()
+  def create_course(attrs),
+    do:
+      %Course{}
+      |> Course.changeset(attrs)
+      |> Repo.insert()
+      |> NeuZeit.Catalog.WriteSupport.preload_result(:translations)
 
   def update_course(%Course{} = course, attrs),
-    do: course |> Course.changeset(attrs) |> Repo.update()
+    do:
+      course
+      |> Course.changeset(attrs)
+      |> Repo.update()
+      |> NeuZeit.Catalog.WriteSupport.preload_result(:translations)
 
   def delete_course(%Course{} = course), do: Repo.delete(course)
 
@@ -206,7 +222,15 @@ defmodule NeuZeit.Catalog do
   def update_teacher(%Teacher{} = teacher, attrs),
     do: teacher |> Teacher.changeset(attrs) |> Repo.update()
 
-  def delete_teacher(%Teacher{} = teacher), do: Repo.delete(teacher)
+  def delete_teacher(%Teacher{} = teacher) do
+    teacher
+    |> Ecto.Changeset.change()
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+      name: :schedule_exceptions_new_teacher_id_fkey,
+      message: "is used by a one-off change"
+    )
+    |> Repo.delete()
+  end
 
   def change_teacher(%Teacher{} = teacher, attrs \\ %{}), do: Teacher.changeset(teacher, attrs)
 
@@ -249,6 +273,14 @@ defmodule NeuZeit.Catalog do
   end
 
   defdelegate list_course_components(), to: NeuZeit.Catalog.CourseComponents
+
+  defdelegate list_teaching_types(), to: NeuZeit.Catalog.TeachingTypes
+  defdelegate get_teaching_type!(id), to: NeuZeit.Catalog.TeachingTypes
+  defdelegate create_teaching_type(attrs), to: NeuZeit.Catalog.TeachingTypes
+  defdelegate update_teaching_type(teaching_type, attrs), to: NeuZeit.Catalog.TeachingTypes
+  defdelegate change_teaching_type(teaching_type, attrs \\ %{}), to: NeuZeit.Catalog.TeachingTypes
+  defdelegate delete_teaching_type(teaching_type), to: NeuZeit.Catalog.TeachingTypes
+  defdelegate teaching_type_usage(), to: NeuZeit.Catalog.TeachingTypes
   defdelegate get_course_component!(id), to: NeuZeit.Catalog.CourseComponents
   defdelegate create_course_component(attrs), to: NeuZeit.Catalog.CourseComponents
   defdelegate update_course_component(component, attrs), to: NeuZeit.Catalog.CourseComponents
@@ -276,13 +308,21 @@ defmodule NeuZeit.Catalog do
   defdelegate count_sessions(term_id, filters \\ %{}), to: NeuZeit.Catalog.Sessions
   defdelegate get_session!(id, term_id), to: NeuZeit.Catalog.Sessions
   defdelegate get_session!(id), to: NeuZeit.Catalog.Sessions
-  defdelegate create_session(attrs), to: NeuZeit.Catalog.Sessions
-  defdelegate update_session(session, attrs), to: NeuZeit.Catalog.Sessions
+
+  def create_session(_attrs),
+    do: {:error, {:conflict, "Edit teaching load instead of individual sessions."}}
+
+  def update_session(_session, _attrs),
+    do: {:error, {:conflict, "Edit teaching load instead of individual sessions."}}
+
   defdelegate change_session(session, attrs \\ %{}), to: NeuZeit.Catalog.Sessions
   defdelegate merge_candidates(term_id), to: NeuZeit.Catalog.Sessions
-  defdelegate delete_session(session), to: NeuZeit.Catalog.Sessions
+
+  def delete_session(_session),
+    do: {:error, {:conflict, "Edit teaching load instead of individual sessions."}}
 
   defdelegate list_workload(term_id), to: NeuZeit.Catalog.Workload, as: :list
   defdelegate save_workload(term_id, original, attrs), to: NeuZeit.Catalog.Workload, as: :save
+  defdelegate delete_workload(term_id, original), to: NeuZeit.Catalog.Workload, as: :delete
   defdelegate error_changeset(schema, field, message), to: NeuZeit.Catalog.WriteSupport
 end

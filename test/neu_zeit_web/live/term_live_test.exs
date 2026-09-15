@@ -77,7 +77,7 @@ defmodule NeuZeitWeb.TermLiveTest do
   describe "overview" do
     test "shows a row per teaching week", %{conn: conn} do
       term = create_term()
-      {:ok, live, html} = live(conn, ~p"/terms/#{term}")
+      {:ok, live, html} = live(conn, ~p"/terms/#{term}/settings")
 
       assert html =~ "Teaching calendar"
       # First and last dates of the 15-week span.
@@ -87,7 +87,7 @@ defmodule NeuZeitWeb.TermLiveTest do
 
     test "clicking a date excludes it, and clicking again restores it", %{conn: conn} do
       term = create_term()
-      {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}/settings")
 
       live |> element(~s{button[phx-value-date="2026-09-09"]}) |> render_click()
       assert Catalog.get_term!(term.id).excluded_dates == [~D[2026-09-09]]
@@ -147,7 +147,7 @@ defmodule NeuZeitWeb.TermLiveTest do
 
       {:ok, building} = Catalog.create_building(%{"name" => "Hauptgebäude"})
       {:ok, room} = Catalog.create_room(%{"building_id" => building.id, "name" => "101"})
-      {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "P", "credits" => 8})
+      {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "P"})
 
       {:ok, component} =
         Catalog.create_course_component(%{
@@ -160,7 +160,7 @@ defmodule NeuZeitWeb.TermLiveTest do
       {:ok, cohort} = Catalog.create_cohort(%{"name" => "WI-1"})
 
       {:ok, _session} =
-        Catalog.create_session(%{
+        NeuZeit.Fixtures.create_session(%{
           "term_id" => term.id,
           "course_component_id" => component.id,
           "teacher_id" => placeholder.id,
@@ -196,14 +196,16 @@ defmodule NeuZeitWeb.TermLiveTest do
              )
     end
 
-    test "refreshes when a non-teaching day is toggled", %{conn: conn} do
+    test "reflects non-teaching days changed in term settings", %{conn: conn} do
       term = create_term()
       NeuZeit.Fixtures.session_fixture(term: term)
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
 
       assert has_element?(live, "#readiness", "Teaching weeks: 15. Non-teaching dates: 0.")
 
-      live |> element(~s{button[phx-value-date="2026-09-09"]}) |> render_click()
+      {:ok, settings, _} = live(conn, ~p"/terms/#{term}/settings")
+      settings |> element(~s{button[phx-value-date="2026-09-09"]}) |> render_click()
+      {:ok, live, _} = live(conn, ~p"/terms/#{term}")
 
       assert has_element?(live, "#readiness", "Teaching weeks: 15. Non-teaching dates: 1.")
     end

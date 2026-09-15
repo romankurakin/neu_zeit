@@ -116,15 +116,13 @@ defmodule NeuZeitWeb.UI.Errors do
   end
 
   def entry_message(%{other_term_name: other, term_name: term} = entry) do
-    slot = Enum.at(NeuZeit.Config.grid!().slots, entry.conflict_slot - 1)
-
     gettext(
       "%{term} / %{other_term}: %{resource} is already booked on %{date}, %{time}. %{course}, %{teacher}, %{room}.",
       term: term,
       other_term: other,
       resource: entry.resource_name,
       date: to_string(entry.date),
-      time: if(slot, do: slot.start, else: to_string(entry.conflict_slot)),
+      time: entry.conflict_time,
       course: entry.other_course,
       teacher: entry.other_teacher,
       room: entry.other_room
@@ -293,10 +291,15 @@ defmodule NeuZeitWeb.UI.Errors do
   defp with_field(:base, message), do: message
   defp with_field(field, message), do: "#{field_label(field)}: #{message}"
 
+  defp field_label(:grid), do: gettext("Days and times")
+  defp field_label(:default_locale), do: gettext("Default language")
+  defp field_label(:supported_locales), do: gettext("Available languages")
+  defp field_label(:academic_hour_minutes), do: gettext("Minutes per academic hour")
+  defp field_label(:names), do: gettext("Name")
+  defp field_label(:translations), do: gettext("Translations")
   defp field_label(:name), do: gettext("Name")
   defp field_label(:title), do: gettext("Title")
   defp field_label(:code), do: gettext("Code")
-  defp field_label(:credits), do: gettext("Credits")
   defp field_label(:term_id), do: gettext("Term")
   defp field_label(:plan_id), do: gettext("Plan")
   defp field_label(:session_id), do: gettext("Session")
@@ -305,6 +308,7 @@ defmodule NeuZeitWeb.UI.Errors do
   defp field_label(:teacher_id), do: gettext("Teacher")
   defp field_label(field) when field in [:cohort_id, :cohort_ids], do: gettext("Groups")
   defp field_label(:building_id), do: gettext("Building")
+  defp field_label(:new_teacher_id), do: gettext("Substitute teacher")
   defp field_label(field) when field in [:room_id, :new_room_id], do: gettext("Room")
   defp field_label(:allowed_room_ids), do: gettext("Allowed rooms")
   defp field_label(:slot_profile_id), do: gettext("Time profile")

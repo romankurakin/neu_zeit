@@ -1,6 +1,6 @@
 defmodule NeuZeitWeb.UI.Dates do
   @moduledoc """
-  Dates in the format of the reader's browser.
+  Dates in the reader's regional format, with timestamps in the institution's time zone.
 
   The language switcher sets the words of the interface. It does not say whether
   a reader expects 24.08.2026 or 08/24/2026, because that follows the region set

@@ -28,7 +28,7 @@ defmodule NeuZeitWeb.ScopedApiTest do
     {:ok, cohort} = Catalog.create_cohort(%{"name" => "WI-1"})
     {:ok, teacher} = Catalog.create_teacher(%{"name" => "Anna Weber"})
     {:ok, other_teacher} = Catalog.create_teacher(%{"name" => "Erik Hoffmann"})
-    {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "P", "credits" => 8})
+    {:ok, course} = Catalog.create_course(%{"code" => "INF110", "title" => "P"})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -45,15 +45,17 @@ defmodule NeuZeitWeb.ScopedApiTest do
     }
 
     {:ok, here} =
-      Catalog.create_session(Map.merge(base, %{"term_id" => term.id, "teacher_id" => teacher.id}))
+      NeuZeit.Fixtures.create_session(
+        Map.merge(base, %{"term_id" => term.id, "teacher_id" => teacher.id})
+      )
 
     {:ok, _mine_other_teacher} =
-      Catalog.create_session(
+      NeuZeit.Fixtures.create_session(
         Map.merge(base, %{"term_id" => term.id, "teacher_id" => other_teacher.id})
       )
 
     {:ok, elsewhere} =
-      Catalog.create_session(
+      NeuZeit.Fixtures.create_session(
         Map.merge(base, %{"term_id" => other_term.id, "teacher_id" => teacher.id})
       )
 
@@ -129,8 +131,8 @@ defmodule NeuZeitWeb.ScopedApiTest do
 
       assert [row] = body["data"]
       assert row["code"] == "INF110"
-      assert row["required_hours"] > 0
-      assert row["status"] in ["under", "ok", "over"]
+      assert row["required_hours"] == 6.0
+      assert row["status"] == "ok"
     end
   end
 

@@ -300,6 +300,14 @@
       "tarball": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.3.tgz",
       "version": "4.3.3"
     },
+    "timepicker-ui": {
+      "dependencies": {},
+      "has_install_script": false,
+      "integrity": "sha512-+ncFBnZYrBxk8viJ6eZv2jZ5UeMnVuxtOBecHZBxpE+zgn9zpZsStXLcYVDAvBPnECIEcQJwvZ60s6/qEt08jQ==",
+      "optional_dependencies": {},
+      "tarball": "https://registry.npmjs.org/timepicker-ui/-/timepicker-ui-4.4.0.tgz",
+      "version": "4.4.0"
+    },
     "topbar": {
       "dependencies": {},
       "has_install_script": false,

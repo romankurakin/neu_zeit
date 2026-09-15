@@ -97,7 +97,7 @@ defmodule NeuZeit.Catalog.TeacherAvailabilityTest do
              ])
 
     assert {:error, changeset} =
-             Catalog.create_session(%{
+             NeuZeit.Fixtures.create_session(%{
                term_id: term.id,
                course_component_id: component_fixture().id,
                teacher_id: teacher.id,

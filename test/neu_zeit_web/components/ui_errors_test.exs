@@ -121,7 +121,7 @@ defmodule NeuZeitWeb.UI.ErrorsTest do
                  {"term must keep at least 9 weeks; existing sessions or placements use week 9",
                   []}
                ) ==
-                 "Минимум учебных недель: 9. Занятия используют неделю 9."
+                 "Сохраните не менее 9 учебных недель. Занятия используют неделю 9."
 
         assert Errors.translate_validation({"is outside the configured slot grid (1..8)", []}) ==
                  "Занятие должно целиком помещаться в учебный день. Интервалов в дне: 8."
@@ -146,11 +146,24 @@ defmodule NeuZeitWeb.UI.ErrorsTest do
     test "uses Russian plural forms for validation limits" do
       Gettext.with_locale(NeuZeitWeb.Gettext, "ru", fn ->
         for {count, expected} <- [
-              {1, "Нужен 1 символ."},
-              {2, "Нужно 2 символа."},
-              {5, "Нужно 5 символов."}
+              {1, "Введите ровно 1 символ."},
+              {2, "Введите ровно 2 символа."},
+              {5, "Введите ровно 5 символов."}
             ] do
           assert Errors.translate_validation({"should be %{count} character(s)", count: count}) ==
+                   expected
+        end
+
+        # "не более" governs the genitive, so its forms differ from a bare numeral.
+        for {count, expected} <- [
+              {1, "Введите не более 1 символа."},
+              {2, "Введите не более 2 символов."},
+              {21, "Введите не более 21 символа."},
+              {100, "Введите не более 100 символов."}
+            ] do
+          assert Errors.translate_validation(
+                   {"should be at most %{count} character(s)", count: count}
+                 ) ==
                    expected
         end
       end)

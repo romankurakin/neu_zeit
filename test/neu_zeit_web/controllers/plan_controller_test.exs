@@ -56,4 +56,19 @@ defmodule NeuZeitWeb.PlanControllerTest do
       ]
     })
   end
+
+  test "partial publication requires an explicit API confirmation", %{conn: conn} do
+    term = term_fixture()
+    session_fixture(term: term)
+    plan = plan_fixture(term: term)
+
+    for attrs <- [%{}, %{allow_partial: false}, %{allow_partial: "false"}] do
+      assert conn |> post(~p"/api/plans/#{plan.id}/publish", attrs) |> json_response(422)
+    end
+
+    assert %{"data" => %{"status" => "active"}} =
+             conn
+             |> post(~p"/api/plans/#{plan.id}/publish", %{allow_partial: true})
+             |> json_response(200)
+  end
 end

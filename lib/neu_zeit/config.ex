@@ -10,7 +10,21 @@ defmodule NeuZeit.Config do
     |> validate!()
   end
 
+  def load!(term), do: %{load!() | grid: grid!(term)}
   def grid!, do: load!().grid
+  def grid!(%{grid: grid}) when is_map(grid), do: grid
+  def grid!(nil), do: grid!()
+
+  def grid!(term_id) when is_binary(term_id) do
+    with {:ok, id} <- Ecto.UUID.cast(term_id),
+         %NeuZeit.Catalog.Term{} = term <- NeuZeit.Repo.get(NeuZeit.Catalog.Term, id) do
+      grid!(term)
+    else
+      _ -> grid!()
+    end
+  end
+
+  def institution!, do: NeuZeit.Settings.get()
 
   def validate!(config) do
     days = config.grid[:days] || []
@@ -31,15 +45,6 @@ defmodule NeuZeit.Config do
 
       not valid_slot_grid?(slots) ->
         raise ArgumentError, "grid.slots must be valid, ordered, and non-overlapping"
-
-      config.ects[:hours_per_credit] not in 25..30 ->
-        raise ArgumentError, "ects.hours_per_credit must be 25..30"
-
-      config.ects[:contact_ratio] <= 0 or config.ects[:contact_ratio] > 1 ->
-        raise ArgumentError, "ects.contact_ratio must be in (0, 1]"
-
-      config.ects[:academic_hour_minutes] <= 0 ->
-        raise ArgumentError, "ects.academic_hour_minutes must be positive"
 
       not Enum.all?(weights, &non_negative_integer?/1) ->
         raise ArgumentError, "soft weights must be non-negative integers"

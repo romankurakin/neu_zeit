@@ -21,9 +21,10 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
      |> assign(:page_title, gettext("One-off changes"))
      |> assign(:term, term)
      |> assign(:terms, Catalog.list_terms())
-     |> assign(:grid, NeuZeit.Config.grid!())
+     |> assign(:grid, NeuZeit.Config.grid!(term))
      |> assign(:sessions, Catalog.list_sessions(term_id))
      |> assign(:rooms, Catalog.list_rooms())
+     |> assign(:teachers, Catalog.list_teachers())
      |> assign(:reverting, nil)
      |> load()}
   end
@@ -40,9 +41,10 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
       kind: params["kind"] || "cancel",
       session_id: params["session_id"],
       occurrence_date: parse_date(params["date"]),
-      new_date: if(params["kind"] != "cancel", do: parse_date(params["new_date"])),
-      new_slot: if(params["kind"] != "cancel", do: parse_slot(params["new_slot"])),
-      new_room_id: if(params["kind"] != "cancel", do: params["new_room_id"])
+      new_date: if(params["kind"] in ["move", "add"], do: parse_date(params["new_date"])),
+      new_slot: if(params["kind"] in ["move", "add"], do: parse_slot(params["new_slot"])),
+      new_room_id: if(params["kind"] in ["move", "add"], do: params["new_room_id"]),
+      new_teacher_id: if(params["kind"] != "cancel", do: params["new_teacher_id"])
     }
 
     socket
@@ -54,17 +56,13 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
     exception = Planning.get_schedule_exception!(id, socket.assigns.term.id)
 
     attrs =
-      Map.take(params, ["kind", "new_date"])
+      Map.take(params, ["kind", "new_date", "new_slot", "new_room_id"])
       |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
       |> Map.new()
 
-    attrs =
-      if attrs["kind"] == "cancel",
-        do: Map.merge(attrs, %{"new_date" => nil, "new_slot" => nil, "new_room_id" => nil}),
-        else: attrs
+    attrs = normalize_payload(attrs)
 
-    # An addition has one real date, including legacy API records that used
-    # new_date. Dragging such an addition edits that date in the same record.
+    # Dragging an addition edits its date in the same record.
     attrs =
       if (attrs["kind"] || exception.kind) == "add" do
         Map.merge(attrs, %{
@@ -83,6 +81,20 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
 
   defp apply_action(socket, :index, _params),
     do: socket |> assign(:editing, nil) |> assign(:form, nil)
+
+  defp normalize_payload(%{"kind" => "cancel"} = attrs),
+    do:
+      Map.merge(attrs, %{
+        "new_date" => nil,
+        "new_slot" => nil,
+        "new_room_id" => nil,
+        "new_teacher_id" => nil
+      })
+
+  defp normalize_payload(%{"kind" => "substitute"} = attrs),
+    do: Map.merge(attrs, %{"new_date" => nil, "new_slot" => nil, "new_room_id" => nil})
+
+  defp normalize_payload(attrs), do: attrs
 
   defp parse_slot(nil), do: nil
 
@@ -104,11 +116,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
 
   @impl true
   def handle_event("validate", %{"schedule_exception" => params}, socket) do
-    params =
-      if params["kind"] == "cancel",
-        do: Map.merge(params, %{"new_date" => nil, "new_slot" => nil, "new_room_id" => nil}),
-        else: params
-
+    params = normalize_payload(params)
     params = if params["kind"] == "add", do: Map.put(params, "new_date", nil), else: params
     changeset = Planning.change_schedule_exception(socket.assigns.editing, params)
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
@@ -117,10 +125,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
   def handle_event("save", %{"schedule_exception" => params}, socket) do
     attrs = Map.put(params, "term_id", socket.assigns.term.id)
 
-    attrs =
-      if attrs["kind"] == "cancel",
-        do: Map.merge(attrs, %{"new_date" => nil, "new_slot" => nil, "new_room_id" => nil}),
-        else: attrs
+    attrs = normalize_payload(attrs)
 
     attrs = if attrs["kind"] == "add", do: Map.put(attrs, "new_date", nil), else: attrs
 
@@ -206,8 +211,8 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
       )
 
     [
-      session.course_component.course.code,
-      component_kind_label(session.course_component.kind),
+      course_title(session.course_component.course),
+      component_kind_label(session.course_component),
       session.teacher.name,
       Enum.map_join(session.cohorts, ", ", & &1.name),
       if(weeks != [], do: weeks_label(weeks, total)),
@@ -222,11 +227,13 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
 
   defp change_action("cancel"), do: gettext("Cancel dated session")
   defp change_action("move"), do: gettext("Move dated session")
+  defp change_action("substitute"), do: gettext("Replace teacher")
   defp change_action("add"), do: gettext("Add a dated session")
   defp change_action(_kind), do: gettext("Record a change")
 
   defp kind_label("cancel"), do: gettext("Cancelled")
   defp kind_label("move"), do: gettext("Moved")
+  defp kind_label("substitute"), do: gettext("Teacher replaced")
   defp kind_label("add"), do: gettext("Added")
   defp kind_label(kind), do: kind
 
@@ -283,6 +290,9 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
                 row.session.duration_slots
               )}</span>
               <span :if={row.new_room} class="text-base-content">, {row.new_room.name}</span>
+            </:col>
+            <:col :let={row} label={gettext("Substitute teacher")}>
+              {row.new_teacher && row.new_teacher.name}
             </:col>
             <:col :let={row} label={gettext("Reason")}>{row.reason}</:col>
             <:col :let={row} label={gettext("Author")}>{row.created_by}</:col>
@@ -349,7 +359,8 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
               options={[
                 {gettext("Cancel dated session"), "cancel"},
                 {gettext("Move dated session"), "move"},
-                {gettext("Add a dated session"), "add"}
+                {gettext("Add a dated session"), "add"},
+                {gettext("Replace teacher"), "substitute"}
               ]}
             />
             <.date_field
@@ -392,6 +403,19 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
               />
             </div>
 
+            <.input
+              :if={to_string(@form[:kind].value) in ["move", "add", "substitute"]}
+              field={@form[:new_teacher_id]}
+              type="select"
+              label={gettext("Substitute teacher")}
+              prompt={
+                if to_string(@form[:kind].value) == "substitute",
+                  do: gettext("Choose a teacher"),
+                  else: gettext("Keep the assigned teacher")
+              }
+              options={Enum.map(@teachers, &{&1.name, &1.id})}
+              required={to_string(@form[:kind].value) == "substitute"}
+            />
             <.input field={@form[:reason]} type="text" label={gettext("Reason")} required />
             <.input field={@form[:created_by]} type="text" label={gettext("Author")} required />
 

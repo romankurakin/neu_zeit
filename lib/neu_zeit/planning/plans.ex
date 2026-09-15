@@ -99,20 +99,20 @@ defmodule NeuZeit.Planning.Plans do
     end)
   end
 
-  def publish_plan(plan_id) do
-    do_publish_plan(plan_id)
+  def publish_plan(plan_id, opts \\ []) do
+    do_publish_plan(plan_id, opts)
   rescue
     error in ArgumentError -> WriteSupport.error_result(%Plan{}, :base, Exception.message(error))
   end
 
-  def publish_plan!(plan_id) do
-    case do_publish_plan(plan_id) do
+  def publish_plan!(plan_id, opts \\ []) do
+    case do_publish_plan(plan_id, opts) do
       {:ok, plan} -> plan
       {:error, reason} -> raise ArgumentError, inspect(reason)
     end
   end
 
-  defp do_publish_plan(plan_id) do
+  defp do_publish_plan(plan_id, opts) do
     Repo.transaction(fn ->
       NeuZeit.Planning.SharedResources.lock!()
       term_id = Repo.one!(from p in Plan, where: p.id == ^plan_id, select: p.term_id)
@@ -134,7 +134,12 @@ defmodule NeuZeit.Planning.Plans do
           ]
         )
 
-      validate_publishable!(plan)
+      case NeuZeit.Catalog.Workload.check(term_id) do
+        :ok -> :ok
+        {:error, error} -> Repo.rollback(error)
+      end
+
+      validate_publishable!(plan, opts)
 
       exceptions =
         Repo.all(
@@ -165,7 +170,7 @@ defmodule NeuZeit.Planning.Plans do
     end)
   end
 
-  def validate_publishable!(%Plan{} = plan) do
+  def validate_publishable!(%Plan{} = plan, opts \\ []) do
     if plan.status != "draft" do
       raise ArgumentError, "only draft plans can be published"
     end
@@ -179,9 +184,11 @@ defmodule NeuZeit.Planning.Plans do
 
     placed_ids = plan.placements |> Enum.map(& &1.session_id) |> MapSet.new()
 
-    if MapSet.size(required_ids) != MapSet.size(placed_ids) or
-         not MapSet.subset?(required_ids, placed_ids) do
-      raise ArgumentError, "plan has unplaced sessions"
+    incomplete? = not MapSet.subset?(required_ids, placed_ids)
+
+    if incomplete? && Keyword.get(opts, :allow_partial) != true do
+      raise ArgumentError,
+            "Some sessions are unplaced. Confirm publication of this partial timetable."
     end
 
     case Hard.validate_placements(plan.placements) do

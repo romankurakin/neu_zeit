@@ -2,6 +2,19 @@ defmodule NeuZeitWeb.ReportActionsTest do
   use NeuZeitWeb.ConnCase, async: true
   import NeuZeit.Fixtures
 
+  test "coverage uses saved teaching hours for fixed repetitions", %{conn: conn} do
+    term = term_fixture()
+    session = session_fixture(term: term)
+    plan = plan_fixture(term: term)
+    {:ok, view, _html} = live(conn, ~p"/terms/#{term}/plans/#{plan}?tab=coverage")
+
+    assert has_element?(view, "#coverage", session.course_component.course.title)
+    refute has_element?(view, "#coverage", "Not set")
+    refute has_element?(view, "#coverage a", "Set teaching hours")
+
+    refute has_element?(view, "#coverage th", "Credits")
+  end
+
   test "overview identifies its plan and links to the unplaced sessions", %{conn: conn} do
     term = term_fixture()
     session_fixture(term: term)

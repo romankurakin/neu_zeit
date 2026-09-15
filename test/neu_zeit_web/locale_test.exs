@@ -77,7 +77,7 @@ defmodule NeuZeitWeb.LocaleTest do
     @tag locale: "ru"
     test "calendar weekday labels are localized without changing their dates", %{conn: conn} do
       term = NeuZeit.Fixtures.term_fixture(%{starts_on: ~D[2026-09-07]})
-      {:ok, view, _html} = live(conn, ~p"/terms/#{term}")
+      {:ok, view, _html} = live(conn, ~p"/terms/#{term}/settings")
 
       assert has_element?(view, "th", "Пн")
       assert has_element?(view, "th", "Сб")

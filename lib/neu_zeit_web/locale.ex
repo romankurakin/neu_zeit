@@ -11,10 +11,10 @@ defmodule NeuZeitWeb.Locale do
   @session_key "locale"
 
   @doc "Returns the supported languages from institution settings."
-  def supported, do: NeuZeit.Config.load!().institution.supported_locales
+  def supported, do: NeuZeit.Settings.snapshot().supported_locales
 
   @doc "Returns the default language from institution settings."
-  def default, do: NeuZeit.Config.load!().institution.default_locale
+  def default, do: NeuZeit.Settings.snapshot().default_locale
 
   @doc "Human-readable names for the language switcher."
   def label("de"), do: "Deutsch"
@@ -28,6 +28,7 @@ defmodule NeuZeitWeb.Locale do
   Plug: resolves the language and applies it to the request process.
   """
   def call(conn, _opts) do
+    NeuZeit.Settings.refresh()
     locale = resolve(get_session(conn, @session_key))
     Gettext.put_locale(NeuZeitWeb.Gettext, locale)
     put_session(conn, @session_key, locale)
@@ -39,6 +40,7 @@ defmodule NeuZeitWeb.Locale do
   LiveViews use separate processes and do not inherit the HTTP process locale.
   """
   def on_mount(:default, _params, session, socket) do
+    NeuZeit.Settings.refresh()
     locale = resolve(session[@session_key])
     Gettext.put_locale(NeuZeitWeb.Gettext, locale)
     {:cont, Phoenix.Component.assign(socket, :locale, locale)}

@@ -16,7 +16,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
       cohort_ids: [cohort.id],
       week_mask: [1, 2],
       duration_slots: 1,
-      count: 2
+      contact_hours: "4"
     }
 
     %{term: term, component: component, teacher: teacher, cohort: cohort, attrs: attrs}
@@ -134,7 +134,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     {:ok, _} =
       Planning.create_placement(%{
         plan_id: plan.id,
-        session_id: row.id,
+        session_id: hd(row.sessions).id,
         room_id: hd(ctx.component.allowed_rooms).id,
         day: 2,
         slot: 1,
@@ -142,12 +142,12 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
       })
 
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/plans/#{plan}?week=2")
-    render_hook(view, "select_session", %{"session-id" => row.id})
+    render_hook(view, "select_session", %{"session-id" => hd(row.sessions).id})
     view |> form("#placement-week", week: "1") |> render_change()
     assert [%{week_mask: [1]}] = Planning.list_placements(plan.id)
     view |> element("button", "Undo last edit") |> render_click()
     assert [%{week_mask: [2]}] = Planning.list_placements(plan.id)
-    render_hook(view, "drop_session", %{"session-id" => row.id, "target" => "tray"})
+    render_hook(view, "drop_session", %{"session-id" => hd(row.sessions).id, "target" => "tray"})
     assert Planning.list_placements(plan.id) == []
     view |> element("button", "Undo last edit") |> render_click()
     assert [%{week_mask: [2]}] = Planning.list_placements(plan.id)

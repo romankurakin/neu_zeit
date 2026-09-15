@@ -3,7 +3,7 @@ defmodule NeuZeit.Planning.ScheduleException do
 
   import Ecto.Changeset
 
-  @kinds ~w(cancel move add)
+  @kinds ~w(cancel move add substitute)
   @statuses ~w(active reverted)
 
   schema "schedule_exceptions" do
@@ -18,6 +18,7 @@ defmodule NeuZeit.Planning.ScheduleException do
     belongs_to :term, NeuZeit.Catalog.Term
     belongs_to :session, NeuZeit.Catalog.Session
     belongs_to :new_room, NeuZeit.Catalog.Room
+    belongs_to :new_teacher, NeuZeit.Catalog.Teacher
 
     timestamps(updated_at: false)
   end
@@ -35,6 +36,7 @@ defmodule NeuZeit.Planning.ScheduleException do
       :new_date,
       :new_slot,
       :new_room_id,
+      :new_teacher_id,
       :reason,
       :status,
       :created_by
@@ -50,6 +52,7 @@ defmodule NeuZeit.Planning.ScheduleException do
     |> prepare_changes(&validate_grid_and_term_dates/1)
     |> foreign_key_constraint(:session_id, name: :exceptions_session_term_fkey)
     |> foreign_key_constraint(:new_room_id)
+    |> foreign_key_constraint(:new_teacher_id)
     |> unique_constraint([:session_id, :occurrence_date],
       name: :exceptions_one_override_per_occurrence
     )
@@ -82,12 +85,25 @@ defmodule NeuZeit.Planning.ScheduleException do
     kind = get_field(changeset, :kind)
     new_slot = get_field(changeset, :new_slot)
     new_room_id = get_field(changeset, :new_room_id)
+    new_teacher_id = get_field(changeset, :new_teacher_id)
 
     cond do
-      kind == "cancel" && (new_slot || new_room_id) ->
+      kind == "substitute" ->
+        changeset
+        |> validate_required([:new_teacher_id])
+        |> then(fn cs ->
+          Enum.reduce([:new_date, :new_slot, :new_room_id], cs, fn field, acc ->
+            if get_field(acc, field),
+              do: add_error(acc, field, "must be blank for teacher substitutions"),
+              else: acc
+          end)
+        end)
+
+      kind == "cancel" && (new_slot || new_room_id || new_teacher_id) ->
         changeset
         |> add_error(:new_slot, "must be blank for cancellations")
         |> add_error(:new_room_id, "must be blank for cancellations")
+        |> add_error(:new_teacher_id, "must be blank for cancellations")
 
       kind in ["move", "add"] && (is_nil(new_slot) || is_nil(new_room_id)) ->
         changeset
@@ -99,7 +115,7 @@ defmodule NeuZeit.Planning.ScheduleException do
   end
 
   defp validate_grid_and_term_dates(changeset) do
-    grid = NeuZeit.Config.grid!()
+    grid = NeuZeit.Config.grid!(get_field(changeset, :term_id))
 
     changeset
     |> validate_slot_bound(length(grid.slots), session_duration(changeset))

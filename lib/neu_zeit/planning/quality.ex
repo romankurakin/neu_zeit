@@ -16,7 +16,7 @@ defmodule NeuZeit.Planning.Quality do
   Returns per-cohort and per-teacher rows, plus sequence and room observations.
   """
   def report(plan_id, opts \\ []) do
-    grid = Keyword.get(opts, :grid, Config.grid!())
+    grid = Keyword.get(opts, :grid, Config.grid!(NeuZeit.Planning.get_plan!(plan_id).term_id))
     placements = Planning.list_placements(plan_id)
 
     %{
@@ -25,7 +25,7 @@ defmodule NeuZeit.Planning.Quality do
       sequences: sequences(placements),
       rooms: rooms(placements),
       evening_slot: evening_slot(grid),
-      saturday: length(grid.days)
+      saturday: 6
     }
   end
 
@@ -66,9 +66,9 @@ defmodule NeuZeit.Planning.Quality do
       # Count evening and Saturday sessions.
       evening:
         count_cells(placements, fn p, slot ->
-          slot >= evening_slot(grid) and p.day < length(grid.days)
+          slot >= evening_slot(grid) and p.day < 6
         end),
-      saturday: count_cells(placements, fn p, _slot -> p.day == length(grid.days) end),
+      saturday: count_cells(placements, fn p, _slot -> p.day == 6 end),
       # Count building changes within each teaching day.
       building_transitions: Enum.sum(Enum.map(per_week, & &1.building_transitions)),
       # Find breaks in the session week sets.

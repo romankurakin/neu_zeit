@@ -23,13 +23,15 @@ defmodule NeuZeit.Catalog.SlotProfile do
     do: name in ["DAYTIME_ANY", "Weekdays, daytime", "Будни, дневное время", "Werktags, tagsüber"]
 
   def changeset(profile, attrs) do
-    profile
-    |> cast(attrs, [:term_id, :name])
+    changeset = cast(profile, attrs, [:term_id, :name])
+    grid = NeuZeit.Config.grid!(get_field(changeset, :term_id))
+
+    changeset
     |> validate_required([:term_id, :name])
     |> validate_length(:name, min: 1, max: 100)
     |> cast_assoc(:cells,
       required: true,
-      with: &NeuZeit.Catalog.SlotProfileCell.changeset/2,
+      with: &NeuZeit.Catalog.SlotProfileCell.changeset(&1, &2, grid),
       sort_param: :cells_sort,
       drop_param: :cells_drop
     )

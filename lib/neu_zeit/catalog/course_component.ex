@@ -3,10 +3,13 @@ defmodule NeuZeit.Catalog.CourseComponent do
 
   import Ecto.Changeset
 
-  @kinds ~w(lecture seminar lab)
-
   schema "course_components" do
     field :kind, :string
+
+    belongs_to :teaching_type, NeuZeit.Catalog.TeachingType,
+      foreign_key: :kind,
+      type: :string,
+      define_field: false
 
     belongs_to :course, NeuZeit.Catalog.Course
 
@@ -19,13 +22,11 @@ defmodule NeuZeit.Catalog.CourseComponent do
     timestamps()
   end
 
-  def kinds, do: @kinds
-
   def changeset(component, attrs) do
     component
     |> cast(attrs, [:course_id, :kind])
     |> validate_required([:course_id, :kind])
-    |> validate_inclusion(:kind, @kinds)
+    |> foreign_key_constraint(:kind, name: :course_components_kind_fkey)
     |> foreign_key_constraint(:course_id)
     |> unique_constraint([:course_id, :kind])
   end

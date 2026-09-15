@@ -1,4 +1,5 @@
 @import "tailwindcss" source(none);
+@import "timepicker-ui/main.css";
 @source "../css";
 @source "../js";
 @source "../../lib/neu_zeit_web";
@@ -145,6 +146,39 @@
  * two calendars beside each other only ask the reader which one to trust.
  */
 .date-field input[type="date"]::-webkit-calendar-picker-indicator { display: none }
+
+/* Keep numeric validation and keyboard entry without browser spinner buttons. */
+input[type="number"] { appearance: textfield; -moz-appearance: textfield }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0 }
+
+.neu-zeit-time-picker {
+  --tp-bg: var(--color-base-100);
+  --tp-surface: var(--color-base-200);
+  --tp-surface-hover: var(--color-base-300);
+  --tp-input-bg: var(--color-base-200);
+  --tp-text: var(--color-base-content);
+  --tp-text-secondary: var(--color-base-content);
+  --tp-primary: var(--color-primary);
+  --tp-on-primary: var(--color-primary-content);
+  --tp-primary-container: var(--color-primary);
+  --tp-on-primary-container: var(--color-primary-content);
+  --tp-border: var(--color-base-300);
+  --tp-hover-bg: var(--color-base-200);
+  --tp-font-family: var(--font-sans);
+  --tp-border-radius: var(--radius-box);
+  --tp-outline: var(--color-primary);
+  --tp-outline-variant: var(--color-base-300);
+  --tp-wheel-text-color: var(--color-base-content);
+  --tp-wheel-selected-color: var(--color-primary-content);
+  --tp-wheel-highlight-bg: var(--color-primary);
+  --tp-wheel-highlight-border: var(--color-primary);
+  --tp-popover-radius: var(--radius-box);
+}
+
+.neu-zeit-time-picker :is(.tp-ui-cancel-btn, .tp-ui-ok-btn) {
+  color: var(--color-base-content);
+}
 
 /*
  * The calendar keeps the type roles of the interface. DaisyUI writes it at

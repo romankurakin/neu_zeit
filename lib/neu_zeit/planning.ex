@@ -76,7 +76,11 @@ defmodule NeuZeit.Planning do
           session: [
             :cohorts,
             slot_profile: [:cells],
-            course_component: [:course, :allowed_rooms]
+            course_component: [
+              :allowed_rooms,
+              course: :translations,
+              teaching_type: :translations
+            ]
           ]
         ]
       )
@@ -93,9 +97,9 @@ defmodule NeuZeit.Planning do
   defdelegate update_plan(plan, attrs), to: NeuZeit.Planning.Plans
   defdelegate delete_plan(plan), to: NeuZeit.Planning.Plans
   defdelegate clone_plan(plan_id, attrs \\ %{}), to: NeuZeit.Planning.Plans
-  defdelegate publish_plan(plan_id), to: NeuZeit.Planning.Plans
-  defdelegate publish_plan!(plan_id), to: NeuZeit.Planning.Plans
-  defdelegate validate_publishable!(plan), to: NeuZeit.Planning.Plans
+  defdelegate publish_plan(plan_id, opts \\ []), to: NeuZeit.Planning.Plans
+  defdelegate publish_plan!(plan_id, opts \\ []), to: NeuZeit.Planning.Plans
+  defdelegate validate_publishable!(plan, opts \\ []), to: NeuZeit.Planning.Plans
   defdelegate list_placements(), to: NeuZeit.Planning.Placements
   defdelegate list_placements(plan_id), to: NeuZeit.Planning.Placements
   defdelegate get_placement!(id), to: NeuZeit.Planning.Placements

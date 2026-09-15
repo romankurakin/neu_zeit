@@ -42,8 +42,7 @@ defmodule NeuZeitWeb.TermConfigTest do
     {:ok, course} =
       Catalog.create_course(%{
         "code" => "C#{System.unique_integer([:positive])}",
-        "title" => "Course",
-        "credits" => 5
+        "title" => "Course"
       })
 
     {:ok, component} =
@@ -53,7 +52,7 @@ defmodule NeuZeitWeb.TermConfigTest do
         "allowed_room_ids" => [room.id]
       })
 
-    Catalog.create_session(%{
+    NeuZeit.Fixtures.create_session(%{
       "term_id" => term.id,
       "course_component_id" => component.id,
       "teacher_id" => teacher.id,

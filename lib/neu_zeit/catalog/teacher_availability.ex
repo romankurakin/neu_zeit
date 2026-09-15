@@ -98,7 +98,8 @@ defmodule NeuZeit.Catalog.TeacherAvailability do
         not TeacherAvailabilityCell.schedulable?(
           availability_cells,
           profile_cells,
-          session.duration_slots
+          session.duration_slots,
+          NeuZeit.Config.grid!(term_id)
         )
       end)
 

@@ -168,14 +168,6 @@ msgstr "Create the first term"
 msgid "Created %{name}."
 msgstr "Created %{name}."
 
-#: lib/neu_zeit_web/components/ui/errors.ex:299
-#: lib/neu_zeit_web/live/course_live/index.ex:139
-#: lib/neu_zeit_web/live/course_live/index.ex:174
-#: lib/neu_zeit_web/live/plan_live/reports.ex:68
-#, elixir-autogen, elixir-format
-msgid "Credits"
-msgstr "Credits"
-
 #: lib/neu_zeit_web/components/layouts.ex:170
 #, elixir-autogen, elixir-format
 msgid "Current term"
@@ -231,11 +223,6 @@ msgstr "Edit"
 #, elixir-autogen, elixir-format
 msgid "Edit course"
 msgstr "Edit course"
-
-#: lib/neu_zeit_web/live/term_live/show.ex:182
-#, elixir-autogen, elixir-format
-msgid "Edit dates"
-msgstr "Edit dates"
 
 #: lib/neu_zeit_web/live/term_live/index.ex:141
 #, elixir-autogen, elixir-format
@@ -707,11 +694,6 @@ msgstr "Lab"
 msgid "Lecture"
 msgstr "Lecture"
 
-#: lib/neu_zeit_web/components/scheduling/labels.ex:9
-#, elixir-autogen, elixir-format
-msgid "Seminar"
-msgstr "Seminar"
-
 #: lib/neu_zeit_web/live/availability_live/index.ex:68
 #, elixir-autogen, elixir-format
 msgid "%{name} is now unrestricted."
@@ -812,32 +794,11 @@ msgstr "Any profile"
 msgid "Attending"
 msgstr "Attending"
 
-#: lib/neu_zeit_web/live/session_live/index.ex:430
-#, elixir-autogen, elixir-format
-msgid "Delete session"
-msgstr "Delete session"
-
-#: lib/neu_zeit_web/live/session_live/index.ex:428
-#, elixir-autogen, elixir-format
-msgid "Delete this session?"
-msgstr "Delete this session?"
-
-#: lib/neu_zeit_web/live/session_live/index.ex:357
-#, elixir-autogen, elixir-format
-msgid "Edit session"
-msgstr "Edit session"
-
 #: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:42
 #: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:110
 #, elixir-autogen, elixir-format
 msgid "Every week"
 msgstr "Every week"
-
-#: lib/neu_zeit_web/live/session_live/index.ex:248
-#: lib/neu_zeit_web/live/session_live/index.ex:357
-#, elixir-autogen, elixir-format
-msgid "New session"
-msgstr "New session"
 
 #: lib/neu_zeit_web/live/session_live/index.ex:292
 #, elixir-autogen, elixir-format
@@ -850,16 +811,6 @@ msgstr "No profile"
 #, elixir-autogen, elixir-format
 msgid "No restriction"
 msgstr "No restriction"
-
-#: lib/neu_zeit_web/live/session_live/index.ex:179
-#, elixir-autogen, elixir-format
-msgid "Session deleted."
-msgstr "Session deleted."
-
-#: lib/neu_zeit_web/live/session_live/index.ex:158
-#, elixir-autogen, elixir-format
-msgid "Session saved."
-msgstr "Session saved."
 
 #: lib/neu_zeit_web/components/scheduling/diagnostics.ex:192
 #: lib/neu_zeit_web/live/term_live/show.ex:306
@@ -1319,11 +1270,6 @@ msgstr "Day"
 msgid "Edit change"
 msgstr "Edit change"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:137
-#, elixir-autogen, elixir-format
-msgid "Edit session weeks and duration"
-msgstr "Edit session weeks and duration"
-
 #: lib/neu_zeit_web/components/scheduling/teaching_weeks.ex:44
 #, elixir-autogen, elixir-format
 msgid "Even weeks"
@@ -1682,11 +1628,6 @@ msgstr "Create a draft to generate or edit a timetable."
 msgid "Create a plan and schedule sessions to see calendar dates."
 msgstr "Create a plan and schedule sessions to see calendar dates."
 
-#: lib/neu_zeit_web/live/session_live/index.ex:358
-#, elixir-autogen, elixir-format
-msgid "Create a separate session for each parallel group."
-msgstr "Create a separate session for each parallel group."
-
 #: lib/neu_zeit_web/live/plan_live/reports.ex:119
 #, elixir-autogen, elixir-format
 msgid "Days with one session"
@@ -1903,11 +1844,6 @@ msgstr "Review time restrictions and allowed rooms, then try again."
 msgid "Room is not allowed for this teaching type"
 msgstr "Room is not allowed for this teaching type"
 
-#: lib/neu_zeit_web/live/term_live/show.ex:250
-#, elixir-autogen, elixir-format
-msgid "Same teaching type, teacher, weeks and duration: %{codes}"
-msgstr "Same teaching type, teacher, weeks and duration: %{codes}"
-
 #: lib/neu_zeit_web/live/term_live/show.ex:215
 #, elixir-autogen, elixir-format
 msgid "Scheduling conflicts"
@@ -1917,11 +1853,6 @@ msgstr "Scheduling conflicts"
 #, elixir-autogen, elixir-format
 msgid "Select allowed start times."
 msgstr "Select allowed start times."
-
-#: lib/neu_zeit_web/live/session_live/index.ex:429
-#, elixir-autogen, elixir-format
-msgid "Sessions scheduled in a draft or published plan cannot be deleted."
-msgstr "Sessions scheduled in a draft or published plan cannot be deleted."
 
 #: lib/neu_zeit_web/live/course_live/show.ex:166
 #, elixir-autogen, elixir-format
@@ -2496,11 +2427,6 @@ msgstr "Copy to draft"
 msgid "Courses not entered here are not included in the totals."
 msgstr "Courses not entered here are not included in the totals."
 
-#: lib/neu_zeit_web/live/course_live/show.ex:208
-#, elixir-autogen, elixir-format
-msgid "Create separate sessions for parallel groups."
-msgstr "Create separate sessions for parallel groups."
-
 #: lib/neu_zeit_web/live/session_live/index.ex:401
 #: lib/neu_zeit_web/live/workload_live/index.ex:184
 #, elixir-autogen, elixir-format
@@ -2807,11 +2733,6 @@ msgstr "Add teaching load before generating a timetable."
 msgid "Edit teaching load"
 msgstr "Edit teaching load"
 
-#: lib/neu_zeit_web/live/workload_live/index.ex:161
-#, elixir-autogen, elixir-format
-msgid "Individual sessions"
-msgstr "Individual sessions"
-
 #: lib/neu_zeit_web/live/term_live/show.ex:145
 #, elixir-autogen, elixir-format
 msgid "No teaching load yet"
@@ -2887,13 +2808,6 @@ msgstr "Academic hours per semester (%{minutes} min)"
 msgid "Minutes per academic hour"
 msgstr "Minutes per academic hour"
 
-#: lib/neu_zeit_web/live/term_live/settings.ex:13
-#: lib/neu_zeit_web/live/term_live/settings.ex:36
-#: lib/neu_zeit_web/nav.ex:25
-#, elixir-autogen, elixir-format
-msgid "Settings"
-msgstr "Settings"
-
 #: lib/neu_zeit_web/live/term_live/settings.ex:25
 #, elixir-autogen, elixir-format
 msgid "Settings saved."
@@ -2903,11 +2817,6 @@ msgstr "Settings saved."
 #, elixir-autogen, elixir-format
 msgid "Timetable"
 msgstr "Timetable"
-
-#: lib/neu_zeit_web/live/term_live/settings.ex:40
-#, elixir-autogen, elixir-format
-msgid "Used for teaching load and hour reports. Session times stay unchanged."
-msgstr "Used for teaching load and hour reports. Session times stay unchanged."
 
 #: lib/neu_zeit_web/live/course_live/index.ex:128
 #, elixir-autogen, elixir-format
@@ -2953,3 +2862,290 @@ msgstr "Open the calendar"
 #, elixir-autogen, elixir-format
 msgid "Previous month"
 msgstr "Previous month"
+
+#: lib/neu_zeit_web/live/course_live/index.ex:189
+#, elixir-autogen, elixir-format
+msgid "Code (optional)"
+msgstr "Code (optional)"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:115
+#, elixir-autogen, elixir-format
+msgid "Not set"
+msgstr "Not set"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:292
+#, elixir-autogen, elixir-format
+msgid "Same teaching type, teacher, weeks and duration: %{courses}"
+msgstr "Same teaching type, teacher, weeks and duration: %{courses}"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex:133
+#, elixir-autogen, elixir-format
+msgid "Set teaching hours"
+msgstr "Set teaching hours"
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:326
+#, elixir-autogen, elixir-format
+msgid "Delete teaching load?"
+msgstr "Delete teaching load?"
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:321
+#, elixir-autogen, elixir-format
+msgid "Generated sessions will be deleted. Remove their placements first."
+msgstr "Generated sessions will be deleted. Remove their placements first."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:405
+#, elixir-autogen, elixir-format
+msgid "Keep the assigned teacher"
+msgstr "Keep the assigned teacher"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:451
+#: lib/neu_zeit_web/live/exception_live/index.ex:230
+#: lib/neu_zeit_web/live/exception_live/index.ex:363
+#, elixir-autogen, elixir-format
+msgid "Replace teacher"
+msgstr "Replace teacher"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:307
+#: lib/neu_zeit_web/live/exception_live/index.ex:288
+#: lib/neu_zeit_web/live/exception_live/index.ex:404
+#, elixir-autogen, elixir-format
+msgid "Substitute teacher"
+msgstr "Substitute teacher"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:410
+#: lib/neu_zeit_web/live/exception_live/index.ex:236
+#, elixir-autogen, elixir-format
+msgid "Teacher replaced"
+msgstr "Teacher replaced"
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:71
+#, elixir-autogen, elixir-format
+msgid "Edit teaching type"
+msgstr "Edit teaching type"
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:94
+#, elixir-autogen, elixir-format
+msgid "Enter at least one name. If a translation is missing, an available name is shown."
+msgstr "Enter at least one name. If a translation is missing, an available name is shown."
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:85
+#, elixir-autogen, elixir-format
+msgid "I want to publish with %{count} session still unplaced."
+msgid_plural "I want to publish with %{count} sessions still unplaced."
+msgstr[0] "I want to publish with %{count} session still unplaced."
+msgstr[1] "I want to publish with %{count} sessions still unplaced."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:216
+#, elixir-autogen, elixir-format
+msgid "Manage teaching types"
+msgstr "Manage teaching types"
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:91
+#, elixir-autogen, elixir-format
+msgid "Name (%{language})"
+msgstr "Name (%{language})"
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:74
+#, elixir-autogen, elixir-format
+msgid "Name changes apply to every course and timetable using this type."
+msgstr "Name changes apply to every course and timetable using this type."
+
+#: lib/neu_zeit_web/live/plan_live/publication.ex:29
+#, elixir-autogen, elixir-format
+msgid "Only placed sessions will appear in the published timetable. You can add the remaining sessions in a draft copy and publish it later."
+msgstr "Only placed sessions will appear in the published timetable. You can add the remaining sessions in a draft copy and publish it later."
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:57
+#, elixir-autogen, elixir-format
+msgid "Return"
+msgstr "Return"
+
+#: lib/neu_zeit_web/live/plan_live/show.ex:278
+#, elixir-autogen, elixir-format
+msgid "Review and confirm the publication checks first."
+msgstr "Review and confirm the publication checks first."
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:46
+#, elixir-autogen, elixir-format
+msgid "Teaching type deleted."
+msgstr "Teaching type deleted."
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:35
+#, elixir-autogen, elixir-format
+msgid "Teaching type saved."
+msgstr "Teaching type saved."
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:79
+#, elixir-autogen, elixir-format
+msgid "Teaching types used by courses cannot be deleted."
+msgstr "Teaching types used by courses cannot be deleted."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:299
+#, elixir-autogen, elixir-format
+msgid "Translations"
+msgstr "Translations"
+
+#: lib/neu_zeit_web/live/teaching_type_live/index.ex:61
+#, elixir-autogen, elixir-format
+msgid "Use the names your institution uses. Adding a teaching type does not create sessions."
+msgstr "Use the names your institution uses. Adding a teaching type does not create sessions."
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:205
+#, elixir-autogen, elixir-format
+msgid "Academic hour: %{minutes} minutes"
+msgstr "Academic hour: %{minutes} minutes"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:128
+#, elixir-autogen, elixir-format
+msgid "Add time slot"
+msgstr "Add time slot"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:296
+#: lib/neu_zeit_web/live/settings_live/index.ex:83
+#, elixir-autogen, elixir-format
+msgid "Available languages"
+msgstr "Available languages"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:118
+#, elixir-autogen, elixir-format
+msgid "Change for this term"
+msgstr "Change for this term"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:294
+#: lib/neu_zeit_web/live/term_live/settings.ex:109
+#, elixir-autogen, elixir-format
+msgid "Days and times"
+msgstr "Days and times"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:295
+#: lib/neu_zeit_web/live/settings_live/index.ex:47
+#, elixir-autogen, elixir-format
+msgid "Default language"
+msgstr "Default language"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:255
+#, elixir-autogen, elixir-format
+msgid "End"
+msgstr "End"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:130
+#, elixir-autogen, elixir-format
+msgid "Hour conversion"
+msgstr "Hour conversion"
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:28
+#: lib/neu_zeit_web/nav.ex:16
+#, elixir-autogen, elixir-format
+msgid "Institution"
+msgstr "Institution"
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Institution name"
+msgstr "Institution name"
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:8
+#: lib/neu_zeit_web/live/settings_live/index.ex:25
+#: lib/neu_zeit_web/nav.ex:18
+#, elixir-autogen, elixir-format
+msgid "Institution settings"
+msgstr "Institution settings"
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:80
+#, elixir-autogen, elixir-format
+msgid "Languages"
+msgstr "Languages"
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:55
+#, elixir-autogen, elixir-format
+msgid "Manage the teaching types and their translated names for all terms."
+msgstr "Manage the teaching types and their translated names for all terms."
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:110
+#, elixir-autogen, elixir-format
+msgid "New terms start with the default timetable grid. Changes here apply only to this term."
+msgstr "New terms start with the default timetable grid. Changes here apply only to this term."
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:133
+#, elixir-autogen, elixir-format
+msgid "One hour unit applies to all teaching load in this term. Timetable start and end times are set separately."
+msgstr "One hour unit applies to all teaching load in this term. Timetable start and end times are set separately."
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:48
+#, elixir-autogen, elixir-format
+msgid "Only enabled languages appear in the language switcher and translation forms. Saved translations are kept."
+msgstr "Only enabled languages appear in the language switcher and translation forms. Saved translations are kept."
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:126
+#, elixir-autogen, elixir-format
+msgid "Remove time slot"
+msgstr "Remove time slot"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:247
+#, elixir-autogen, elixir-format
+msgid "Start"
+msgstr "Start"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:121
+#, elixir-autogen, elixir-format
+msgid "Teaching days per week, starting on Monday"
+msgstr "Teaching days per week, starting on Monday"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:99
+#, elixir-autogen, elixir-format
+msgid "Term dates"
+msgstr "Term dates"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:8
+#: lib/neu_zeit_web/live/term_live/settings.ex:97
+#: lib/neu_zeit_web/live/term_live/show.ex:113
+#: lib/neu_zeit_web/nav.ex:29
+#, elixir-autogen, elixir-format
+msgid "Term settings"
+msgstr "Term settings"
+
+#: lib/neu_zeit_web/live/term_live/settings.ex:117
+#, elixir-autogen, elixir-format
+msgid "Time settings are fixed because teaching load, availability or time profiles have been entered."
+msgstr "Time settings are fixed because teaching load, availability or time profiles have been entered."
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:68
+#, elixir-autogen, elixir-format
+msgid "Time zone"
+msgstr "Time zone"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:254
+#, elixir-autogen, elixir-format
+msgid "Times in %{timezone}"
+msgstr "Times in %{timezone}"
+
+#: lib/neu_zeit_web/live/settings_live/index.ex:74
+#, elixir-autogen, elixir-format
+msgid "Timetable times are local to this time zone. Changing it keeps the entered times."
+msgstr "Timetable times are local to this time zone. Changing it keeps the entered times."
+
+#: lib/neu_zeit_web/components/ui/time_field.ex:22
+#: lib/neu_zeit_web/components/ui/time_field.ex:52
+#, elixir-autogen, elixir-format
+msgid "Choose time"
+msgstr "Choose time"
+
+#: lib/neu_zeit_web/components/ui/time_field.ex:25
+#, elixir-autogen, elixir-format
+msgid "Done"
+msgstr "Done"
+
+#: lib/neu_zeit_web/components/ui/time_field.ex:23
+#, elixir-autogen, elixir-format
+msgid "Hours"
+msgstr "Hours"
+
+#: lib/neu_zeit_web/components/ui/time_field.ex:59
+#, elixir-autogen, elixir-format
+msgid "Minutes"
+msgstr "Minutes"
+
+#: lib/neu_zeit_web/components/ui/time_field.ex:27
+#, elixir-autogen, elixir-format
+msgid "Enter time as HH:MM."
+msgstr "Enter time as HH:MM."

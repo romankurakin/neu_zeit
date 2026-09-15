@@ -12,6 +12,15 @@ defmodule NeuZeitWeb.AdminWorkflowsTest do
     %{term: term, rooms: rooms, component: component, session: session, plan: plan}
   end
 
+  test "finds an uncoded course by title in the timetable", c do
+    assert c.session.course_component.course.code == nil
+    {:ok, view, _} = live(c.conn, ~p"/terms/#{c.term}/plans/#{c.plan}?q=Algorithms")
+    assert has_element?(view, "#board-tray [data-session-id='#{c.session.id}']", "Algorithms")
+
+    {:ok, view, _} = live(c.conn, ~p"/terms/#{c.term}/plans/#{c.plan}?q=Physics")
+    refute has_element?(view, "#board-tray [data-session-id='#{c.session.id}']")
+  end
+
   test "unplaced selection, resource filters and rule return links preserve context", c do
     {:ok, view, _} =
       live(
@@ -25,12 +34,12 @@ defmodule NeuZeitWeb.AdminWorkflowsTest do
     assert has_element?(view, "#position-preview", hd(c.rooms).name)
     assert Planning.list_placements(c.plan.id) == []
     view |> element("#board-filters") |> render_change(%{"resource" => ""})
-    assert has_element?(view, "#board-tray", c.session.course_component.course.code)
+    assert has_element?(view, "#board-tray", c.session.course_component.course.title)
     html = render(view) |> LazyHTML.from_fragment()
 
     [link] =
       html
-      |> LazyHTML.query("a[href*='/sessions/#{c.session.id}/edit']")
+      |> LazyHTML.query("a[href*='/workload/#{c.session.workload_id}/edit']")
       |> LazyHTML.attribute("href")
 
     return_to = URI.decode_query(URI.parse(link).query)["return_to"]

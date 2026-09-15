@@ -150,7 +150,7 @@ defmodule NeuZeitWeb.TermLive.Index do
               {length(term.excluded_dates)}
             </:col>
             <:action :let={term}>
-              <.link patch={~p"/terms/#{term}/edit"} class="btn btn-ghost">{gettext("Edit")}</.link>
+              <.link navigate={~p"/terms/#{term}/settings"} class="btn btn-ghost">{gettext("Edit")}</.link>
               <button
                 class="btn btn-ghost text-error"
                 phx-click="delete_prompt"

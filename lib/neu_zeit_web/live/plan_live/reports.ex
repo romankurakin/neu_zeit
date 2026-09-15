@@ -25,7 +25,7 @@ defmodule NeuZeitWeb.PlanLive.Reports do
       <p :if={@quality.rooms != []} class="type-detail">
         {gettext("Totals cover all teaching weeks. Gaps are counted in time slots.")} {gettext(
           "Long days span %{count} or more time slots with gaps.",
-          count: length(NeuZeit.Config.grid!().slots) - 1
+          count: length(NeuZeit.Config.grid!(@term).slots) - 1
         )}
       </p>
       <.card :if={@quality.cohorts != []} title={gettext("Groups")}>
@@ -52,7 +52,11 @@ defmodule NeuZeitWeb.PlanLive.Reports do
           <:col :let={row} label={gettext("Group")}>{row.group}</:col>
           <:col :let={row} label={gettext("Blocks")} numeric>{row.placements}</:col>
           <:col :let={row} label={gettext("Days")}>
-            {Enum.map_join(row.days, ", ", &day_label(Enum.at(NeuZeit.Config.grid!().days, &1 - 1)))}
+            {Enum.map_join(
+              row.days,
+              ", ",
+              &day_label(Enum.at(NeuZeit.Config.grid!(@term).days, &1 - 1))
+            )}
           </:col>
           <:col :let={row} label={gettext("Adjacent")}>
             <.status_indicator
@@ -104,15 +108,15 @@ defmodule NeuZeitWeb.PlanLive.Reports do
         row_id={&"coverage-#{&1.course_id}-#{&1.cohort_id || "unassigned"}"}
       >
         <:col :let={row} label={gettext("Course")}>
-          <span class="font-semibold">{row.code}</span>
+          <span class="font-semibold">{course_title(row)}</span>
         </:col>
-        <:col :let={row} label={gettext("Title")}>{row.title}</:col>
         <:col :let={row} label={gettext("Group")}>
           {row.cohort_name || gettext("No group assigned")}
         </:col>
-        <:col :let={row} label={gettext("Credits")} numeric>{row.credits}</:col>
         <:col :let={row} label={gettext("Required hours")} numeric>
-          {Float.round(row.required_hours * 60 / @term.academic_hour_minutes, 1)}
+          {if row.required_hours,
+            do: Float.round(row.required_hours * 60 / @term.academic_hour_minutes, 1),
+            else: gettext("Not set")}
         </:col>
         <:col :let={row} label={gettext("Planned hours")} numeric>
           {Float.round(row.planned_hours * 60 / @term.academic_hour_minutes, 1)}
@@ -121,9 +125,18 @@ defmodule NeuZeitWeb.PlanLive.Reports do
           {Float.round(row.calendar_hours * 60 / @term.academic_hour_minutes, 1)}
         </:col>
         <:col :let={row} label={gettext("Difference")} numeric>
-          {Float.round(row.delta_hours * 60 / @term.academic_hour_minutes, 1)}
+          {if row.delta_hours,
+            do: Float.round(row.delta_hours * 60 / @term.academic_hour_minutes, 1),
+            else: gettext("Not checked")}
         </:col>
-        <:col :let={row} label={gettext("Status")}><.status_indicator status={row.status} /></:col>
+        <:col :let={row} label={gettext("Status")}>
+          <.link
+            :if={row.missing_workload}
+            navigate={~p"/terms/#{@term}/workload"}
+            class="link"
+          >{gettext("Set teaching hours")}</.link>
+          <.status_indicator :if={!row.missing_workload} status={row.status} />
+        </:col>
       </.table>
     </div>
 

@@ -31,7 +31,7 @@ defmodule NeuZeit.Planning.FeasibilityTest do
   end
 
   defp component(rooms, code \\ "INF110") do
-    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code, "credits" => 5})
+    {:ok, course} = Catalog.create_course(%{"code" => code, "title" => code})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -50,7 +50,7 @@ defmodule NeuZeit.Planning.FeasibilityTest do
 
   defp session(ctx, component, teacher, overrides \\ %{}) do
     {:ok, session} =
-      Catalog.create_session(
+      NeuZeit.Fixtures.create_session(
         Map.merge(
           %{
             "term_id" => ctx.term.id,

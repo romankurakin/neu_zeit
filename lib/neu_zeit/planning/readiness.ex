@@ -165,6 +165,7 @@ defmodule NeuZeit.Planning.Readiness do
       %{
         id: component.id,
         course_code: component.course.code,
+        course_title: component.course.title,
         kind: component.kind,
         rooms: length(component.allowed_rooms)
       }
@@ -199,7 +200,7 @@ defmodule NeuZeit.Planning.Readiness do
       |> MapSet.new()
 
     missing = Enum.reject(sessions, &MapSet.member?(placed, &1.id))
-    status = if missing == [], do: :ok, else: :blocked
+    status = if missing == [], do: :ok, else: :warning
 
     item(:unplaced, status, length(missing), %{total: length(sessions)})
   end

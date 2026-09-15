@@ -16,9 +16,8 @@ defmodule NeuZeit.Solver.Snapshot do
   def load!(plan_id), do: Plan |> Repo.get!(plan_id) |> load_plan()
 
   defp load_plan(plan) do
-    config = Config.load!()
-
     plan = Repo.preload(plan, :term)
+    config = Config.load!(plan.term)
 
     rooms = Repo.all(from r in Room, order_by: r.id, preload: [:building])
 

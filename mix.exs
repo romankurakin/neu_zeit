@@ -46,7 +46,7 @@ defmodule NeuZeit.MixProject do
       {:phoenix_storybook, "~> 1.4", only: [:dev, :test]},
       {:lazy_html, "~> 0.1", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:volt, "~> 0.18.1"},
+      {:volt, "~> 0.18"},
       {:npm, "~> 0.7", runtime: false},
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},

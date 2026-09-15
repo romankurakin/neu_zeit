@@ -118,10 +118,12 @@ defmodule NeuZeit.Solver.PureContractTest do
       teacher: "B. Braun",
       room: "101",
       cohorts: "",
-      slot: 3
+      slot: 3,
+      time_span: {740, 830},
+      start_time: "12:20"
     }
 
-    snapshot = %{snapshot | external: %{{~D[2026-09-07], 3, "room", room.id} => [booking]}}
+    snapshot = %{snapshot | external: %{{~D[2026-09-07], "room", room.id} => [booking]}}
     spec = SpecBuilder.build(snapshot)
     assert [%{blocked_assignments: [%{day: 1, slot: 2, room: room_id}]}] = spec.sessions
     assert room_id == room.id

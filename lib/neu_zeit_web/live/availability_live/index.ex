@@ -19,7 +19,7 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
      |> assign(:page_title, gettext("Availability"))
      |> assign(:term, term)
      |> assign(:terms, Catalog.list_terms())
-     |> assign(:grid, NeuZeit.Config.grid!())
+     |> assign(:grid, NeuZeit.Config.grid!(term))
      |> assign(:teachers, Catalog.list_teachers())
      |> assign(:usage, Catalog.usage_counts(term_id).teachers)
      |> assign(:selected, nil)

@@ -28,7 +28,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
      socket
      |> assign(:term, term)
      |> assign(:terms, Catalog.list_terms())
-     |> assign(:grid, NeuZeit.Config.grid!())
+     |> assign(:grid, NeuZeit.Config.grid!(term))
      |> assign(:week, 1)
      |> assign(:lens, "all")
      |> assign(:cohort_id, nil)
@@ -270,7 +270,18 @@ defmodule NeuZeitWeb.PlanLive.Show do
   end
 
   def handle_event("publish_confirm", _params, socket) do
-    case Planning.publish_plan(socket.assigns.plan_id) do
+    gate = Readiness.report(socket.assigns.term.id, socket.assigns.plan_id)
+
+    result =
+      if socket.assigns.publishing && Publication.publishable?(gate, socket.assigns.acknowledged) do
+        Planning.publish_plan(socket.assigns.plan_id,
+          allow_partial: Map.get(socket.assigns.acknowledged, "partial") == true
+        )
+      else
+        {:error, {:conflict, gettext("Review and confirm the publication checks first.")}}
+      end
+
+    case result do
       {:ok, _plan} ->
         {:noreply,
          socket

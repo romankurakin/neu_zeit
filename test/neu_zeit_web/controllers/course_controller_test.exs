@@ -3,6 +3,22 @@ defmodule NeuZeitWeb.CourseControllerTest do
 
   import NeuZeit.Fixtures
 
+  test "creates and lists a course with only a title", %{conn: conn} do
+    conn = post(conn, ~p"/api/courses", %{course: %{title: "Mathematics"}})
+    assert %{"data" => course} = json_response(conn, 201)
+    assert course["title"] == "Mathematics"
+    assert course["code"] == nil
+    refute Map.has_key?(course, "credits")
+
+    for path <- [~p"/api/courses", ~p"/api/courses?locale=ru"] do
+      assert %{"data" => [listed]} = build_conn() |> get(path) |> json_response(200)
+      assert listed["id"] == course["id"]
+      assert listed["title"] == "Mathematics"
+      assert listed["code"] == nil
+      refute Map.has_key?(listed, "credits")
+    end
+  end
+
   test "translations are created through the API and localize the course index", %{conn: conn} do
     course = course_fixture(%{title: "Algorithmen"})
 

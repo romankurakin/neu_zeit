@@ -17,23 +17,25 @@ defmodule NeuZeit.Catalog.Workload do
     field :week_mask, {:array, :integer}, default: []
     field :duration_slots, :integer, default: 1
     field :count, :integer, virtual: true, default: 1
-    field :automatic_weeks, :boolean, default: false
+    field :automatic_weeks, :boolean, default: true
     field :contact_hours, :decimal
     field :academic_hour_minutes, :integer, virtual: true, default: 45
     field :sequence_group, :string
     timestamps()
   end
 
-  @fields ~w(course_component_id teacher_id slot_profile_id cohort_ids week_mask duration_slots count sequence_group automatic_weeks)a
+  @fields ~w(course_component_id teacher_id slot_profile_id cohort_ids week_mask duration_slots sequence_group automatic_weeks)a
 
   def changeset(workload, attrs \\ %{}) do
-    grid = NeuZeit.Config.grid!()
+    grid = NeuZeit.Config.grid!(workload.term_id)
 
     workload
-    |> cast(attrs, @fields ++ [:contact_hours])
+    |> cast(attrs, (@fields -- [:automatic_weeks]) ++ [:contact_hours])
     |> update_change(:cohort_ids, &Enum.uniq/1)
+    |> validate_required([:academic_hour_minutes])
+    |> validate_number(:academic_hour_minutes, greater_than: 0, less_than_or_equal_to: 60)
     |> count_from_hours()
-    |> require_hours()
+    |> validate_required([:contact_hours])
     |> validate_required([
       :course_component_id,
       :teacher_id,
@@ -90,11 +92,11 @@ defmodule NeuZeit.Catalog.Workload do
         generated =
           Enum.filter(sessions, &(&1.workload_id == requirement.id)) |> Enum.sort_by(& &1.id)
 
-        metadata = struct(NeuZeit.Catalog.Session, Map.take(requirement, @fields -- [:count]))
+        metadata = struct(NeuZeit.Catalog.Session, Map.take(requirement, @fields))
 
         metadata = %{
           metadata
-          | id: (List.first(generated) || requirement).id,
+          | id: requirement.id,
             term_id: term_id,
             workload_id: requirement.id,
             course_component:
@@ -108,7 +110,7 @@ defmodule NeuZeit.Catalog.Workload do
         }
 
         %{
-          id: metadata.id,
+          id: requirement.id,
           session: metadata,
           sessions: generated,
           count: length(generated),
@@ -116,34 +118,19 @@ defmodule NeuZeit.Catalog.Workload do
         }
       end)
 
-    legacy =
-      sessions
-      |> Enum.filter(&is_nil(&1.workload_id))
-      |> Enum.group_by(&key/1)
-      |> Enum.map(fn {_key, sessions} ->
-        sessions = Enum.sort_by(sessions, & &1.id)
-
-        %{
-          id: hd(sessions).id,
-          session: hd(sessions),
-          sessions: sessions,
-          count: length(sessions),
-          requirement: nil
-        }
-      end)
-
     Enum.sort_by(
-      requirements ++ legacy,
-      &{&1.session.course_component.course.code, &1.session.course_component.kind, &1.id}
+      requirements,
+      &{&1.session.course_component.course.title, &1.session.course_component.kind, &1.id}
     )
   end
 
   def from_row(row, academic_hour_minutes \\ 45) do
     row.session
-    |> Map.take(@fields -- [:count, :cohort_ids])
+    |> Map.take(@fields -- [:cohort_ids])
     |> Map.merge(%{
+      term_id: row.session.term_id,
       count: row.count,
-      contact_hours: hours(row, academic_hour_minutes),
+      contact_hours: hours(row),
       academic_hour_minutes: academic_hour_minutes,
       cohort_ids: Enum.map(row.session.cohorts, & &1.id)
     })
@@ -151,19 +138,26 @@ defmodule NeuZeit.Catalog.Workload do
   end
 
   def save(term_id, original, attrs) do
+    case save_requirement(term_id, original, attrs) do
+      {:ok, _requirement} -> {:ok, :saved}
+      error -> error
+    end
+  end
+
+  def save_requirement(term_id, original, attrs) do
     Repo.transaction(fn ->
       NeuZeit.Planning.SharedResources.lock!()
       term = Repo.one!(from t in Term, where: t.id == ^term_id, lock: "FOR UPDATE")
-      base = (original && Map.get(original, :requirement)) || %__MODULE__{}
 
       base =
-        if (Map.has_key?(attrs, :count) || Map.has_key?(attrs, "count")) &&
-             !(Map.has_key?(attrs, :contact_hours) || Map.has_key?(attrs, "contact_hours")),
-           do: %{base | contact_hours: nil},
-           else: base
+        (original && Map.get(original, :requirement)) ||
+          %__MODULE__{academic_hour_minutes: term.academic_hour_minutes, term_id: term.id}
 
       changeset =
-        changeset(%{base | academic_hour_minutes: term.academic_hour_minutes}, attrs)
+        changeset(
+          %{base | term_id: term.id, academic_hour_minutes: term.academic_hour_minutes},
+          attrs
+        )
         |> put_change(:term_id, term_id)
 
       workload =
@@ -174,17 +168,7 @@ defmodule NeuZeit.Catalog.Workload do
 
       current = list(term_id)
       sessions = current_sessions!(current, original)
-      attrs = workload |> Map.from_struct() |> Map.take(@fields -- [:count])
-
-      changeset =
-        if workload.contact_hours,
-          do: changeset,
-          else:
-            put_change(
-              changeset,
-              :contact_hours,
-              generated_hours(workload.count, workload, term.academic_hour_minutes)
-            )
+      attrs = workload |> Map.from_struct() |> Map.take(@fields)
 
       if Enum.any?(current, fn row ->
            row.id != (original && original.id) && key(row.session) == attrs_key(attrs)
@@ -193,7 +177,7 @@ defmodule NeuZeit.Catalog.Workload do
           add_error(
             changeset,
             :course_component_id,
-            "This workload already exists. Edit its quantity."
+            "This teaching load already exists. Edit its hours."
           )
         )
       end
@@ -224,13 +208,21 @@ defmodule NeuZeit.Catalog.Workload do
 
       # Remove excess sessions first. A published placement or active exception
       # rejects the whole edit, including earlier deletions in this transaction.
-      Enum.each(removed, &unwrap!(Sessions.delete_session(&1), changeset))
-      retained = Enum.map(retained, &unwrap!(Sessions.update_session(&1, attrs), changeset))
+      Enum.each(removed, &unwrap!(Sessions.delete_generated_session(&1), changeset))
+
+      retained =
+        Enum.map(retained, &unwrap!(Sessions.update_generated_session(&1, attrs), changeset))
 
       created =
         if workload.count > length(retained) do
           for _ <- 1..(workload.count - length(retained)) do
-            unwrap!(Sessions.create_session(Map.put(attrs, :term_id, term_id)), changeset)
+            unwrap!(
+              Sessions.create_generated_session(
+                requirement.id,
+                Map.put(attrs, :term_id, term_id)
+              ),
+              changeset
+            )
           end
         else
           []
@@ -251,41 +243,30 @@ defmodule NeuZeit.Catalog.Workload do
         Enum.map(workload.cohort_ids, &%{workload_id: requirement.id, cohort_id: &1})
       )
 
-      :saved
+      requirement
     end)
   end
 
-  def hours(row, academic_hour_minutes \\ 45) do
-    if Map.get(row, :requirement),
-      do: row.requirement.contact_hours,
-      else: generated_hours(row.count, row.session, academic_hour_minutes)
-  end
-
-  defp generated_hours(count, session, academic_hour_minutes) do
-    repeats = if session.automatic_weeks, do: 1, else: length(session.week_mask)
-
-    Decimal.from_float(
-      count * repeats * session.duration_slots * slot_hours(academic_hour_minutes)
-    )
-  end
+  def hours(row, _academic_hour_minutes \\ 45), do: row.requirement.contact_hours
 
   def prepare(term_id) do
     Repo.transaction(fn ->
       NeuZeit.Planning.SharedResources.lock!()
       term = Repo.one!(from t in Term, where: t.id == ^term_id, lock: "FOR UPDATE")
 
-      for row <- list(term_id), row.requirement do
+      for row <- list(term_id) do
         attrs = Map.take(row.requirement, @fields ++ [:contact_hours])
-        form = changeset(%__MODULE__{academic_hour_minutes: term.academic_hour_minutes}, attrs)
+
+        form =
+          changeset(%{row.requirement | academic_hour_minutes: term.academic_hour_minutes}, attrs)
 
         case apply_action(form, :insert) do
-          {:ok, expected} when expected.count == row.count ->
-            :ok
-
-          {:ok, _} ->
-            case save(term_id, row, attrs) do
-              {:ok, _} -> :ok
-              {:error, error} -> Repo.rollback(error)
+          {:ok, expected} ->
+            unless synchronized?(row, expected) do
+              case save(term_id, row, attrs) do
+                {:ok, _} -> :ok
+                {:error, error} -> Repo.rollback(error)
+              end
             end
 
           {:error, error} ->
@@ -297,8 +278,54 @@ defmodule NeuZeit.Catalog.Workload do
     end)
   end
 
-  defp slot_hours(academic_hour_minutes) do
-    NeuZeit.Config.grid!().slots
+  def check(term_id) do
+    term = Repo.get!(Term, term_id)
+
+    if Enum.all?(list(term_id), fn row ->
+         case changeset(
+                %{row.requirement | academic_hour_minutes: term.academic_hour_minutes},
+                %{}
+              )
+              |> apply_action(:insert) do
+           {:ok, expected} -> synchronized?(row, expected)
+           {:error, _} -> false
+         end
+       end) do
+      :ok
+    else
+      {:error, {:conflict, "Teaching load and sessions differ. Run the scheduler again."}}
+    end
+  end
+
+  defp synchronized?(row, expected) do
+    row.count == expected.count && Enum.all?(row.sessions, &(key(&1) == key(row.session)))
+  end
+
+  def delete(term_id, original) do
+    Repo.transaction(fn ->
+      NeuZeit.Planning.SharedResources.lock!()
+      Repo.one!(from t in Term, where: t.id == ^term_id, lock: "FOR UPDATE")
+      sessions = current_sessions!(list(term_id), original)
+      ids = Enum.map(sessions, & &1.id)
+
+      if Repo.exists?(from p in NeuZeit.Planning.Placement, where: p.session_id in ^ids) do
+        Repo.rollback({:conflict, "Remove placements before deleting this teaching load."})
+      end
+
+      for session <- sessions do
+        case Sessions.delete_generated_session(session) do
+          {:ok, _} -> :ok
+          {:error, error} -> Repo.rollback(error)
+        end
+      end
+
+      Repo.delete!(original.requirement)
+      :deleted
+    end)
+  end
+
+  defp slot_hours(academic_hour_minutes, term_id) do
+    NeuZeit.Config.grid!(term_id).slots
     |> Enum.map(fn slot ->
       minutes = fn time ->
         [hours, minutes] = String.split(time, ":") |> Enum.map(&String.to_integer/1)
@@ -310,22 +337,22 @@ defmodule NeuZeit.Catalog.Workload do
     |> then(&(Enum.sum(&1) / length(&1) / academic_hour_minutes))
   end
 
-  defp require_hours(changeset) do
-    if get_field(changeset, :automatic_weeks),
-      do: validate_required(changeset, [:contact_hours]),
-      else: changeset
-  end
-
   defp count_from_hours(changeset) do
     hours = get_field(changeset, :contact_hours)
     duration = get_field(changeset, :duration_slots)
     weeks = get_field(changeset, :week_mask) || []
     repeats = if get_field(changeset, :automatic_weeks), do: 1, else: length(weeks)
 
-    if hours && is_integer(duration) && duration > 0 && repeats > 0 do
+    if hours && is_integer(duration) && duration > 0 && repeats > 0 &&
+         is_integer(get_field(changeset, :academic_hour_minutes)) &&
+         get_field(changeset, :academic_hour_minutes) > 0 do
       quantity =
         Decimal.to_float(hours) /
-          (duration * repeats * slot_hours(get_field(changeset, :academic_hour_minutes)))
+          (duration * repeats *
+             slot_hours(
+               get_field(changeset, :academic_hour_minutes),
+               get_field(changeset, :term_id)
+             ))
 
       if quantity > 0 && abs(quantity - round(quantity)) < 0.000001 do
         put_change(changeset, :count, round(quantity))
@@ -360,7 +387,7 @@ defmodule NeuZeit.Catalog.Workload do
 
   defp key(session) do
     session
-    |> Map.take(@fields -- [:count, :cohort_ids])
+    |> Map.take(@fields -- [:cohort_ids])
     |> Map.put(:cohort_ids, Enum.map(session.cohorts, & &1.id))
     |> attrs_key()
   end

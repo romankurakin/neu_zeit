@@ -21,7 +21,7 @@ defmodule NeuZeit.Planning.Feasibility do
   Ignores this session's existing placement when evaluating alternatives.
   """
   def cells_for(session, plan_id, opts \\ []) do
-    grid = Keyword.get(opts, :grid, Config.grid!())
+    grid = Keyword.get(opts, :grid, Config.grid!(session.term_id))
     others = other_placements(plan_id, session.id)
 
     duration = session.duration_slots || 1
@@ -71,7 +71,7 @@ defmodule NeuZeit.Planning.Feasibility do
     session =
       if session.automatic_weeks, do: %{session | week_mask: placement.week_mask}, else: session
 
-    grid = Keyword.get(opts, :grid, Config.grid!())
+    grid = Keyword.get(opts, :grid, Config.grid!(session.term_id))
     legal = cells_for(session, plan_id, grid: grid)
 
     explain_session(session, placement, legal)
@@ -119,7 +119,7 @@ defmodule NeuZeit.Planning.Feasibility do
       }
 
       errors =
-        NeuZeit.Constraints.Hard.check_placements([candidate | others])
+        NeuZeit.Constraints.Hard.check_placements([candidate | others], Config.grid!(term))
         |> Enum.filter(&("candidate" in &1.placement_ids))
         |> Enum.map(fn error ->
           related = Enum.filter(others, &(&1.id in error.placement_ids))
@@ -128,7 +128,7 @@ defmodule NeuZeit.Planning.Feasibility do
             Enum.map_join(related, "; ", fn p ->
               weeks = Enum.filter(p.week_mask, &(&1 in session.week_mask)) |> Enum.join(", ")
 
-              "#{p.session.course_component.course.code}, #{p.session.teacher.name}, #{p.room.name}, #{weeks}"
+              "#{p.session.course_component.course.title}, #{p.session.teacher.name}, #{p.room.name}, #{weeks}"
             end)
 
           error

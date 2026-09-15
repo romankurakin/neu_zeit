@@ -43,57 +43,57 @@ msgstr "Сначала удалите связанные записи."
 
 msgid "should have %{count} item(s)"
 msgid_plural "should have %{count} item(s)"
-msgstr[0] "Нужен %{count} элемент."
-msgstr[1] "Нужно %{count} элемента."
-msgstr[2] "Нужно %{count} элементов."
+msgstr[0] "Выберите ровно %{count} элемент."
+msgstr[1] "Выберите ровно %{count} элемента."
+msgstr[2] "Выберите ровно %{count} элементов."
 
 msgid "should be %{count} character(s)"
 msgid_plural "should be %{count} character(s)"
-msgstr[0] "Нужен %{count} символ."
-msgstr[1] "Нужно %{count} символа."
-msgstr[2] "Нужно %{count} символов."
+msgstr[0] "Введите ровно %{count} символ."
+msgstr[1] "Введите ровно %{count} символа."
+msgstr[2] "Введите ровно %{count} символов."
 
 msgid "should be %{count} byte(s)"
 msgid_plural "should be %{count} byte(s)"
-msgstr[0] "Нужен %{count} байт."
-msgstr[1] "Нужно %{count} байта."
-msgstr[2] "Нужно %{count} байт."
+msgstr[0] "Введите ровно %{count} байт."
+msgstr[1] "Введите ровно %{count} байта."
+msgstr[2] "Введите ровно %{count} байт."
 
 msgid "should have at least %{count} item(s)"
 msgid_plural "should have at least %{count} item(s)"
-msgstr[0] "Минимум элементов: %{count}."
-msgstr[1] "Минимум элементов: %{count}."
-msgstr[2] "Минимум элементов: %{count}."
+msgstr[0] "Выберите не менее %{count} элемента."
+msgstr[1] "Выберите не менее %{count} элементов."
+msgstr[2] "Выберите не менее %{count} элементов."
 
 msgid "should be at least %{count} character(s)"
 msgid_plural "should be at least %{count} character(s)"
-msgstr[0] "Минимум символов: %{count}."
-msgstr[1] "Минимум символов: %{count}."
-msgstr[2] "Минимум символов: %{count}."
+msgstr[0] "Введите не менее %{count} символа."
+msgstr[1] "Введите не менее %{count} символов."
+msgstr[2] "Введите не менее %{count} символов."
 
 msgid "should be at least %{count} byte(s)"
 msgid_plural "should be at least %{count} byte(s)"
-msgstr[0] "Минимум байт: %{count}."
-msgstr[1] "Минимум байт: %{count}."
-msgstr[2] "Минимум байт: %{count}."
+msgstr[0] "Введите не менее %{count} байта."
+msgstr[1] "Введите не менее %{count} байт."
+msgstr[2] "Введите не менее %{count} байт."
 
 msgid "should have at most %{count} item(s)"
 msgid_plural "should have at most %{count} item(s)"
-msgstr[0] "Максимум элементов: %{count}."
-msgstr[1] "Максимум элементов: %{count}."
-msgstr[2] "Максимум элементов: %{count}."
+msgstr[0] "Выберите не более %{count} элемента."
+msgstr[1] "Выберите не более %{count} элементов."
+msgstr[2] "Выберите не более %{count} элементов."
 
 msgid "should be at most %{count} character(s)"
 msgid_plural "should be at most %{count} character(s)"
-msgstr[0] "Максимум символов: %{count}."
-msgstr[1] "Максимум символов: %{count}."
-msgstr[2] "Максимум символов: %{count}."
+msgstr[0] "Введите не более %{count} символа."
+msgstr[1] "Введите не более %{count} символов."
+msgstr[2] "Введите не более %{count} символов."
 
 msgid "should be at most %{count} byte(s)"
 msgid_plural "should be at most %{count} byte(s)"
-msgstr[0] "Максимум байт: %{count}."
-msgstr[1] "Максимум байт: %{count}."
-msgstr[2] "Максимум байт: %{count}."
+msgstr[0] "Введите не более %{count} байта."
+msgstr[1] "Введите не более %{count} байт."
+msgstr[2] "Введите не более %{count} байт."
 
 msgid "must be less than %{number}"
 msgstr "Введите значение меньше %{number}."
@@ -198,7 +198,7 @@ msgid "each cell must be a day/slot map"
 msgstr "Не удалось прочитать выбранное время. Обновите страницу и выберите заново."
 
 msgid "term must keep at least %{minimum} weeks; existing sessions or placements use week %{week}"
-msgstr "Минимум учебных недель: %{minimum}. Занятия используют неделю %{week}."
+msgstr "Сохраните не менее %{minimum} учебных недель. Занятия используют неделю %{week}."
 
 msgid "is outside the configured slot grid (1..%{slots})"
 msgstr "Занятие должно целиком помещаться в учебный день. Интервалов в дне: %{slots}."
@@ -224,9 +224,6 @@ msgstr "Перед уменьшением нагрузки снимите лиш
 msgid "The workload changed. Reload it before saving."
 msgstr "Нагрузка изменилась. Откройте её заново перед сохранением."
 
-msgid "This workload already exists. Edit its quantity."
-msgstr "Такая нагрузка уже есть. Измените количество занятий в ней."
-
 msgid "A generated meeting must fall on a teaching date."
 msgstr "Занятие должно проходить в учебную дату."
 
@@ -235,3 +232,51 @@ msgstr "Часы должны делиться на длительность з�
 
 msgid "Teaching load exceeds the available time."
 msgstr "Нагрузка превышает доступное учебное время."
+
+msgid "Edit teaching load instead of individual sessions."
+msgstr "Измените учебную нагрузку. Занятия обновятся вместе с ней."
+
+msgid "Teaching load and sessions differ. Run the scheduler again."
+msgstr "Занятия не соответствуют учебной нагрузке. Запустите расчёт заново."
+
+msgid "Remove placements before deleting this teaching load."
+msgstr "Снимите размещения перед удалением учебной нагрузки."
+
+msgid "This teaching load already exists. Edit its hours."
+msgstr "Такая учебная нагрузка уже есть. Измените часы в существующей строке."
+
+msgid "must be blank for teacher substitutions"
+msgstr "при замене преподавателя это поле должно быть пустым"
+
+msgid "is used by a one-off change"
+msgstr "используется в разовом изменении"
+
+msgid "This teaching type is used by courses. Remove it from those courses first."
+msgstr "Этот вид занятий используется в предметах. Сначала удалите его из этих предметов."
+
+msgid "Enter a name in at least one language."
+msgstr "Укажите название хотя бы на одном языке."
+
+msgid "Some sessions are unplaced. Confirm publication of this partial timetable."
+msgstr "Не все занятия размещены. Подтвердите публикацию неполного расписания."
+
+msgid "Teaching days must start on Monday and follow calendar order."
+msgstr "Учебные дни должны идти подряд, начиная с понедельника."
+
+msgid "Enter between 1 and 24 time slots."
+msgstr "Укажите от 1 до 24 интервалов времени."
+
+msgid "Enter a valid start and end time for every slot."
+msgstr "Укажите начало и конец каждого интервала. Конец должен быть позже начала."
+
+msgid "Time slots must be ordered and must not overlap."
+msgstr "Расположите интервалы по времени и устраните пересечения."
+
+msgid "Use the same duration for every time slot."
+msgstr "Укажите одинаковую длительность для всех интервалов."
+
+msgid "Time settings cannot change after teaching load, availability or time profiles have been entered."
+msgstr "Нельзя изменить время после ввода нагрузки, доступности или профилей времени."
+
+msgid "Choose a valid time zone."
+msgstr "Выберите часовой пояс из списка."

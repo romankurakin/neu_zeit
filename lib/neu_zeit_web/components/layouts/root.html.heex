@@ -55,11 +55,18 @@
         globalThis.formatDates = (root) => {
           for (const element of root.querySelectorAll("time[data-format]:not([data-ready])")) {
             const format = element.dataset.format;
-            formatters[format] ||= new Intl.DateTimeFormat(undefined, formats[format]);
             const iso = element.getAttribute("datetime");
+            const timeZone = iso.includes("T")
+              ? element.closest("[data-time-zone]")?.dataset.timeZone
+              : undefined;
+            const key = `${format}:${timeZone ?? ""}`;
+            formatters[key] ||= new Intl.DateTimeFormat(undefined, {
+              ...formats[format],
+              ...(timeZone ? { timeZone } : {}),
+            });
             // A bare date parses as UTC, which lands on the day before in the west.
             const value = iso.includes("T") ? new Date(iso) : new Date(`${iso}T00:00`);
-            element.textContent = formatters[format].format(value);
+            element.textContent = formatters[key].format(value);
             element.dataset.ready = "";
           }
         };

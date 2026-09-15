@@ -20,7 +20,8 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
      |> assign(:components, Catalog.list_course_components())
      |> assign(:rows, Catalog.list_workload(term_id))
      |> assign(:form, nil)
-     |> assign(:editing, nil)}
+     |> assign(:editing, nil)
+     |> assign(:deleting, nil)}
   end
 
   @impl true
@@ -31,7 +32,11 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
     case socket.assigns.live_action do
       :new ->
         {:noreply,
-         open_form(socket, nil, %Workload{week_mask: all_weeks(socket), automatic_weeks: true})}
+         open_form(socket, nil, %Workload{
+           week_mask: all_weeks(socket),
+           automatic_weeks: true,
+           academic_hour_minutes: socket.assigns.term.academic_hour_minutes
+         })}
 
       :edit ->
         case Enum.find(rows, fn row ->
@@ -68,7 +73,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
       to_form(
         Workload.changeset(%{
           workload
-          | academic_hour_minutes: socket.assigns.term.academic_hour_minutes
+          | term_id: socket.assigns.term.id
         })
       )
     )
@@ -108,7 +113,6 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
   def handle_event("save", %{"workload" => params}, socket) do
     attrs =
       params
-      |> Map.put("automatic_weeks", socket.assigns.automatic_weeks)
       |> Map.put("week_mask", socket.assigns.week_mask)
       |> Map.put("cohort_ids", socket.assigns.cohort_ids)
       |> Map.put(
@@ -125,6 +129,30 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
 
       {:error, reason} ->
         {:noreply, Errors.put(socket, reason, as: :form)}
+    end
+  end
+
+  def handle_event("delete_prompt", %{"id" => id}, socket) do
+    row = Enum.find(socket.assigns.rows, &(&1.id == id))
+    {:noreply, assign(socket, :deleting, row)}
+  end
+
+  def handle_event("delete_cancel", _params, socket),
+    do: {:noreply, assign(socket, :deleting, nil)}
+
+  def handle_event("delete_confirm", _params, %{assigns: %{deleting: nil}} = socket),
+    do: {:noreply, socket}
+
+  def handle_event("delete_confirm", _params, socket) do
+    case Catalog.delete_workload(socket.assigns.term.id, socket.assigns.deleting) do
+      {:ok, :deleted} ->
+        {:noreply,
+         socket
+         |> assign(:deleting, nil)
+         |> push_patch(to: ~p"/terms/#{socket.assigns.term}/workload")}
+
+      {:error, reason} ->
+        {:noreply, socket |> assign(:deleting, nil) |> Errors.put(reason)}
     end
   end
 
@@ -162,8 +190,8 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
                   )
                 }
                 class="link"
-              >{row.session.course_component.course.code}</.link>
-              <div>{component_kind_label(row.session.course_component.kind)}</div>
+              >{course_title(row.session.course_component.course)}</.link>
+              <div>{component_kind_label(row.session.course_component)}</div>
             </:col>
             <:col :let={row} label={gettext("Teacher")} class="whitespace-nowrap">
               {row.session.teacher.name}
@@ -172,7 +200,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
               {Enum.map_join(row.session.cohorts, ", ", & &1.name)}
             </:col>
             <:col :let={row} label={gettext("Academic hours")} numeric>
-              {Workload.hours(row, @term.academic_hour_minutes)}
+              {Workload.hours(row)}
             </:col>
             <:col :let={row} label={gettext("Consecutive time slots")} numeric>
               {row.session.duration_slots}
@@ -196,14 +224,14 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
                 else: gettext("No restriction")}
             </:col>
             <:action :let={row}>
+              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={row.id}>{gettext(
+                "Delete"
+              )}</button>
               <.link patch={~p"/terms/#{@term}/workload/#{row.id}/edit"} class="btn btn-ghost">{gettext(
                 "Edit"
               )}</.link>
             </:action>
           </.table>
-          <.link navigate={~p"/terms/#{@term}/sessions"} class="link inline-block mt-4">{gettext(
-            "Individual sessions"
-          )}</.link>
         </div>
         <.details_panel
           :if={@form}
@@ -220,7 +248,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
               options={
                 Enum.map(
                   @components,
-                  &{"#{&1.course.code} #{&1.course.title} / #{component_kind_label(&1.kind)}", &1.id}
+                  &{"#{course_title(&1.course)} / #{component_kind_label(&1)}", &1.id}
                 )
               }
             />
@@ -297,6 +325,14 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
           </.form>
         </.details_panel>
       </div>
+      <.alert_dialog
+        :if={@deleting}
+        title={gettext("Delete teaching load?")}
+        message={gettext("Generated sessions will be deleted. Remove their placements first.")}
+        confirm_label={gettext("Delete")}
+        on_confirm="delete_confirm"
+        on_cancel="delete_cancel"
+      />
     </Layouts.app>
     """
   end

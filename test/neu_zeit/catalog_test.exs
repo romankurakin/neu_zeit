@@ -5,6 +5,21 @@ defmodule NeuZeit.CatalogTest do
 
   alias NeuZeit.Catalog
 
+  test "courses require only a title, and optional codes remain unique" do
+    assert {:ok, first} = Catalog.create_course(%{title: "Mathematics"})
+    assert {:ok, second} = Catalog.create_course(%{title: "Physics", code: "  "})
+    assert first.code == nil
+    assert second.code == nil
+    assert {:ok, coded} = Catalog.update_course(first, %{code: "MAT101"})
+    assert {:error, changeset} = Catalog.update_course(second, %{code: "MAT101"})
+    assert %{code: ["has already been taken"]} = errors_on(changeset)
+    assert {:ok, cleared} = Catalog.update_course(coded, %{code: ""})
+    assert cleared.code == nil
+    assert Catalog.get_course!(first.id).title == "Mathematics"
+    assert {:error, changeset} = Catalog.create_course(%{code: "NO-TITLE"})
+    assert %{title: ["can't be blank"]} = errors_on(changeset)
+  end
+
   test "terms derive their week count" do
     term = term_fixture(starts_on: ~D[2026-08-31], ends_on: ~D[2026-12-19])
 
@@ -36,7 +51,7 @@ defmodule NeuZeit.CatalogTest do
     cohort = cohort_fixture()
 
     {:ok, session} =
-      Catalog.create_session(%{
+      NeuZeit.Fixtures.create_session(%{
         term_id: term.id,
         course_component_id: component.id,
         teacher_id: teacher.id,
@@ -83,7 +98,7 @@ defmodule NeuZeit.CatalogTest do
     teacher = teacher_fixture()
 
     assert {:error, changeset} =
-             Catalog.create_session(%{
+             NeuZeit.Fixtures.create_session(%{
                term_id: term.id,
                course_component_id: component.id,
                teacher_id: teacher.id,
@@ -102,7 +117,7 @@ defmodule NeuZeit.CatalogTest do
     cohort = cohort_fixture()
 
     assert {:ok, session} =
-             Catalog.create_session(%{
+             NeuZeit.Fixtures.create_session(%{
                term_id: term.id,
                course_component_id: component.id,
                teacher_id: teacher.id,
@@ -163,7 +178,9 @@ defmodule NeuZeit.CatalogTest do
     session = session_fixture()
     other_term = term_fixture()
 
-    assert {:error, changeset} = Catalog.update_session(session, %{term_id: other_term.id})
+    assert {:error, changeset} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{term_id: other_term.id})
+
     assert %{term_id: ["is read-only"]} = errors_on(changeset)
   end
 
@@ -183,7 +200,9 @@ defmodule NeuZeit.CatalogTest do
         slot: 1
       })
 
-    assert {:ok, _session} = Catalog.update_session(session, %{week_mask: [1, 2, 3]})
+    assert {:ok, _session} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{week_mask: [1, 2, 3]})
+
     assert NeuZeit.Planning.get_placement!(placement.id).week_mask == [1, 2, 3]
     assert NeuZeit.Planning.check_plan(plan.id) == []
   end
@@ -213,7 +232,9 @@ defmodule NeuZeit.CatalogTest do
         slot: 1
       })
 
-    assert {:error, %{errors: errors}} = Catalog.update_session(session_a, %{week_mask: [1, 2]})
+    assert {:error, %{errors: errors}} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session_a, %{week_mask: [1, 2]})
+
     assert Enum.any?(errors, &(&1.type == "room_conflict"))
     assert NeuZeit.Planning.get_placement!(placement_b.id).week_mask == [2]
   end
@@ -264,12 +285,18 @@ defmodule NeuZeit.CatalogTest do
     assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
 
     assert {:error, %{errors: errors}} =
-             Catalog.update_session(session_b, %{teacher_id: teacher_a.id})
+             NeuZeit.Catalog.Sessions.update_generated_session(session_b, %{
+               teacher_id: teacher_a.id
+             })
 
     assert Enum.any?(errors, &(&1.type == "teacher_conflict"))
     assert Catalog.get_session!(session_b.id).teacher_id == teacher_b.id
 
-    assert {:ok, updated} = Catalog.update_session(session_b, %{teacher_id: teacher_c.id})
+    assert {:ok, updated} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session_b, %{
+               teacher_id: teacher_c.id
+             })
+
     assert updated.teacher_id == teacher_c.id
   end
 
@@ -319,12 +346,18 @@ defmodule NeuZeit.CatalogTest do
     assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
 
     assert {:error, %{errors: errors}} =
-             Catalog.update_session(session_b, %{cohort_ids: [cohort_a.id]})
+             NeuZeit.Catalog.Sessions.update_generated_session(session_b, %{
+               cohort_ids: [cohort_a.id]
+             })
 
     assert Enum.any?(errors, &(&1.type == "cohort_conflict"))
     assert Enum.map(Catalog.get_session!(session_b.id).cohorts, & &1.id) == [cohort_b.id]
 
-    assert {:ok, _updated} = Catalog.update_session(session_b, %{cohort_ids: [cohort_c.id]})
+    assert {:ok, _updated} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session_b, %{
+               cohort_ids: [cohort_c.id]
+             })
+
     assert Enum.map(Catalog.get_session!(session_b.id).cohorts, & &1.id) == [cohort_c.id]
   end
 
@@ -349,13 +382,17 @@ defmodule NeuZeit.CatalogTest do
     assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
 
     assert {:error, %{errors: errors}} =
-             Catalog.update_session(session, %{course_component_id: excluding_component.id})
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{
+               course_component_id: excluding_component.id
+             })
 
     assert Enum.any?(errors, &(&1.type == "room_not_allowed"))
     assert Catalog.get_session!(session.id).course_component_id == original_component.id
 
     assert {:ok, updated} =
-             Catalog.update_session(session, %{course_component_id: compatible_component.id})
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{
+               course_component_id: compatible_component.id
+             })
 
     assert updated.course_component_id == compatible_component.id
   end
@@ -489,7 +526,9 @@ defmodule NeuZeit.CatalogTest do
              })
 
     assert {:error, %{errors: errors}} =
-             Catalog.update_session(session_a, %{teacher_id: teacher_b.id})
+             NeuZeit.Catalog.Sessions.update_generated_session(session_a, %{
+               teacher_id: teacher_b.id
+             })
 
     assert Enum.any?(errors, &(&1.type == "teacher_conflict"))
     assert Catalog.get_session!(session_a.id).teacher_id == teacher_a.id
@@ -525,7 +564,7 @@ defmodule NeuZeit.CatalogTest do
              })
 
     assert {:error, %{errors: [%{type: "orphaned_exception"} = error]}} =
-             Catalog.update_session(session, %{week_mask: [1]})
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{week_mask: [1]})
 
     assert error.exception_ids == [move.id]
     assert error.occurrence_dates == ["2026-09-07"]
@@ -534,7 +573,9 @@ defmodule NeuZeit.CatalogTest do
     assert {:ok, _reverted} =
              NeuZeit.Planning.update_schedule_exception(move, %{status: "reverted"})
 
-    assert {:ok, _updated} = Catalog.update_session(session, %{week_mask: [1]})
+    assert {:ok, _updated} =
+             NeuZeit.Catalog.Sessions.update_generated_session(session, %{week_mask: [1]})
+
     assert Catalog.get_session!(session.id).week_mask == [1]
   end
 
@@ -643,7 +684,9 @@ defmodule NeuZeit.CatalogTest do
     })
 
     assert {:ok, _plan} = NeuZeit.Planning.publish_plan(plan.id)
-    assert {:error, {:conflict, _message}} = Catalog.delete_session(session)
+
+    assert {:error, {:conflict, _message}} =
+             NeuZeit.Catalog.Sessions.delete_generated_session(session)
 
     assert NeuZeit.Planning.project_active_term(term.id).occurrences != []
   end
@@ -663,7 +706,7 @@ defmodule NeuZeit.CatalogTest do
       slot: 1
     })
 
-    assert {:ok, _session} = Catalog.delete_session(session)
+    assert {:ok, _session} = NeuZeit.Catalog.Sessions.delete_generated_session(session)
   end
 
   test "excluding a date targeted by an active move is rejected" do
@@ -745,13 +788,15 @@ defmodule NeuZeit.CatalogTest do
                reason: "one-off intro meeting"
              })
 
-    assert {:error, {:conflict, message}} = Catalog.delete_session(late_session)
+    assert {:error, {:conflict, message}} =
+             NeuZeit.Catalog.Sessions.delete_generated_session(late_session)
+
     assert message =~ "active schedule exceptions"
 
     assert {:ok, _exception} =
              NeuZeit.Planning.update_schedule_exception(exception, %{status: "reverted"})
 
-    assert {:ok, _session} = Catalog.delete_session(late_session)
+    assert {:ok, _session} = NeuZeit.Catalog.Sessions.delete_generated_session(late_session)
   end
 
   test "terms can shrink past weeks used only by archived plans" do
@@ -784,10 +829,13 @@ defmodule NeuZeit.CatalogTest do
 
     assert {:ok, _plan} = NeuZeit.Planning.publish_plan(second.id)
 
-    # The archived plan keeps the stale [1, 10] mask by design; only the
-    # session and the draft/active placements should constrain the term.
-    assert {:ok, session} = Catalog.update_session(session, %{week_mask: [1]})
-    assert session.week_mask == [1]
+    # Archived placements keep their dates. Saved teaching load defines current demand.
+    [workload] = Catalog.list_workload(term.id)
+
+    assert {:ok, :saved} =
+             Catalog.save_workload(term.id, workload, %{week_mask: [1], contact_hours: "2"})
+
+    assert Catalog.get_session!(session.id).week_mask == [1]
 
     assert {:ok, term} = Catalog.update_term(term, %{ends_on: ~D[2026-09-12]})
     assert term.weeks_count == 2
@@ -805,7 +853,7 @@ defmodule NeuZeit.CatalogTest do
     assert %{name: ["should be at most 100 character(s)"]} = errors_on(changeset)
 
     assert {:error, changeset} =
-             Catalog.create_course(%{code: pasted, title: pasted, credits: 5})
+             Catalog.create_course(%{code: pasted, title: pasted})
 
     assert %{
              code: ["should be at most 50 character(s)"],

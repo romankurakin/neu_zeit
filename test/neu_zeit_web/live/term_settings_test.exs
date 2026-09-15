@@ -10,6 +10,7 @@ defmodule NeuZeitWeb.TermSettingsTest do
     term = term_fixture()
     other = term_fixture()
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/settings")
+    view |> element("button", "Change for this term") |> render_click()
     view |> form("#term-settings", term: %{academic_hour_minutes: "0"}) |> render_submit()
     assert Catalog.get_term!(term.id).academic_hour_minutes == 45
     view |> form("#term-settings", term: %{academic_hour_minutes: "30"}) |> render_submit()
@@ -27,15 +28,14 @@ defmodule NeuZeitWeb.TermSettingsTest do
       week_mask: [1],
       automatic_weeks: true,
       contact_hours: "6",
-      duration_slots: 1,
-      academic_hour_minutes: 60
+      duration_slots: 1
     }
 
     assert {:ok, :saved} = Catalog.save_workload(term.id, nil, attrs)
     assert [%{count: 2} = row] = Catalog.list_workload(term.id)
     assert Decimal.equal?(Workload.hours(row, 30), Decimal.new(6))
 
-    assert {:ok, _} = Catalog.update_term(term, %{academic_hour_minutes: 45})
+    assert {:error, _} = Catalog.update_term(term, %{academic_hour_minutes: 45})
     assert [%{count: 2} = unchanged] = Catalog.list_workload(term.id)
     assert Enum.map(row.sessions, & &1.id) == Enum.map(unchanged.sessions, & &1.id)
     assert Decimal.equal?(Workload.hours(unchanged, 45), Decimal.new(6))

@@ -15,7 +15,7 @@ defmodule NeuZeitWeb.SessionLiveTest do
     {:ok, room} = Catalog.create_room(%{"building_id" => building.id, "name" => "101"})
 
     {:ok, course} =
-      Catalog.create_course(%{"code" => "INF110", "title" => "Programmierung I", "credits" => 8})
+      Catalog.create_course(%{"code" => "INF110", "title" => "Programmierung I"})
 
     {:ok, component} =
       Catalog.create_course_component(%{
@@ -53,7 +53,7 @@ defmodule NeuZeitWeb.SessionLiveTest do
         overrides
       )
 
-    {:ok, session} = Catalog.create_session(attrs)
+    {:ok, session} = NeuZeit.Fixtures.create_session(attrs)
     session
   end
 
@@ -61,7 +61,7 @@ defmodule NeuZeitWeb.SessionLiveTest do
     created = session(ctx)
     {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions")
 
-    assert has_element?(live, "#sessions", "INF110")
+    assert has_element?(live, "#sessions", "Programmierung I")
     assert has_element?(live, "#sessions", "Anna Weber")
     assert has_element?(live, "#sessions-#{created.id}")
   end
@@ -113,97 +113,30 @@ defmodule NeuZeitWeb.SessionLiveTest do
     end
   end
 
-  describe "the week mask editor" do
-    test "starts on every teaching week for a new session", %{conn: conn} = ctx do
-      {:ok, _live, html} = live(conn, ~p"/terms/#{ctx.term}/sessions/new")
-      assert html =~ "15 weeks"
-    end
-
-    test "presets pick alternating weeks", %{conn: conn} = ctx do
-      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions/new")
-
-      html = live |> element(~s{button[phx-value-preset="odd"]}) |> render_click()
-      assert html =~ "8 weeks"
-
-      html = live |> element(~s{button[phx-value-preset="even"]}) |> render_click()
-      assert html =~ "7 weeks"
-    end
-
-    test "a single week can be toggled off and back on", %{conn: conn} = ctx do
-      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions/new")
-
-      html = live |> element(~s{#session-weeks button[phx-value-week="3"]}) |> render_click()
-      assert html =~ "14 weeks"
-
-      html = live |> element(~s{#session-weeks button[phx-value-week="3"]}) |> render_click()
-      assert html =~ "15 weeks"
-    end
-  end
-
-  describe "creating" do
-    test "saves a session with the chosen weeks and cohorts", %{conn: conn} = ctx do
-      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions/new")
-
-      live |> element(~s{button[phx-value-preset="odd"]}) |> render_click()
-
-      render_hook(live, "selection_changed", %{
-        "id" => "session-cohorts",
-        "selected" => [ctx.cohort.id, ctx.other_cohort.id]
-      })
-
-      live
-      |> form("#session-form",
-        session: %{
-          course_component_id: ctx.component.id,
-          teacher_id: ctx.teacher.id,
-          duration_slots: 2
-        }
-      )
-      |> render_submit()
-
-      assert [session] = Catalog.list_sessions(ctx.term.id)
-      assert session.week_mask == [1, 3, 5, 7, 9, 11, 13, 15]
-      assert session.duration_slots == 2
-      assert Enum.map(session.cohorts, & &1.name) |> Enum.sort() == ["IT-1", "WI-1"]
-    end
-
-    test "a session with no cohort is refused", %{conn: conn} = ctx do
-      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions/new")
-
-      html =
-        live
-        |> form("#session-form",
-          session: %{course_component_id: ctx.component.id, teacher_id: ctx.teacher.id}
-        )
-        |> render_submit()
-
-      # New sessions require at least one attending group.
-      assert html =~ "non-empty list of ids" or html =~ "cohort"
-      assert Catalog.list_sessions(ctx.term.id) == []
-    end
-  end
-
-  test "editing preserves the existing cohorts", %{conn: conn} = ctx do
+  test "session list links to teaching load and has no mutation controls", %{conn: conn} = ctx do
     created = session(ctx)
-    {:ok, live, html} = live(conn, ~p"/terms/#{ctx.term}/sessions/#{created}/edit")
-
-    assert html =~ "WI-1"
-    live |> form("#session-form", session: %{duration_slots: 3}) |> render_submit()
-
-    reloaded = Catalog.get_session!(created.id)
-    assert reloaded.duration_slots == 3
-    assert Enum.map(reloaded.cohorts, & &1.name) == ["WI-1"]
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/sessions")
+    assert has_element?(view, "a[href*='/workload/#{created.workload_id}/edit']")
+    refute has_element?(view, "button[phx-click=delete_prompt]")
+    refute has_element?(view, "#session-form")
   end
 
-  test "deleting asks first", %{conn: conn} = ctx do
+  test "old creation links open the teaching load form", %{conn: conn} = ctx do
+    assert {:error, {:live_redirect, %{to: path}}} =
+             live(conn, ~p"/terms/#{ctx.term}/sessions/new")
+
+    assert URI.parse(path).path == "/terms/#{ctx.term.id}/workload/new"
+  end
+
+  test "old edit links keep the return path and open the saved teaching load",
+       %{conn: conn} = ctx do
     created = session(ctx)
-    {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions")
+    return_to = ~p"/terms/#{ctx.term}/calendar?week=2"
 
-    refute has_element?(live, "#confirm-modal")
-    live |> element(~s{button[phx-value-id="#{created.id}"]}) |> render_click()
-    assert has_element?(live, "#confirm-modal")
+    assert {:error, {:live_redirect, %{to: path}}} =
+             live(conn, ~p"/terms/#{ctx.term}/sessions/#{created}/edit?return_to=#{return_to}")
 
-    live |> element("#confirm-modal button", "Delete session") |> render_click()
-    assert Catalog.list_sessions(ctx.term.id) == []
+    assert URI.parse(path).path == "/terms/#{ctx.term.id}/workload/#{created.workload_id}/edit"
+    assert URI.decode_query(URI.parse(path).query)["return_to"] == return_to
   end
 end

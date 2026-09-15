@@ -15,7 +15,8 @@ defmodule NeuZeitWeb.Scheduling.SessionCard do
   attr :grid, :map, default: nil
 
   def session_card(assigns) do
-    assigns = assign(assigns, :grid, assigns.grid || Config.grid!())
+    assigns =
+      assign(assigns, :grid, assigns.grid || Config.grid!(Map.get(assigns.session, :term_id)))
 
     ~H"""
     <.dynamic_tag
@@ -37,11 +38,8 @@ defmodule NeuZeitWeb.Scheduling.SessionCard do
       <span class="card-body gap-1 break-words type-detail font-normal">
         <span class="type-heading">
           <.icon :if={@placement && @placement.locked} name="hero-lock-closed" class="size-4" />
-          {@session.course_component.course.code}
-          <span class="block">{@session.course_component.course.title}</span>
-          <span class="block type-detail font-normal">{component_kind_label(
-            @session.course_component.kind
-          )}</span>
+          {course_title(@session.course_component.course)}
+          <span class="block type-detail font-normal">{component_kind_label(@session.course_component)}</span>
         </span>
         <span :if={@placement} class="flex items-start gap-2 tabular-nums">
           <.icon name="hero-clock" class="size-4 shrink-0 self-center" />

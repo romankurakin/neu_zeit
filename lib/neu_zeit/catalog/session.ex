@@ -39,6 +39,7 @@ defmodule NeuZeit.Catalog.Session do
       :duration_slots
     ])
     |> validate_required([
+      :workload_id,
       :term_id,
       :course_component_id,
       :automatic_weeks,
@@ -47,10 +48,7 @@ defmodule NeuZeit.Catalog.Session do
       :duration_slots
     ])
     |> validate_length(:sequence_group, max: 100)
-    |> validate_number(:duration_slots,
-      greater_than: 0,
-      less_than_or_equal_to: length(NeuZeit.Config.grid!().slots)
-    )
+    |> validate_duration()
     |> normalize_week_mask()
     |> foreign_key_constraint(:term_id)
     |> foreign_key_constraint(:course_component_id)
@@ -77,6 +75,7 @@ defmodule NeuZeit.Catalog.Session do
       :duration_slots
     ])
     |> validate_required([
+      :workload_id,
       :term_id,
       :course_component_id,
       :automatic_weeks,
@@ -85,10 +84,7 @@ defmodule NeuZeit.Catalog.Session do
       :duration_slots
     ])
     |> validate_length(:sequence_group, max: 100)
-    |> validate_number(:duration_slots,
-      greater_than: 0,
-      less_than_or_equal_to: length(NeuZeit.Config.grid!().slots)
-    )
+    |> validate_duration()
     |> normalize_week_mask()
     |> foreign_key_constraint(:course_component_id)
     |> foreign_key_constraint(:teacher_id)
@@ -97,6 +93,13 @@ defmodule NeuZeit.Catalog.Session do
     |> prepare_changes(&validate_week_mask_bounds/1)
     |> prepare_changes(&validate_profile_duration/1)
     |> prepare_changes(&validate_teacher_availability/1)
+  end
+
+  defp validate_duration(changeset) do
+    validate_number(changeset, :duration_slots,
+      greater_than: 0,
+      less_than_or_equal_to: length(NeuZeit.Config.grid!(get_field(changeset, :term_id)).slots)
+    )
   end
 
   defp reject_fields(changeset, attrs, fields) do
@@ -150,7 +153,7 @@ defmodule NeuZeit.Catalog.Session do
     with true <- changeset.valid?,
          profile_id when not is_nil(profile_id) <- get_field(changeset, :slot_profile_id),
          duration when is_integer(duration) <- get_field(changeset, :duration_slots) do
-      slots_count = length(NeuZeit.Config.grid!().slots)
+      slots_count = length(NeuZeit.Config.grid!(get_field(changeset, :term_id)).slots)
 
       valid_start? =
         changeset.repo.exists?(
@@ -200,7 +203,8 @@ defmodule NeuZeit.Catalog.Session do
       if TeacherAvailabilityCell.schedulable?(
            availability_cells,
            profile_cells,
-           duration
+           duration,
+           NeuZeit.Config.grid!(term_id)
          ) do
         changeset
       else

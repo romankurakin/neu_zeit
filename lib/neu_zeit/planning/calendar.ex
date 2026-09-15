@@ -66,7 +66,11 @@ defmodule NeuZeit.Planning.Calendar do
             :cohorts,
             teacher: [:availability_cells],
             slot_profile: [:cells],
-            course_component: [:course, :allowed_rooms]
+            course_component: [
+              :allowed_rooms,
+              course: :translations,
+              teaching_type: :translations
+            ]
           ]
         ]
       )

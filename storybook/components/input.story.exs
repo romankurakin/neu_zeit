@@ -16,10 +16,6 @@ defmodule NeuZeitWeb.Stories.Input do
           value: 0,
           errors: ["Must be greater than 0"]
         }
-      },
-      %Variation{
-        id: :date,
-        attributes: %{name: "starts_on", type: "date", label: "Start date", value: "2026-09-01"}
       }
     ]
   end

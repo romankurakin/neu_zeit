@@ -22,7 +22,7 @@ defmodule NeuZeit.Catalog.Sessions do
           :cohorts,
           teacher: [:availability_cells],
           slot_profile: [:cells],
-          course_component: [:course, :allowed_rooms]
+          course_component: [:allowed_rooms, course: :translations, teaching_type: :translations]
         ]
     )
   end
@@ -42,7 +42,7 @@ defmodule NeuZeit.Catalog.Sessions do
       :cohorts,
       teacher: [:availability_cells],
       slot_profile: [:cells],
-      course_component: [:course, :allowed_rooms]
+      course_component: [:allowed_rooms, course: :translations, teaching_type: :translations]
     ])
     |> session_page(opts)
     |> Repo.all()
@@ -123,11 +123,12 @@ defmodule NeuZeit.Catalog.Sessions do
       :cohorts,
       teacher: [:availability_cells],
       slot_profile: [:cells],
-      course_component: [:course, :allowed_rooms]
+      course_component: [:allowed_rooms, course: :translations, teaching_type: :translations]
     ])
   end
 
-  def create_session(attrs) do
+  @doc false
+  def create_generated_session(workload_id, attrs) do
     with {:ok, cohort_ids} <-
            WriteSupport.normalize_existing_ids(
              WriteSupport.attr(attrs, :cohort_ids, []),
@@ -155,7 +156,7 @@ defmodule NeuZeit.Catalog.Sessions do
             {:ok, :invalid_term_id}
         end
       end)
-      |> Multi.insert(:session, Session.changeset(%Session{}, attrs))
+      |> Multi.insert(:session, Session.changeset(%Session{workload_id: workload_id}, attrs))
       |> Multi.run(:cohorts, fn repo, %{session: session} ->
         replace_session_cohorts(repo, session.id, cohort_ids)
       end)
@@ -164,7 +165,8 @@ defmodule NeuZeit.Catalog.Sessions do
     end
   end
 
-  def update_session(%Session{} = session, attrs) do
+  @doc false
+  def update_generated_session(%Session{} = session, attrs) do
     with {:ok, cohort_ids} <-
            WriteSupport.maybe_normalize_existing_ids(
              WriteSupport.attr(attrs, :cohort_ids),
@@ -224,6 +226,8 @@ defmodule NeuZeit.Catalog.Sessions do
       %{
         course_component_id: component_id,
         course_code: hd(sessions).course_component.course.code,
+        course_title: hd(sessions).course_component.course.title,
+        course: hd(sessions).course_component.course,
         kind: hd(sessions).course_component.kind,
         teacher: hd(sessions).teacher.name,
         session_ids: Enum.map(sessions, & &1.id),
@@ -235,10 +239,11 @@ defmodule NeuZeit.Catalog.Sessions do
           |> Enum.sort()
       }
     end)
-    |> Enum.sort_by(& &1.course_code)
+    |> Enum.sort_by(&{&1.course_title, &1.course_component_id})
   end
 
-  def delete_session(%Session{} = session) do
+  @doc false
+  def delete_generated_session(%Session{} = session) do
     WriteSupport.transaction_result(fn ->
       Repo.one!(from t in Term, where: t.id == ^session.term_id, lock: "FOR UPDATE")
 

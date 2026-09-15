@@ -1,6 +1,7 @@
 defmodule NeuZeitWeb.PlanLive.Workspace do
   @moduledoc false
   use NeuZeitWeb, :verified_routes
+  import NeuZeitWeb.Scheduling.Labels, only: [course_title: 1]
 
   def location(assigns) do
     Map.take(assigns, [
@@ -68,7 +69,11 @@ defmodule NeuZeitWeb.PlanLive.Workspace do
     Enum.filter(assigns.board.unplaced, fn s ->
       text =
         Enum.join(
-          [s.course_component.course.code, s.teacher.name | Enum.map(s.cohorts, & &1.name)],
+          [
+            course_title(s.course_component.course),
+            s.course_component.course.code,
+            s.teacher.name | Enum.map(s.cohorts, & &1.name)
+          ],
           " "
         )
 

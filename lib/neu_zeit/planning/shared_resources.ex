@@ -33,7 +33,11 @@ defmodule NeuZeit.Planning.SharedResources do
         Repo.all(
           from s in Session,
             where: s.term_id in ^ids,
-            preload: [:cohorts, :teacher, course_component: :course]
+            preload: [
+              :cohorts,
+              :teacher,
+              course_component: [course: :translations, teaching_type: :translations]
+            ]
         )
         |> Map.new(&{&1.id, &1})
 
@@ -63,10 +67,17 @@ defmodule NeuZeit.Planning.SharedResources do
             session_id: session.id,
             date: occurrence.date,
             slot: occurrence.slot,
+            time_span:
+              NeuZeit.Scheduling.Grid.span(
+                plan.term.grid,
+                occurrence.slot,
+                occurrence.duration_slots || session.duration_slots
+              ),
+            start_time: Enum.at(plan.term.grid.slots, occurrence.slot - 1).start,
             placement_id: occurrence.placement_id,
             exception_id: occurrence.exception_id,
-            course: session.course_component.course.code,
-            teacher: session.teacher.name,
+            course: session.course_component.course.title,
+            teacher: teacher_name(occurrence, session),
             room: Map.get(rooms, occurrence.room_id, occurrence.room_id),
             cohorts: Enum.map_join(session.cohorts, ", ", & &1.name)
           }
@@ -113,29 +124,44 @@ defmodule NeuZeit.Planning.SharedResources do
 
   def blocked?(index, term, session, placement) do
     Enum.any?(Projection.project(term, [placement]), fn occurrence ->
-      Enum.any?(keys(occurrence, session), &Map.has_key?(index, &1))
+      matches(index, term, session, occurrence) != []
     end)
   end
 
+  defp teacher_name(%{teacher_id: id}, session) when not is_nil(id) and id != session.teacher_id,
+    do: Catalog.get_teacher!(id).name
+
+  defp teacher_name(_occurrence, session), do: session.teacher.name
+
   defp keys(occurrence, session) do
     resources =
-      [{"room", occurrence.room_id}, {"teacher", session.teacher_id}] ++
+      [{"room", occurrence.room_id}, {"teacher", occurrence.teacher_id || session.teacher_id}] ++
         Enum.map(session.cohorts, &{"cohort", &1.id})
 
-    for slot <-
-          occurrence.slot..(occurrence.slot +
-                              (occurrence.duration_slots || session.duration_slots) - 1),
-        {kind, id} <- resources,
-        do: {occurrence.date, slot, kind, id}
+    for {kind, id} <- resources, do: {occurrence.date, kind, id}
   end
 
-  defp occurrence_errors(index, term, session, occurrence) do
-    matches =
-      for {date, _slot, kind, id} = key <- keys(occurrence, session),
-          booking <- Map.get(index, key, []),
-          do: {date, kind, id, booking}
+  defp matches(index, term, session, occurrence) do
+    span =
+      NeuZeit.Scheduling.Grid.span(
+        term.grid,
+        occurrence.slot,
+        occurrence.duration_slots || session.duration_slots
+      )
 
-    matches
+    for {date, kind, id} = key <- keys(occurrence, session),
+        booking <- Map.get(index, key, []),
+        overlaps?(span, booking.time_span),
+        do: {date, kind, id, booking}
+  end
+
+  defp overlaps?({start, finish}, {other_start, other_finish}),
+    do: start < other_finish and other_start < finish
+
+  defp overlaps?(_, _), do: false
+
+  defp occurrence_errors(index, term, session, occurrence) do
+    matches(index, term, session, occurrence)
     |> Enum.uniq()
     |> Enum.map(fn {date, kind, id, booking} ->
       %{
@@ -144,7 +170,7 @@ defmodule NeuZeit.Planning.SharedResources do
         resource_id: id,
         resource_name:
           case kind do
-            "teacher" -> session.teacher.name
+            "teacher" -> teacher_name(occurrence, session)
             "room" -> booking.room
             "cohort" -> Enum.find(session.cohorts, &(&1.id == id)).name
           end,
@@ -154,6 +180,7 @@ defmodule NeuZeit.Planning.SharedResources do
         other_teacher: booking.teacher,
         other_room: booking.room,
         conflict_slot: booking.slot,
+        conflict_time: booking.start_time,
         session_id: session.id,
         term_id: term.id,
         other_term_id: booking.term_id,

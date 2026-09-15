@@ -14,7 +14,7 @@ defmodule NeuZeit.Catalog.TeacherAvailabilityCell do
   end
 
   def changeset(cell, attrs) do
-    grid = NeuZeit.Config.grid!()
+    grid = NeuZeit.Config.grid!(NeuZeit.Catalog.WriteSupport.attr(attrs, :term_id, cell.term_id))
 
     cell
     |> cast(attrs, [:term_id, :teacher_id, :day, :slot])

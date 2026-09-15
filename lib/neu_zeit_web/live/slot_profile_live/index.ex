@@ -20,7 +20,7 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
      |> assign(:page_title, gettext("Time profiles"))
      |> assign(:term, term)
      |> assign(:terms, Catalog.list_terms())
-     |> assign(:grid, NeuZeit.Config.grid!())
+     |> assign(:grid, NeuZeit.Config.grid!(term))
      |> assign(:deleting, nil)
      |> load()}
   end

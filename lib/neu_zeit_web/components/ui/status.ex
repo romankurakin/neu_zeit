@@ -15,7 +15,7 @@ defmodule NeuZeitWeb.UI.Status do
     ok: "hero-check-circle",
     info: "hero-information-circle",
     unknown: "hero-minus-circle",
-    # ects coverage
+    # teaching-hour coverage
     under: "hero-arrow-trending-down",
     over: "hero-arrow-trending-up"
   }

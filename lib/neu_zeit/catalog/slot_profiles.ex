@@ -32,10 +32,17 @@ defmodule NeuZeit.Catalog.SlotProfiles do
     do: SlotProfile |> Repo.get!(id) |> Repo.preload([:term, :cells])
 
   def create_slot_profile(attrs) do
-    %SlotProfile{}
-    |> SlotProfile.changeset(attrs)
-    |> Repo.insert()
-    |> WriteSupport.preload_result([:term, :cells])
+    WriteSupport.transaction_result(fn ->
+      term_id = WriteSupport.attr(attrs, :term_id)
+
+      if match?({:ok, _}, Ecto.UUID.cast(term_id)),
+        do: Repo.one(from t in Term, where: t.id == ^term_id, lock: "FOR UPDATE")
+
+      %SlotProfile{}
+      |> SlotProfile.changeset(attrs)
+      |> Repo.insert()
+      |> WriteSupport.preload_result([:term, :cells])
+    end)
   end
 
   def update_slot_profile(%SlotProfile{} = profile, attrs) do
@@ -68,7 +75,7 @@ defmodule NeuZeit.Catalog.SlotProfiles do
       if Enum.any?(profiles, &(&1.preset_key == "weekday_daytime")) do
         {:ok, profiles}
       else
-        defaults = daytime_cells()
+        defaults = daytime_cells(term)
 
         existing =
           Enum.find(profiles, fn profile ->
@@ -99,7 +106,7 @@ defmodule NeuZeit.Catalog.SlotProfiles do
   end
 
   defp validate_slot_profile_durations(profile) do
-    slots_count = length(NeuZeit.Config.grid!().slots)
+    slots_count = length(NeuZeit.Config.grid!(profile.term_id).slots)
     earliest_start = profile.cells |> Enum.map(& &1.slot) |> Enum.min(fn -> slots_count + 1 end)
 
     impossible_session? =
@@ -121,8 +128,8 @@ defmodule NeuZeit.Catalog.SlotProfiles do
     end
   end
 
-  defp daytime_cells do
-    grid = NeuZeit.Config.grid!()
+  defp daytime_cells(term) do
+    grid = NeuZeit.Config.grid!(term)
 
     for day <- 1..min(5, length(grid.days)),
         slot <- 1..min(4, length(grid.slots)),

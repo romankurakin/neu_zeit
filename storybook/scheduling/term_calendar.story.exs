@@ -8,6 +8,8 @@ defmodule NeuZeitWeb.Stories.TermCalendar do
       {:ok,
        assign(socket, :term, %{
          starts_on: ~D[2026-09-07],
+         ends_on: ~D[2026-10-04],
+         grid: NeuZeit.Config.grid!(),
          weeks_count: 4,
          excluded_dates: [~D[2026-09-09]]
        })}
