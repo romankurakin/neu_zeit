@@ -31,7 +31,7 @@ config :volt,
       else: ["assets/js/app.ts", "assets/js/storybook.ts"]
     ),
   root: "assets",
-  sources: ["js/**/*.ts", "vendor/**/*.mjs"],
+  sources: ["{js,vendor}/**/*.ts"],
   ignore: [],
   outdir: "priv/static/assets",
   target: :es2022,
@@ -54,7 +54,7 @@ config :volt,
 
 config :volt, :lint,
   root: ".",
-  sources: ["assets/js/**/*.ts", "assets/vendor/**/*.mjs", "assets/colocated/dev/*/*/*.js"],
+  sources: ["assets/js/**/*.ts", "assets/vendor/**/*.ts", "assets/colocated/dev/*/*/*.js"],
   ignore: ["assets/colocated/*/*/index.js"],
   plugins: [:typescript, :unicorn, :oxc],
   env: [:browser],
@@ -92,7 +92,7 @@ config :volt, :lint,
       rules: %{"unicorn/no-null" => :allow}
     },
     %{
-      files: ["assets/vendor/heroicons.mjs"],
+      files: ["assets/vendor/heroicons.ts"],
       env: %{browser: false, node: true}
     }
   ]

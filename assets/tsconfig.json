@@ -1,20 +1,10 @@
 {
   "compilerOptions": {
     "paths": {
-      "phoenix": [
-        "../node_modules/@types/phoenix"
-      ],
-      "phoenix_live_view": [
-        "../deps/phoenix_live_view"
-      ],
-      "phoenix-colocated/*": [
-        "./colocated/dev/*"
-      ],
-      "@/*": [
-        "./*"
-      ]
+      "phoenix_live_view": ["../deps/phoenix_live_view"],
+      "phoenix-colocated/*": ["./colocated/dev/*"],
+      "@/*": ["./*"]
     },
-    "allowJs": true,
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -22,16 +12,7 @@
     "target": "ES2022",
     "skipLibCheck": true,
     "strict": true,
-    "types": [
-      "phoenix",
-      "sortablejs",
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "js/**/*",
-    "types/**/*.d.ts",
-    "colocated/dev/**/*.js",
-    "vendor/**/*"
-  ]
+  "include": ["js/**/*", "types/**/*.d.ts", "colocated/dev/**/*.js", "vendor/**/*"]
 }

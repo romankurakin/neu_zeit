@@ -7,7 +7,7 @@
     "*.{ex,exs}",
     "{config,lib,test}/**/*.{ex,exs}",
     "{lib,test}/**/*.heex",
-    "assets/{js,vendor}/**/*.{ts,mjs}",
+    "assets/{js,vendor}/**/*.ts",
     "priv/*/seeds.exs",
     "dev/**/*.ex",
     "storybook/**/*.exs"

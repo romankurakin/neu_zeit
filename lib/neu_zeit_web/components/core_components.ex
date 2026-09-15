@@ -304,7 +304,7 @@ defmodule NeuZeitWeb.CoreComponents do
 
   The default style is outline. Add `-solid` or `-mini` for another style.
   Use Tailwind classes to set size and colour.
-  `assets/vendor/heroicons.js` includes icons from the `heroicons` npm package in the CSS build.
+  `assets/vendor/heroicons.ts` includes icons from the `heroicons` npm package in the CSS build.
 
   ## Examples
 

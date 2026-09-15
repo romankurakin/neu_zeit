@@ -6,8 +6,7 @@ import plugin from "tailwindcss/plugin";
 const iconsDirectory = path.resolve("node_modules/heroicons");
 
 const readIconValues = () => {
-  /** @type {Map<string, string>} */
-  const values = new Map();
+  const values = new Map<string, string>();
   for (const [suffix, folder] of [
     ["", "24/outline"],
     ["-solid", "24/solid"],
@@ -21,8 +20,7 @@ const readIconValues = () => {
   return Object.fromEntries(values);
 };
 
-/** @param {string} fullPath @param {(key: string) => unknown} theme */
-const renderIcon = (fullPath, theme) => {
+const renderIcon = (fullPath: string, theme: (key: string) => unknown) => {
   const content = encodeURIComponent(
     fileSystem.readFileSync(fullPath, "utf8").replaceAll(/\r?\n|\r/gu, ""),
   );
