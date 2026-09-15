@@ -27,10 +27,12 @@ config :phoenix_live_view, :colocated_assets, target_directory: colocated_dir
 config :volt,
   entry:
     if(config_env() == :prod,
-      do: "assets/js/app.js",
-      else: ["assets/js/app.js", "assets/js/storybook.js"]
+      do: "assets/js/app.ts",
+      else: ["assets/js/app.ts", "assets/js/storybook.ts"]
     ),
   root: "assets",
+  sources: ["js/**/*.ts", "vendor/**/*.mjs"],
+  ignore: [],
   outdir: "priv/static/assets",
   target: :es2022,
   format: :esm,
@@ -48,6 +50,51 @@ config :volt,
       %{base: "storybook/", pattern: "**/*.exs"},
       %{base: "dev/", pattern: "**/*.ex"}
     ]
+  ]
+
+config :volt, :lint,
+  root: ".",
+  sources: ["assets/js/**/*.ts", "assets/vendor/**/*.mjs", "assets/colocated/dev/*/*/*.js"],
+  ignore: ["assets/colocated/*/*/index.js"],
+  plugins: [:typescript, :unicorn, :oxc],
+  env: [:browser],
+  tsgolint: "node_modules/.bin/tsgolint",
+  rules: %{
+    "correctness" => :deny,
+    "suspicious" => :deny,
+    "pedantic" => :deny,
+    "perf" => :deny,
+    "style" => :deny,
+    # Volt requires explicit names for type-aware rules.
+    "typescript/await-thenable" => :deny,
+    "typescript/no-floating-promises" => :deny,
+    "typescript/no-misused-promises" => :deny,
+    "typescript/no-unsafe-argument" => :deny,
+    "typescript/no-unsafe-assignment" => :deny,
+    "typescript/no-unsafe-call" => :deny,
+    "typescript/no-unsafe-member-access" => :deny,
+    "typescript/no-unsafe-return" => :deny,
+    "typescript/restrict-plus-operands" => :deny,
+    "typescript/switch-exhaustiveness-check" => :deny,
+    "typescript/unbound-method" => :deny,
+    # Conflicts with eslint/no-ternary.
+    "unicorn/prefer-ternary" => :allow
+  },
+  overrides: [
+    %{
+      files: ["assets/colocated/**/*.js"],
+      # Phoenix generates these filenames.
+      rules: %{"unicorn/filename-case" => :allow}
+    },
+    %{
+      files: ["assets/js/hook-dom.ts"],
+      # Match the DOM lookup APIs.
+      rules: %{"unicorn/no-null" => :allow}
+    },
+    %{
+      files: ["assets/vendor/heroicons.mjs"],
+      env: %{browser: false, node: true}
+    }
   ]
 
 config :logger, :default_formatter,

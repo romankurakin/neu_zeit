@@ -46,7 +46,7 @@ defmodule NeuZeit.MixProject do
       {:phoenix_storybook, "~> 1.4", only: [:dev, :test]},
       {:lazy_html, "~> 0.1", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:volt, "~> 0.17"},
+      {:volt, "~> 0.18.1"},
       {:npm, "~> 0.7", runtime: false},
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},
@@ -73,7 +73,10 @@ defmodule NeuZeit.MixProject do
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["npm.ci"],
       "assets.build": ["compile", "volt.build --tailwind"],
-      "assets.lint": ["cmd env MIX_ENV=dev mix compile", "npm.run lint"],
+      "assets.lint": [
+        "cmd env MIX_ENV=dev mix compile",
+        "cmd env MIX_ENV=dev mix volt.js.check --type-aware --type-check"
+      ],
       "assets.deploy": [
         "compile",
         "volt.build --tailwind",

@@ -6,7 +6,7 @@ defmodule NeuZeitWeb.Storybook do
     compilation_mode: :eager,
     title: "NeuZeit Components",
     css_path: "/assets/css/app.css",
-    js_path: "/assets/js/storybook.js",
+    js_path: "/assets/js/storybook.ts",
     js_script_type: "module",
     sandbox_class: "neu-zeit app-typography font-sans bg-base-100 text-base-content",
     color_mode: true

@@ -123,7 +123,7 @@ defmodule NeuZeitWeb.Layouts do
     </div>
 
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Navigation">
-      import { defineHook } from "@/js/hook-dom.js";
+      import { defineHook } from "@/js/hook-dom";
 
       export default defineHook({
         mounted() {
@@ -137,7 +137,7 @@ defmodule NeuZeitWeb.Layouts do
     </script>
 
     <script :type={Phoenix.LiveView.ColocatedHook} name=".LocalDates">
-      import { defineHook } from "@/js/hook-dom.js";
+      import { defineHook } from "@/js/hook-dom";
 
       // The root layout installs the formatter and runs it before the first paint.
       // A patch drops the ready mark, so every replaced date is written again.
@@ -281,7 +281,7 @@ defmodule NeuZeitWeb.Layouts do
       </button>
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".ThemeToggle">
-      import { defineHook, htmlElements } from "@/js/hook-dom.js";
+      import { defineHook, htmlElements } from "@/js/hook-dom";
 
       export default defineHook({
         destroyed() {

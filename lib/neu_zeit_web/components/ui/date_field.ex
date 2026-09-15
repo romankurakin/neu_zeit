@@ -87,7 +87,7 @@ defmodule NeuZeitWeb.UI.DateField do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".DateField">
       import "cally";
-      import { defineHook } from "@/js/hook-dom.js";
+      import { defineHook } from "@/js/hook-dom";
 
       // Canadian English writes a local date as YYYY-MM-DD, the form the field carries.
       const isoDate = "en-CA";

@@ -93,7 +93,7 @@ defmodule NeuZeitWeb.Scheduling.TimeGrid do
       <p :if={@legend} class="mt-2 type-detail text-base-content">{@legend}</p>
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".GridPaint">
-      import { closestHtmlElement, defineHook, htmlElements } from "@/js/hook-dom.js";
+      import { closestHtmlElement, defineHook, htmlElements } from "@/js/hook-dom";
 
       /** @typedef {Readonly<{day: number, slot: number}>} Cell */
 

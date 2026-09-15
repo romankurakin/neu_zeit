@@ -1,5 +1,5 @@
 [
-  plugins: [Phoenix.LiveView.HTMLFormatter, NeuZeitWeb.JavaScriptFormatter],
+  plugins: [Phoenix.LiveView.HTMLFormatter, Volt.Formatter],
   tag_formatters: %{script: NeuZeitWeb.JavaScriptFormatter},
   import_deps: [:ecto, :ecto_sql, :phoenix],
   subdirectories: ["priv/*/migrations"],
@@ -7,7 +7,7 @@
     "*.{ex,exs}",
     "{config,lib,test}/**/*.{ex,exs}",
     "{lib,test}/**/*.heex",
-    "assets/{js,vendor}/**/*.{js,mjs}",
+    "assets/{js,vendor}/**/*.{ts,mjs}",
     "priv/*/seeds.exs",
     "dev/**/*.ex",
     "storybook/**/*.exs"

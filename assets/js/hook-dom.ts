@@ -1,9 +1,10 @@
-/** @param {ParentNode} root @param {string} selector */
-export const htmlElements = (root, selector) =>
+import type { HookInterface } from "phoenix_live_view";
+import type { SortableEvent } from "sortablejs";
+
+export const htmlElements = (root: ParentNode, selector: string) =>
   [...root.querySelectorAll(selector)].filter((element) => element instanceof HTMLElement);
 
-/** @param {EventTarget | null} target @param {string} selector */
-export const closestHtmlElement = (target, selector) => {
+export const closestHtmlElement = (target: EventTarget | null, selector: string) => {
   if (target instanceof Element) {
     const element = target.closest(selector);
     if (element instanceof HTMLElement) {
@@ -13,8 +14,7 @@ export const closestHtmlElement = (target, selector) => {
   return null;
 };
 
-/** @param {import("sortablejs").SortableEvent} event */
-export const restoreDraggedItem = (event) => {
+export const restoreDraggedItem = (event: SortableEvent) => {
   if (typeof event.oldIndex === "number") {
     event.from.insertBefore(event.item, event.from.children.item(event.oldIndex));
   } else {
@@ -37,9 +37,7 @@ export const dragAnimation = () => {
   return animationDuration;
 };
 
-/**
- * Object hooks work across the application and Storybook LiveView runtimes.
- * @template {object} Definition
- * @param {Readonly<Definition> & ThisType<Definition & import("phoenix_live_view").HookInterface>} definition
- */
-export const defineHook = (definition) => definition;
+// Object hooks work across the application and Storybook LiveView runtimes.
+export const defineHook = <Definition extends object>(
+  definition: Readonly<Definition> & ThisType<Definition & HookInterface>,
+) => definition;

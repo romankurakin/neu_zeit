@@ -459,7 +459,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
           dragAnimation,
           htmlElements,
           restoreDraggedItem,
-        } from "@/js/hook-dom.js";
+        } from "@/js/hook-dom";
         import Sortable from "sortablejs";
 
         export default defineHook({

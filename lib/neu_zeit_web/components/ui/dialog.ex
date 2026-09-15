@@ -67,7 +67,7 @@ defmodule NeuZeitWeb.UI.Dialog do
       ></button>
     </dialog>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".NativeDialog">
-      import { acknowledgePatch, defineHook } from "@/js/hook-dom.js";
+      import { acknowledgePatch, defineHook } from "@/js/hook-dom";
 
       export default defineHook({
         destroyed() {
