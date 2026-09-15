@@ -4,6 +4,28 @@ defmodule NeuZeit.AutomaticWeeksTest do
   alias NeuZeit.{Catalog, Curriculum, Planning}
   alias NeuZeit.Solver.{PlanRuns, ResultValidator, SpecBuilder}
 
+  test "solves and publishes a one-day term starting on Tuesday" do
+    term = term_fixture(starts_on: ~D[2026-09-01], ends_on: ~D[2026-09-01])
+    session = session_fixture(term: term, automatic_weeks: true, week_mask: [1])
+    plan = plan_fixture(term: term)
+    room = hd(session.course_component.allowed_rooms)
+
+    assert {:error, _} =
+             Planning.create_placement(%{
+               plan_id: plan.id,
+               session_id: session.id,
+               room_id: room.id,
+               day: 1,
+               slot: 1,
+               week_mask: [1]
+             })
+
+    assert {:ok, _} = PlanRuns.solve(plan.id)
+    assert [%{day: 2, week_mask: [1]}] = Planning.list_placements(plan.id)
+    assert {:ok, _} = Planning.publish_plan(plan.id)
+    assert [%{date: ~D[2026-09-01]}] = Planning.project_plan(plan.id).occurrences
+  end
+
   test "hours become dated meetings, retaining weeks through edits, copies and publication" do
     term = term_fixture(ends_on: ~D[2026-09-20], excluded_dates: [~D[2026-09-01]])
     component = component_fixture()

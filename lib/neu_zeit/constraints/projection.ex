@@ -1,4 +1,6 @@
 defmodule NeuZeit.Constraints.Projection do
+  alias NeuZeit.Scheduling.TermDates
+
   @moduledoc """
   Projects weekly template placements onto concrete dates and applies exceptions.
   """
@@ -19,7 +21,7 @@ defmodule NeuZeit.Constraints.Projection do
     (base ++ additions)
     |> Enum.reject(fn occurrence ->
       occurrence.source == :template and
-        (MapSet.member?(excluded, occurrence.date) or after_term?(term, occurrence.date))
+        (MapSet.member?(excluded, occurrence.date) or not TermDates.within?(term, occurrence.date))
     end)
     |> Enum.sort_by(&{Date.to_iso8601(&1.date), &1.slot, &1.room_id, &1.session_id})
   end
@@ -40,7 +42,7 @@ defmodule NeuZeit.Constraints.Projection do
 
   defp placement_occurrences(term, placement) do
     Enum.map(placement.week_mask, fn week ->
-      date = Date.add(term.starts_on, (week - 1) * 7 + (placement.day - 1))
+      date = TermDates.date(term, week, placement.day)
 
       %Occurrence{
         session_id: placement.session_id,

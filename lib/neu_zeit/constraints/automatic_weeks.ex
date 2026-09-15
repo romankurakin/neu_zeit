@@ -1,4 +1,5 @@
 defmodule NeuZeit.Constraints.AutomaticWeeks do
+  alias NeuZeit.Scheduling.TermDates
   @moduledoc "Checks that generated meetings occur on teaching dates."
 
   def errors(term, placements, sessions \\ %{}) do
@@ -7,7 +8,7 @@ defmodule NeuZeit.Constraints.AutomaticWeeks do
 
       if session && Map.get(session, :automatic_weeks, false) do
         for week <- placement.week_mask,
-            date = Date.add(term.starts_on, (week - 1) * 7 + placement.day - 1),
+            date = TermDates.date(term, week, placement.day),
             Date.before?(date, term.starts_on) or Date.after?(date, term.ends_on) or
               date in (term.excluded_dates || []) do
           %{

@@ -5,6 +5,29 @@ defmodule NeuZeit.Constraints.ProjectionTest do
   alias NeuZeit.Constraints.Projection
   alias NeuZeit.Planning.{Placement, ScheduleException}
 
+  test "keeps weekdays anchored to Monday and clips both partial weeks" do
+    term = %Term{starts_on: ~D[2026-09-01], ends_on: ~D[2026-09-09], excluded_dates: []}
+
+    placements =
+      for day <- [1, 2, 6] do
+        %Placement{
+          id: "placement-#{day}",
+          session_id: "session-#{day}",
+          room_id: "room",
+          week_mask: [1, 2],
+          day: day,
+          slot: 1
+        }
+      end
+
+    assert Enum.map(Projection.project(term, placements), &{&1.date, &1.day}) == [
+             {~D[2026-09-01], 2},
+             {~D[2026-09-05], 6},
+             {~D[2026-09-07], 1},
+             {~D[2026-09-08], 2}
+           ]
+  end
+
   test "projects occurrences in chronological order" do
     term = %Term{starts_on: ~D[2026-09-07], excluded_dates: []}
 

@@ -108,6 +108,36 @@ defmodule NeuZeit.Solver.SpecBuilderTest do
            ]
   end
 
+  test "excludes both partial boundaries and maps holidays to calendar weeks" do
+    term =
+      term_fixture(
+        starts_on: ~D[2026-09-01],
+        ends_on: ~D[2026-09-09],
+        excluded_dates: [~D[2026-09-08]]
+      )
+
+    plan = plan_fixture(term: term)
+
+    assert SpecBuilder.build!(plan.id).excluded_cells == [
+             %{week: 1, day: 1},
+             %{week: 2, day: 2},
+             %{week: 2, day: 4},
+             %{week: 2, day: 5},
+             %{week: 2, day: 6}
+           ]
+  end
+
+  test "combines boundaries when the entire term is a partial week" do
+    term = term_fixture(starts_on: ~D[2026-09-02], ends_on: ~D[2026-09-04])
+    plan = plan_fixture(term: term)
+
+    assert SpecBuilder.build!(plan.id).excluded_cells == [
+             %{week: 1, day: 1},
+             %{week: 1, day: 2},
+             %{week: 1, day: 6}
+           ]
+  end
+
   test "serializes duration and filters a profile to valid block starts" do
     term = term_fixture()
 

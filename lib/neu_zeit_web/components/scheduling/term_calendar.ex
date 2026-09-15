@@ -1,4 +1,5 @@
 defmodule NeuZeitWeb.Scheduling.TermCalendar do
+  alias NeuZeit.Scheduling.TermDates
   @moduledoc "Teaching dates and non-teaching days."
   use NeuZeitWeb, :ui_component
   alias NeuZeit.Config
@@ -38,18 +39,23 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
               <% date = date_at(@term, week, day_index) %>
               <button
                 type="button"
-                disabled={@readonly || Date.after?(date, @term.ends_on)}
-                phx-click={!@readonly && !Date.after?(date, @term.ends_on) && @event}
+                disabled={@readonly || !TermDates.within?(@term, date)}
+                phx-click={!@readonly && TermDates.within?(@term, date) && @event}
                 phx-value-date={Date.to_iso8601(date)}
                 aria-pressed={to_string(MapSet.member?(@excluded, date))}
-                title={excluded_title(@excluded, date)}
+                title={
+                  if TermDates.within?(@term, date),
+                    do: excluded_title(@excluded, date),
+                    else: gettext("Outside term")
+                }
                 class={[
-                  "w-full rounded-field px-1.5 py-1 tabular-nums type-detail motion-safe:transition-colors",
+                  "disabled:pointer-events-none w-full rounded-field px-1.5 py-1 tabular-nums type-detail motion-safe:transition-colors",
                   if(MapSet.member?(@excluded, date),
                     do: "bg-error/15 text-error line-through",
                     else: "text-base-content hover:bg-base-200"
                   ),
-                  !@readonly && !Date.after?(date, @term.ends_on) && "cursor-pointer"
+                  !TermDates.within?(@term, date) && "opacity-40",
+                  !@readonly && TermDates.within?(@term, date) && "cursor-pointer"
                 ]}
               >
                 <.date value={date} format="day_month" />
@@ -63,7 +69,7 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
   end
 
   defp date_at(term, week, day_index),
-    do: Date.add(term.starts_on, (week - 1) * 7 + (day_index - 1))
+    do: TermDates.date(term, week, day_index)
 
   defp excluded_title(excluded, date) do
     if MapSet.member?(excluded, date) do

@@ -184,8 +184,7 @@ defmodule NeuZeitWeb.TermLive.Settings do
             <div class="grid gap-4 sm:grid-cols-2">
               <.date_field
                 field={@dates_form[:starts_on]}
-                label={gettext("First day (a Monday)")}
-                weekday={1}
+                label={gettext("First day")}
               />
               <.date_field field={@dates_form[:ends_on]} label={gettext("Last day")} />
             </div>

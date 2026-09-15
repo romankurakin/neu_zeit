@@ -178,8 +178,7 @@ defmodule NeuZeitWeb.TermLive.Index do
             <.input field={@form[:name]} type="text" label={gettext("Name")} />
             <.date_field
               field={@form[:starts_on]}
-              label={gettext("First day (a Monday)")}
-              weekday={1}
+              label={gettext("First day")}
             />
             <.date_field field={@form[:ends_on]} label={gettext("Last day")} />
 

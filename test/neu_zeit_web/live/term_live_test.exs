@@ -57,20 +57,18 @@ defmodule NeuZeitWeb.TermLiveTest do
       assert html =~ "Created Sommer 2027."
     end
 
-    test "a start date that is not a Monday is refused inline", %{conn: conn} do
+    test "creates a term starting on Tuesday", %{conn: conn} do
       {:ok, live, _html} = live(conn, ~p"/terms/new")
 
-      # 2027-02-02 is a Tuesday. The domain requires terms to start on a Monday
-      # because week numbering depends on it.
-      html =
+      {:ok, _view, html} =
         live
         |> form("#term-form",
-          term: %{name: "Bad", starts_on: "2027-02-02", ends_on: "2027-05-30"}
+          term: %{name: "Tuesday term", starts_on: "2027-02-02", ends_on: "2027-05-30"}
         )
         |> render_submit()
+        |> follow_redirect(conn)
 
-      assert html =~ "Choose a Monday."
-      assert has_element?(live, "#term-form")
+      assert html =~ "Created Tuesday term."
     end
   end
 

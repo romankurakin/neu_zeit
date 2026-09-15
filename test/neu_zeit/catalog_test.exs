@@ -26,16 +26,17 @@ defmodule NeuZeit.CatalogTest do
     assert term.weeks_count == 16
   end
 
-  test "terms must start on the first grid day" do
-    assert {:error, changeset} =
-             Catalog.create_term(%{
-               name: "Misaligned term",
-               starts_on: ~D[2026-09-01],
-               ends_on: ~D[2026-12-19],
-               excluded_dates: []
-             })
-
-    assert %{starts_on: ["must be a Monday"]} = errors_on(changeset)
+  test "terms can start on any weekday and count partial weeks" do
+    for {starts_on, ends_on, weeks} <- [
+          {~D[2026-09-01], ~D[2026-09-07], 2},
+          {~D[2026-09-06], ~D[2026-09-07], 2},
+          {~D[2026-09-02], ~D[2026-09-04], 1},
+          {~D[2026-09-01], ~D[2026-12-19], 16}
+        ] do
+      term = term_fixture(starts_on: starts_on, ends_on: ends_on)
+      assert term.starts_on == starts_on
+      assert term.weeks_count == weeks
+    end
   end
 
   test "schemas generate UUIDv7 identifiers" do

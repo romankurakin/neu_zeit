@@ -318,7 +318,7 @@ defmodule NeuZeitWeb.UI.Errors do
   defp field_label(:locked), do: gettext("Locked")
   defp field_label(:day), do: gettext("Day")
   defp field_label(field) when field in [:slot, :new_slot], do: gettext("Time")
-  defp field_label(:starts_on), do: gettext("First day (a Monday)")
+  defp field_label(:starts_on), do: gettext("First day")
   defp field_label(:ends_on), do: gettext("Last day")
   defp field_label(:excluded_dates), do: gettext("Non-teaching dates")
   defp field_label(:weeks_count), do: gettext("Teaching weeks")

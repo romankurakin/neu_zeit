@@ -1,4 +1,6 @@
 defmodule NeuZeitWeb.CalendarLive.Index do
+  alias NeuZeit.Scheduling.TermDates
+
   @moduledoc """
   Shows a plan on calendar dates, excluding non-teaching days.
 
@@ -192,7 +194,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
 
   defp week_dates(term, week, grid) do
     for day <- 0..(length(grid.days) - 1) do
-      Date.add(term.starts_on, (week - 1) * 7 + day)
+      TermDates.date(term, week, day + 1)
     end
   end
 
@@ -220,7 +222,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
   defp holiday_week(term) do
     case term.excluded_dates do
       [] -> nil
-      [first | _] -> div(Date.diff(first, term.starts_on), 7) + 1
+      [first | _] -> TermDates.week(term, first)
     end
   end
 
@@ -228,7 +230,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
 
   defp busiest_week(projection, term) do
     projection.occurrences
-    |> Enum.frequencies_by(&(div(Date.diff(&1.date, term.starts_on), 7) + 1))
+    |> Enum.frequencies_by(&TermDates.week(term, &1.date))
     |> Enum.max_by(fn {_week, count} -> count end, fn -> {1, 0} end)
     |> elem(0)
   end
@@ -341,7 +343,9 @@ defmodule NeuZeitWeb.CalendarLive.Index do
             id={"calendar-day-#{Date.to_iso8601(date)}"}
             data-dropzone="day"
             data-date={Date.to_iso8601(date)}
-            data-excluded={to_string(MapSet.member?(@excluded, date))}
+            data-excluded={
+              to_string(MapSet.member?(@excluded, date) or not TermDates.within?(@term, date))
+            }
             class={[
               "rounded-box border p-2",
               if(MapSet.member?(@excluded, date),
@@ -357,6 +361,10 @@ defmodule NeuZeitWeb.CalendarLive.Index do
               </span>
             </div>
 
+            <p :if={!TermDates.within?(@term, date)} class="py-2 text-center type-detail">
+              {gettext("Outside term")}
+            </p>
+
             <p :if={MapSet.member?(@excluded, date)} class="py-2 text-center type-detail text-error">
               {gettext("Non-teaching date")}
             </p>
@@ -364,11 +372,16 @@ defmodule NeuZeitWeb.CalendarLive.Index do
             <div
               data-occurrences
               data-date={Date.to_iso8601(date)}
-              data-excluded={to_string(MapSet.member?(@excluded, date))}
+              data-excluded={
+                to_string(MapSet.member?(@excluded, date) or not TermDates.within?(@term, date))
+              }
               class="flex flex-col gap-1 min-h-12"
             >
               <p
-                :if={occurrences_on(@projection, date, @scope, @sessions) == []}
+                :if={
+                  TermDates.within?(@term, date) &&
+                    occurrences_on(@projection, date, @scope, @sessions) == []
+                }
                 class="py-2 text-center type-detail text-base-content"
               >
                 {gettext("Nothing scheduled")}

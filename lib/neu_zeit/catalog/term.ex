@@ -34,7 +34,6 @@ defmodule NeuZeit.Catalog.Term do
     end)
     |> validate_length(:name, min: 1, max: 100)
     |> validate_number(:academic_hour_minutes, greater_than: 0, less_than_or_equal_to: 60)
-    |> validate_starts_on_week_start()
     |> validate_change(:ends_on, fn :ends_on, ends_on ->
       starts_on = get_field(term |> cast(attrs, [:starts_on]), :starts_on)
 
@@ -48,7 +47,6 @@ defmodule NeuZeit.Catalog.Term do
     |> validate_number(:weeks_count, greater_than: 0)
     |> normalize_excluded_dates()
     |> check_constraint(:ends_on, name: :terms_dates_order_ck)
-    |> check_constraint(:starts_on, name: :terms_starts_on_monday_ck)
     |> check_constraint(:weeks_count, name: :terms_weeks_count_positive_ck)
     |> prepare_changes(&validate_weeks_cover_existing_masks/1)
     |> prepare_changes(&protect_time_settings/1)
@@ -124,22 +122,16 @@ defmodule NeuZeit.Catalog.Term do
     end
   end
 
-  defp validate_starts_on_week_start(changeset) do
-    validate_change(changeset, :starts_on, fn :starts_on, starts_on ->
-      if Date.day_of_week(starts_on) == 1 do
-        []
-      else
-        [starts_on: "must be a Monday"]
-      end
-    end)
-  end
-
   defp put_weeks_count(changeset) do
     starts_on = get_field(changeset, :starts_on)
     ends_on = get_field(changeset, :ends_on)
 
     if starts_on && ends_on && Date.compare(ends_on, starts_on) != :lt do
-      put_change(changeset, :weeks_count, div(Date.diff(ends_on, starts_on), 7) + 1)
+      put_change(
+        changeset,
+        :weeks_count,
+        NeuZeit.Scheduling.TermDates.week(%{starts_on: starts_on}, ends_on)
+      )
     else
       changeset
     end

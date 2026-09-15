@@ -1,4 +1,6 @@
 defmodule NeuZeit.Solver.SpecBuilder do
+  alias NeuZeit.Scheduling.TermDates
+
   @moduledoc """
   Builds the normalized JSON contract consumed by the Python solver.
   """
@@ -72,22 +74,19 @@ defmodule NeuZeit.Solver.SpecBuilder do
     }
   end
 
-  # Term excluded dates and teaching-day cells after a partial final week are
-  # mapped onto the grid so the solver avoids placements that lose meetings.
+  # Boundary weeks can be partial at either end of the term.
   defp excluded_cells(term, config) do
     days_count = length(config.grid.days)
 
     excluded_dates = Enum.map(term.excluded_dates || [], &cell(term, &1))
 
-    final_week_start = Date.add(term.starts_on, (term.weeks_count - 1) * 7)
+    boundary_cells =
+      for week <- Enum.uniq([1, term.weeks_count]),
+          day <- 1..days_count,
+          not TermDates.within?(term, TermDates.date(term, week, day)),
+          do: %{week: week, day: day}
 
-    partial_final_week =
-      1..days_count
-      |> Enum.map(fn day -> {day, Date.add(final_week_start, day - 1)} end)
-      |> Enum.filter(fn {_day, date} -> Date.after?(date, term.ends_on) end)
-      |> Enum.map(fn {day, _date} -> %{week: term.weeks_count, day: day} end)
-
-    (excluded_dates ++ partial_final_week)
+    (excluded_dates ++ boundary_cells)
     |> Enum.filter(&(&1.week >= 1 and &1.week <= term.weeks_count and &1.day <= days_count))
     |> Enum.uniq()
     |> Enum.sort_by(&{&1.week, &1.day})
@@ -95,7 +94,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
 
   defp cell(term, date) do
     %{
-      week: div(Date.diff(date, term.starts_on), 7) + 1,
+      week: TermDates.week(term, date),
       day: Date.day_of_week(date)
     }
   end

@@ -239,12 +239,6 @@ msgstr "Even"
 msgid "First"
 msgstr "First"
 
-#: lib/neu_zeit_web/components/ui/errors.ex:317
-#: lib/neu_zeit_web/live/term_live/index.ex:162
-#, elixir-autogen, elixir-format
-msgid "First day (a Monday)"
-msgstr "First day (a Monday)"
-
 #: lib/neu_zeit_web/live/people_live/index.ex:261
 #, elixir-autogen, elixir-format
 msgid "Full name"
@@ -3149,3 +3143,16 @@ msgstr "Minutes"
 #, elixir-autogen, elixir-format
 msgid "Enter time as HH:MM."
 msgstr "Enter time as HH:MM."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:321
+#: lib/neu_zeit_web/live/term_live/index.ex:181
+#: lib/neu_zeit_web/live/term_live/settings.ex:187
+#, elixir-autogen, elixir-format
+msgid "First day"
+msgstr "First day"
+
+#: lib/neu_zeit_web/components/scheduling/term_calendar.ex:49
+#: lib/neu_zeit_web/live/calendar_live/index.ex:365
+#, elixir-autogen, elixir-format
+msgid "Outside term"
+msgstr "Outside term"
