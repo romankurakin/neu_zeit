@@ -124,7 +124,7 @@ defmodule NeuZeit.Fixtures do
     Catalog.get_session!(session.id)
   end
 
-  # Fixtures can represent existing fixed repetitions. All production creation uses Workload.save.
+  # Fixtures can represent existing fixed repetitions. All production creation uses Workloads.save.
   def create_session(attrs) do
     attrs =
       Map.new(attrs, fn {key, value} ->
@@ -169,10 +169,7 @@ defmodule NeuZeit.Fixtures do
             :sequence_group
           ])
         )
-        |> Ecto.Changeset.change(
-          contact_hours: hours,
-          academic_hour_minutes: term.academic_hour_minutes
-        )
+        |> Ecto.Changeset.change(contact_hours: hours)
         |> Repo.insert!()
 
       case NeuZeit.Catalog.Sessions.create_generated_session(requirement.id, attrs) do

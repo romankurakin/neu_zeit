@@ -1,7 +1,8 @@
 defmodule NeuZeitWeb.WorkloadLiveTest do
   use NeuZeitWeb.ConnCase, async: false
   import NeuZeit.Fixtures
-  alias NeuZeit.{Catalog, Planning}
+  alias NeuZeit.{Catalog, Planning, Repo}
+  alias NeuZeit.Catalog.{Sessions, Workloads}
   alias NeuZeit.Solver.PlanRuns
 
   setup do
@@ -22,7 +23,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     %{term: term, component: component, teacher: teacher, cohort: cohort, attrs: attrs}
   end
 
-  test "one requirement creates multiple sessions and can be edited as a quantity",
+  test "one requirement creates recurring sessions and can be edited as a quantity",
        %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
@@ -40,11 +41,15 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     |> render_submit()
 
     assert_patch(view, ~p"/terms/#{ctx.term}/workload")
-    assert [%{count: 2} = row] = Catalog.list_workload(ctx.term.id)
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert Workloads.series_count(row) == 1
+    assert hd(row.sessions).week_mask == [1, 2]
     assert has_element?(view, "#workload-#{row.id}", ctx.teacher.name)
     view |> element("#workload-#{row.id} a", "Edit") |> render_click()
     view |> form("#workload-form", workload: %{contact_hours: "6"}) |> render_submit()
-    assert [%{count: 3}] = Catalog.list_workload(ctx.term.id)
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert Workloads.series_count(row) == 2
+    assert Workloads.meeting_count(row) == 3
   end
 
   test "missing groups keep the form and show an error", %{conn: conn} = ctx do
@@ -89,7 +94,6 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
         nil,
         Map.merge(ctx.attrs, %{
           slot_profile_id: profile.id,
-          automatic_weeks: true,
           contact_hours: "4"
         })
       )
@@ -111,7 +115,8 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
 
     assert {:ok, _} = result
     placements = Planning.list_placements(plan.id)
-    assert length(placements) == 2
+    assert length(placements) == 1
+    assert hd(placements).week_mask == [1, 2]
 
     assert Enum.all?(
              placements,
@@ -126,8 +131,15 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
 
   test "undo restores the selected week of an automatically generated meeting",
        %{conn: conn} = ctx do
-    attrs = Map.merge(ctx.attrs, %{automatic_weeks: true, contact_hours: "2"})
-    {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, attrs)
+    session_fixture(
+      term: ctx.term,
+      component: ctx.component,
+      teacher: ctx.teacher,
+      cohorts: [ctx.cohort],
+      automatic_weeks: true,
+      week_mask: [1, 2]
+    )
+
     [row] = Catalog.list_workload(ctx.term.id)
     plan = plan_fixture(term: ctx.term)
 
@@ -166,5 +178,345 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     assert has_element?(view, "button[phx-click=generate]")
     view |> form("#generation-plan", plan_id: other.id) |> render_change()
     assert has_element?(view, ~s(a[href="/terms/#{ctx.term.id}/plans/#{other.id}?tab=board"]))
+  end
+
+  test "45 required hours show the rounded distribution and stay unchanged after saving",
+       %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+
+    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+
+    assert has_element?(
+             view,
+             "#workload_duration_slots option[value='1']",
+             "90 min, 2 academic hours"
+           )
+
+    assert has_element?(view, "#workload-preview-total", "23 sessions, 46 academic hours")
+    assert has_element?(view, "#workload-hours-difference", "Required hours stay at 45")
+    assert has_element?(view, "#workload-hours-difference", "Hours above the requirement: 1")
+    assert has_element?(view, "#workload-preview-pattern", "Every week: 1 session")
+    assert has_element?(view, "#workload-preview-pattern", "Odd weeks: 1 session")
+    refute has_element?(view, "select#workload_remainder_parity")
+
+    view |> form("#workload-form") |> render_submit()
+    assert_patch(view, ~p"/terms/#{term}/workload")
+    assert [row] = Catalog.list_workload(term.id)
+    assert Decimal.equal?(row.requirement.contact_hours, 45)
+    assert Workloads.meeting_count(row) == 23
+    assert has_element?(view, "#workload-#{row.id}", "+1")
+    assert has_element?(view, "#workload-#{row.id}", "Odd weeks: 1 session")
+
+    view |> element("#workload-#{row.id} a", "Edit") |> render_click()
+    assert has_element?(view, "#workload_contact_hours[value='45']")
+    assert has_element?(view, "#workload-preview-total", "23 sessions, 46 academic hours")
+  end
+
+  test "choosing fewer sessions preserves the requirement and survives reopening",
+       %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+    view |> form("#workload-form", workload: %{rounding_mode: "down"}) |> render_change()
+
+    assert has_element?(view, "#workload-preview-total", "22 sessions, 44 academic hours")
+    assert has_element?(view, "#workload-hours-difference", "Hours below the requirement: 1")
+    assert has_element?(view, "#workload-preview-pattern", "Even weeks: 1 session")
+
+    view |> form("#workload-form") |> render_submit()
+    assert [row] = Catalog.list_workload(term.id)
+    assert Decimal.equal?(row.requirement.contact_hours, 45)
+    assert row.requirement.rounding_mode == :down
+    assert Workloads.meeting_count(row) == 22
+    assert has_element?(view, "#workload-#{row.id}", "-1")
+
+    view |> element("#workload-#{row.id} a", "Edit") |> render_click()
+    assert has_element?(view, "#workload_rounding_mode option[value='down'][selected]")
+    assert has_element?(view, "#workload-preview-total", "22 sessions, 44 academic hours")
+    view |> form("#workload-form") |> render_submit()
+    assert [saved] = Catalog.list_workload(term.id)
+    assert Enum.map(saved.sessions, & &1.id) == Enum.map(row.sessions, & &1.id)
+  end
+
+  test "parity can be selected when either pattern preserves the hours", %{conn: conn} = ctx do
+    term = term_fixture()
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "16")) |> render_change()
+
+    assert has_element?(view, "select#workload_remainder_parity")
+    refute has_element?(view, "select#workload_rounding_mode")
+    refute has_element?(view, "#workload-hours-difference")
+    view |> form("#workload-form", workload: %{remainder_parity: "even"}) |> render_change()
+    assert has_element?(view, "#workload-preview-pattern", "Even weeks: 1 session")
+    view |> form("#workload-form") |> render_submit()
+
+    assert [row] = Catalog.list_workload(term.id)
+    assert row.requirement.remainder_parity == :even
+    assert hd(row.sessions).week_mask == Enum.to_list(2..16//2)
+  end
+
+  test "preview follows duration and available weeks and clears invalid input",
+       %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+    view |> form("#workload-form", workload: %{duration_slots: "2"}) |> render_change()
+    assert has_element?(view, "#workload-preview-total", "12 sessions, 48 academic hours")
+    render_hook(view, "week_mask_changed", %{"preset" => "odd"})
+    assert has_element?(view, "#workload_contact_hours[value='45']")
+    assert has_element?(view, "#workload_duration_slots option[value='2'][selected]")
+    assert has_element?(view, "#workload-preview-pattern", "Odd weeks: 1 session")
+    view |> form("#workload-form", workload: %{contact_hours: ""}) |> render_change()
+    refute has_element?(view, "#workload-preview")
+  end
+
+  test "the 45-hour scenario is translated for Russian administrators", %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    conn = Plug.Test.init_test_session(conn, %{"locale" => "ru"})
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+
+    assert has_element?(view, "#workload_duration_slots option[value='1']", "90 мин, 2 акад. ч")
+    assert has_element?(view, "#workload-preview-total", "23 занятия, 46 акад. ч")
+    assert has_element?(view, "#workload-hours-difference", "Требуемые часы сохранятся: 45")
+    assert has_element?(view, "#workload-preview-pattern", "Каждая неделя: 1 занятие")
+    view |> form("#workload-form") |> render_submit()
+    assert_patch(view, ~p"/terms/#{term}/workload")
+  end
+
+  test "required hours and small differences keep their entered precision", %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "45.999")) |> render_change()
+
+    assert has_element?(view, "#workload-preview-total", "23 sessions, 46 academic hours")
+    assert has_element?(view, "#workload-hours-difference", "Required hours stay at 45.999")
+    assert has_element?(view, "#workload-hours-difference", "Hours above the requirement: 0.001.")
+    view |> form("#workload-form") |> render_submit()
+    assert [row] = Catalog.list_workload(term.id)
+    assert has_element?(view, "#workload-#{row.id}", "45.999")
+    assert has_element?(view, "#workload-#{row.id}", "+0.001")
+
+    view |> element("#workload-#{row.id} a", "Edit") |> render_click()
+    view |> form("#workload-form", workload: %{contact_hours: "46.001"}) |> render_change()
+    view |> form("#workload-form", workload: %{rounding_mode: "down"}) |> render_change()
+    assert has_element?(view, "#workload-hours-difference", "Hours below the requirement: 0.001.")
+    view |> form("#workload-form") |> render_submit()
+    assert has_element?(view, "#workload-#{row.id}", "46.001")
+    assert has_element?(view, "#workload-#{row.id}", "-0.001")
+  end
+
+  for {locale, totals, capacity_error, weeks} <- [
+        {"ru",
+         [
+           "1 занятие, 2 акад. ч",
+           "2 занятия, 4 акад. ч",
+           "5 занятий, 10 акад. ч",
+           "21 занятие, 42 акад. ч"
+         ], "Нагрузка превышает доступное учебное время.", "Недели 2, 5, 8, 11, 14"},
+        {"de",
+         [
+           "1 Termin, 2 Unterrichtsstunden",
+           "2 Termine, 4 Unterrichtsstunden",
+           "5 Termine, 10 Unterrichtsstunden",
+           "21 Termine, 42 Unterrichtsstunden"
+         ], "Der Lehrumfang überschreitet die verfügbare Unterrichtszeit.",
+         "Wochen 2, 5, 8, 11, 14"}
+      ] do
+    test "#{locale} localizes workload plural forms, explicit weeks and capacity alternatives",
+         %{conn: conn} = ctx do
+      term = term_fixture(ends_on: ~D[2026-12-13])
+      conn = Plug.Test.init_test_session(conn, %{"locale" => unquote(locale)})
+      {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+      render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+
+      for {hours, total} <- Enum.zip(["2", "4", "10", "42"], unquote(totals)) do
+        view |> form("#workload-form", workload: form_attrs(ctx, hours)) |> render_change()
+        assert has_element?(view, "#workload-preview-total", total)
+
+        if hours == "10",
+          do: assert(has_element?(view, "#workload-preview-pattern", unquote(weeks)))
+      end
+
+      small =
+        term_fixture(
+          ends_on: ~D[2026-09-06],
+          grid: %{
+            days: ["Mon"],
+            slots: [%{start: "08:00", end: "09:30"}, %{start: "09:50", end: "11:20"}]
+          }
+        )
+
+      {:ok, view, _} = live(conn, ~p"/terms/#{small}/workload/new")
+      render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+      view |> form("#workload-form", workload: form_attrs(ctx, "5")) |> render_change()
+      assert has_element?(view, "#workload-capacity-error", unquote(capacity_error))
+
+      assert has_element?(
+               view,
+               "#workload_rounding_mode option[value='down']",
+               Enum.at(unquote(totals), 1)
+             )
+
+      refute has_element?(view, "#workload-capacity-error", "Teaching load exceeds")
+
+      view |> form("#workload-form", workload: %{rounding_mode: "down"}) |> render_change()
+      refute has_element?(view, "#workload-capacity-error")
+      view |> form("#workload-form") |> render_submit()
+      assert_patch(view, ~p"/terms/#{small}/workload")
+      [saved] = Workloads.list(small.id)
+      assert Decimal.equal?(saved.requirement.contact_hours, 5)
+      assert Decimal.equal?(Workloads.planned_hours(saved, small), 4)
+    end
+  end
+
+  test "irregular distributions show their actual weeks before and after saving",
+       %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "10")) |> render_change()
+
+    assert has_element?(view, "#workload-preview-pattern", "Weeks 2, 5, 8, 11, 14: 1 session")
+    view |> form("#workload-form") |> render_submit()
+    assert [row] = Catalog.list_workload(term.id)
+    assert has_element?(view, "#workload-#{row.id}", "Weeks 2, 5, 8, 11, 14: 1 session")
+  end
+
+  test "an over-capacity rounded choice can be changed to the fitting lower choice",
+       %{conn: conn} = ctx do
+    term =
+      term_fixture(
+        ends_on: ~D[2026-09-06],
+        grid: %{
+          days: ["Mon"],
+          slots: [%{start: "08:00", end: "09:30"}, %{start: "09:50", end: "11:20"}]
+        }
+      )
+
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "5")) |> render_change()
+
+    assert has_element?(
+             view,
+             "#workload_rounding_mode option[value='down']",
+             "2 sessions, 4 academic hours"
+           )
+
+    assert has_element?(
+             view,
+             "#workload-capacity-error",
+             "Teaching load exceeds the available time."
+           )
+
+    refute has_element?(view, "#workload-preview-pattern")
+    view |> form("#workload-form") |> render_submit()
+    assert Workloads.list(term.id) == []
+    assert has_element?(view, "select#workload_rounding_mode")
+
+    view |> form("#workload-form", workload: %{rounding_mode: "down"}) |> render_change()
+    refute has_element?(view, "#workload-capacity-error")
+    assert has_element?(view, "#workload-preview-pattern", "Every week: 2 sessions")
+    view |> form("#workload-form") |> render_submit()
+    assert_patch(view, ~p"/terms/#{term}/workload")
+    assert [row] = Workloads.list(term.id)
+    assert Decimal.equal?(row.requirement.contact_hours, 5)
+    assert Decimal.equal?(Workloads.planned_hours(row, term), 4)
+  end
+
+  test "preview and saved sessions use the semester's 30-minute hour unit", %{conn: conn} = ctx do
+    term = term_fixture(academic_hour_minutes: 30)
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    view |> form("#workload-form", workload: form_attrs(ctx, "7")) |> render_change()
+
+    assert has_element?(
+             view,
+             "#workload_duration_slots option[value='1']",
+             "90 min, 3 academic hours"
+           )
+
+    assert has_element?(view, "#workload-preview-total", "3 sessions, 9 academic hours")
+    view |> form("#workload-form", workload: %{rounding_mode: "down"}) |> render_change()
+    assert has_element?(view, "#workload-preview-total", "2 sessions, 6 academic hours")
+    view |> form("#workload-form") |> render_submit()
+    assert [row] = Workloads.list(term.id)
+    assert Decimal.equal?(row.requirement.contact_hours, 7)
+    assert Decimal.equal?(Workloads.planned_hours(row, term), 6)
+    view |> element("#workload-#{row.id} a", "Edit") |> render_click()
+    assert has_element?(view, "#workload-preview-total", "2 sessions, 6 academic hours")
+  end
+
+  test "editing previews the protected remainder that saving retains", %{conn: conn} = ctx do
+    term = term_fixture(ends_on: ~D[2026-12-13])
+    attrs = Map.merge(ctx.attrs, %{contact_hours: "45", week_mask: Enum.to_list(1..15)})
+    assert {:ok, :saved} = Workloads.save(term.id, nil, attrs)
+    [row] = Workloads.list(term.id)
+    original_remainder = Enum.find(row.sessions, &(length(&1.week_mask) == 8))
+
+    assert {:ok, _} =
+             Sessions.update_generated_session(original_remainder, %{
+               week_mask: [1, 2, 4, 6, 8, 10, 12, 14]
+             })
+
+    assert {:ok, _} =
+             Sessions.create_generated_session(
+               row.id,
+               Map.merge(attrs, %{
+                 term_id: term.id,
+                 automatic_weeks: false,
+                 week_mask: [2, 4, 6, 8, 10, 12, 14, 15]
+               })
+             )
+
+    row.requirement |> Ecto.Changeset.change(contact_hours: Decimal.new(62)) |> Repo.update!()
+    [row] = Workloads.list(term.id)
+    remainders = Enum.filter(row.sessions, &(length(&1.week_mask) == 8))
+    protected = Enum.max_by(remainders, & &1.id)
+    unprotected = Enum.min_by(remainders, & &1.id)
+    plan = plan_fixture(term: term)
+
+    placement_fixture(
+      plan_id: plan.id,
+      session_id: protected.id,
+      room_id: hd(ctx.component.allowed_rooms).id,
+      day: 1,
+      slot: 1,
+      week_mask: protected.week_mask
+    )
+
+    {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/#{row.id}/edit")
+    view |> form("#workload-form", workload: %{contact_hours: "45"}) |> render_change()
+
+    pattern =
+      if hd(protected.week_mask) == 1,
+        do: "Weeks 1-2, 4, 6, 8, 10, 12, 14: 1 session",
+        else: "Weeks 2, 4, 6, 8, 10, 12, 14-15: 1 session"
+
+    assert has_element?(view, "#workload-preview-pattern", pattern)
+    view |> form("#workload-form") |> render_submit()
+    assert_patch(view, ~p"/terms/#{term}/workload")
+    assert [saved] = Workloads.list(term.id)
+    assert Enum.any?(saved.sessions, &(&1.id == protected.id))
+    refute Enum.any?(saved.sessions, &(&1.id == unprotected.id))
+    assert has_element?(view, "#workload-#{row.id}", pattern)
+  end
+
+  defp form_attrs(ctx, hours) do
+    %{
+      course_component_id: ctx.component.id,
+      teacher_id: ctx.teacher.id,
+      contact_hours: hours,
+      duration_slots: "1",
+      slot_profile_id: ""
+    }
   end
 end

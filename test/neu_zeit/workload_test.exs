@@ -2,7 +2,7 @@ defmodule NeuZeit.WorkloadTest do
   use NeuZeit.DataCase, async: true
   import NeuZeit.Fixtures
   alias NeuZeit.{Catalog, Planning, Repo}
-  alias NeuZeit.Catalog.Workload
+  alias NeuZeit.Catalog.Workloads
 
   setup do
     term = term_fixture()
@@ -22,15 +22,17 @@ defmodule NeuZeit.WorkloadTest do
     %{term: term, attrs: attrs, component: component, teacher: teacher}
   end
 
-  test "expands semester hours into automatic meetings without choosing placements", ctx do
+  test "expands semester hours into a repeating series without choosing placements", ctx do
     assert {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
-    assert [%{count: 3} = row] = Catalog.list_workload(ctx.term.id)
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert Workloads.series_count(row) == 1
     assert Enum.all?(row.sessions, &(&1.week_mask == [1, 3, 5] && &1.duration_slots == 2))
+    refute Enum.any?(row.sessions, & &1.automatic_weeks)
     assert Repo.aggregate(NeuZeit.Planning.Placement, :count) == 0
   end
 
   test "hour edits retain session IDs and avoid duplicate batches", ctx do
-    {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
+    {:ok, :saved} = create_legacy_workload(ctx.term.id, ctx.attrs)
     [original] = Catalog.list_workload(ctx.term.id)
     ids = Enum.map(original.sessions, & &1.id)
 
@@ -48,7 +50,7 @@ defmodule NeuZeit.WorkloadTest do
   end
 
   test "rejects stale edits instead of changing a different set of sessions", ctx do
-    {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
+    {:ok, :saved} = create_legacy_workload(ctx.term.id, ctx.attrs)
     [original] = Catalog.list_workload(ctx.term.id)
 
     {:ok, _} =
@@ -82,10 +84,10 @@ defmodule NeuZeit.WorkloadTest do
 
   test "fixed repetitions have saved hours and preparation keeps their dates", ctx do
     session = session_fixture(Map.merge(ctx.attrs, %{term: ctx.term}))
-    assert [row] = Workload.list(ctx.term.id)
+    assert [row] = Workloads.list(ctx.term.id)
     assert row.id == session.workload_id
     assert Decimal.equal?(row.requirement.contact_hours, 12)
-    assert {:ok, :ready} = Workload.prepare(ctx.term.id)
+    assert {:ok, :ready} = Workloads.prepare(ctx.term.id)
     assert [retained] = Catalog.list_sessions(ctx.term.id)
     assert retained.id == session.id
     assert retained.week_mask == [1, 3, 5]
@@ -96,12 +98,13 @@ defmodule NeuZeit.WorkloadTest do
     {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
     [original] = Catalog.list_workload(ctx.term.id)
     other = term_fixture()
-    assert {:error, {:conflict, _}} = Catalog.save_workload(other.id, original, ctx.attrs)
+    assert {:error, changeset} = Catalog.save_workload(other.id, original, ctx.attrs)
+    assert errors_on(changeset).term_id == ["is invalid"]
     assert Catalog.count_sessions(other.id) == 0
   end
 
   test "a batch edit preserves placements when its requirements still fit", ctx do
-    {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, %{ctx.attrs | duration_slots: 1})
+    {:ok, :saved} = create_legacy_workload(ctx.term.id, %{ctx.attrs | duration_slots: 1})
     [original] = Catalog.list_workload(ctx.term.id)
     plan = plan_fixture(term: ctx.term)
 
@@ -115,6 +118,8 @@ defmodule NeuZeit.WorkloadTest do
         slot: 1
       })
 
+    [original] = Catalog.list_workload(ctx.term.id)
+
     assert {:ok, :saved} =
              Catalog.save_workload(ctx.term.id, original, %{
                ctx.attrs
@@ -126,7 +131,7 @@ defmodule NeuZeit.WorkloadTest do
   end
 
   test "reducing a batch retains placed sessions and refuses to remove them", ctx do
-    {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, %{ctx.attrs | duration_slots: 1})
+    {:ok, :saved} = create_legacy_workload(ctx.term.id, %{ctx.attrs | duration_slots: 1})
     [original] = Catalog.list_workload(ctx.term.id)
     plan = plan_fixture(term: ctx.term)
     placed = List.last(original.sessions)
@@ -141,6 +146,8 @@ defmodule NeuZeit.WorkloadTest do
         slot: 1,
         locked: true
       })
+
+    [original] = Catalog.list_workload(ctx.term.id)
 
     assert {:ok, :saved} =
              Catalog.save_workload(ctx.term.id, original, %{
@@ -157,7 +164,7 @@ defmodule NeuZeit.WorkloadTest do
 
   test "a failed batch update rolls back earlier session and placement changes", ctx do
     {:ok, :saved} =
-      Catalog.save_workload(ctx.term.id, nil, %{ctx.attrs | duration_slots: 1, contact_hours: "4"})
+      create_legacy_workload(ctx.term.id, %{ctx.attrs | duration_slots: 1, contact_hours: "4"})
 
     [original] = Catalog.list_workload(ctx.term.id)
     plan = plan_fixture(term: ctx.term)
@@ -174,6 +181,8 @@ defmodule NeuZeit.WorkloadTest do
           slot: slot
         })
     end
+
+    [original] = Catalog.list_workload(ctx.term.id)
 
     assert {:error, _} =
              Catalog.save_workload(ctx.term.id, original, %{ctx.attrs | contact_hours: "8"})
@@ -208,31 +217,36 @@ defmodule NeuZeit.WorkloadTest do
 
     assert Enum.any?(
              rows,
-             &(&1.session.course_component_id == lab.id &&
-                 &1.session.teacher_id == other_teacher.id)
+             &(&1.requirement.course_component_id == lab.id &&
+                 &1.requirement.teacher_id == other_teacher.id)
            )
 
     assert Enum.any?(
              rows,
-             &(&1.session.course_component_id == ctx.component.id &&
-                 &1.session.teacher_id == ctx.teacher.id)
+             &(&1.requirement.course_component_id == ctx.component.id &&
+                 &1.requirement.teacher_id == ctx.teacher.id)
            )
   end
 
   test "semester hours generate individual meetings with automatic week selection", ctx do
     attrs = Map.merge(ctx.attrs, %{automatic_weeks: true, contact_hours: "16", duration_slots: 2})
-    assert {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, attrs)
-    assert [%{count: 4} = row] = Catalog.list_workload(ctx.term.id)
+    assert {:ok, :saved} = create_legacy_workload(ctx.term.id, attrs)
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert Workloads.series_count(row) == 4
     assert Enum.all?(row.sessions, & &1.automatic_weeks)
-    assert Decimal.equal?(Workload.hours(row), Decimal.new("16"))
+    assert Decimal.equal?(Workloads.hours(row), Decimal.new("16"))
 
-    assert {:error, %Ecto.Changeset{}} =
-             Catalog.save_workload(ctx.term.id, nil, %{attrs | contact_hours: "1"})
+    assert {:ok, :saved} =
+             Catalog.save_workload(ctx.term.id, row, %{attrs | contact_hours: "1"})
+
+    [reduced] = Catalog.list_workload(ctx.term.id)
+    assert Workloads.series_count(reduced) == 1
+    assert Decimal.equal?(Workloads.hours(reduced), Decimal.new("1"))
   end
 
   test "semester demand survives deletion of generated meetings and drives regeneration", ctx do
     attrs = Map.merge(ctx.attrs, %{automatic_weeks: true, contact_hours: "4", duration_slots: 1})
-    assert {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, attrs)
+    assert {:ok, :saved} = create_legacy_workload(ctx.term.id, attrs)
     [row] = Catalog.list_workload(ctx.term.id)
     assert Catalog.merge_candidates(ctx.term.id) == []
     plan = plan_fixture(term: ctx.term)
@@ -243,8 +257,10 @@ defmodule NeuZeit.WorkloadTest do
     for session <- row.sessions,
         do: assert({:ok, _} = NeuZeit.Catalog.Sessions.delete_generated_session(session))
 
-    assert [%{count: 0} = empty] = Catalog.list_workload(ctx.term.id)
-    assert Decimal.equal?(Workload.hours(empty), Decimal.new(4))
+    assert [empty] = Catalog.list_workload(ctx.term.id)
+
+    assert Workloads.series_count(empty) == 0
+    assert Decimal.equal?(Workloads.hours(empty), Decimal.new(4))
 
     assert [%{required_hours: 3.0, planned_hours: +0.0, calendar_hours: +0.0}] =
              NeuZeit.Curriculum.plan_coverage(plan.id)
@@ -252,10 +268,11 @@ defmodule NeuZeit.WorkloadTest do
     assert [%{required_hours: 3.0, scheduled_hours: +0.0, status: :under}] =
              NeuZeit.Curriculum.term_coverage(ctx.term.id)
 
-    assert {:ok, :ready} = Workload.prepare(ctx.term.id)
-    assert [%{count: 2} = restored] = Catalog.list_workload(ctx.term.id)
+    assert {:ok, :ready} = Workloads.prepare(ctx.term.id)
+    assert [restored] = Catalog.list_workload(ctx.term.id)
+    assert Workloads.series_count(restored) == 2
     assert restored.requirement.id == row.requirement.id
-    assert Decimal.equal?(Workload.hours(restored), Decimal.new(4))
+    assert Decimal.equal?(Workloads.hours(restored), Decimal.new(4))
   end
 
   test "individual session writes and count-only workloads are refused", ctx do
@@ -270,10 +287,10 @@ defmodule NeuZeit.WorkloadTest do
              Catalog.create_session(Map.put(ctx.attrs, :term_id, ctx.term.id))
 
     assert {:ok, :saved} =
-             Catalog.save_workload(ctx.term.id, nil, Map.put(ctx.attrs, :automatic_weeks, false))
+             Catalog.save_workload(ctx.term.id, nil, Map.put(ctx.attrs, :automatic_weeks, true))
 
     [row] = Catalog.list_workload(ctx.term.id)
-    assert Enum.all?(row.sessions, & &1.automatic_weeks)
+    refute Enum.any?(row.sessions, & &1.automatic_weeks)
     session = hd(row.sessions)
     assert {:error, {:conflict, _}} = Catalog.update_session(session, %{duration_slots: 1})
     assert {:error, {:conflict, _}} = Catalog.delete_session(session)
@@ -281,7 +298,7 @@ defmodule NeuZeit.WorkloadTest do
   end
 
   test "preparation repairs all generated metadata even when the count matches", ctx do
-    assert {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
+    assert {:ok, :saved} = create_legacy_workload(ctx.term.id, ctx.attrs)
     [row] = Catalog.list_workload(ctx.term.id)
     session = hd(row.sessions)
     teacher = teacher_fixture()
@@ -306,11 +323,11 @@ defmodule NeuZeit.WorkloadTest do
     )
 
     Repo.insert!(%NeuZeit.Catalog.SessionCohort{session_id: session.id, cohort_id: group.id})
-    assert {:error, {:conflict, _}} = Workload.check(ctx.term.id)
+    assert {:error, {:conflict, _}} = Workloads.check(ctx.term.id)
     plan = plan_fixture(term: ctx.term)
     assert {:error, {:conflict, _}} = Planning.publish_plan(plan.id)
-    assert {:ok, :ready} = Workload.prepare(ctx.term.id)
-    assert :ok = Workload.check(ctx.term.id)
+    assert {:ok, :ready} = Workloads.prepare(ctx.term.id)
+    assert :ok = Workloads.check(ctx.term.id)
     repaired = Catalog.get_session!(session.id)
     assert repaired.teacher_id == ctx.attrs.teacher_id
     assert repaired.course_component_id == ctx.attrs.course_component_id
@@ -326,7 +343,7 @@ defmodule NeuZeit.WorkloadTest do
   end
 
   test "missing generated meetings block publication and keep the workload address", ctx do
-    assert {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
+    assert {:ok, :saved} = create_legacy_workload(ctx.term.id, ctx.attrs)
     [row] = Catalog.list_workload(ctx.term.id)
     for session <- row.sessions, do: Repo.delete!(session)
     plan = plan_fixture(term: ctx.term)
@@ -334,14 +351,14 @@ defmodule NeuZeit.WorkloadTest do
     assert {:error, _} = Catalog.update_term(ctx.term, %{ends_on: ~D[2026-09-12]})
     assert [empty] = Catalog.list_workload(ctx.term.id)
     assert empty.id == row.id
-    assert {:ok, :ready} = Workload.prepare(ctx.term.id)
+    assert {:ok, :ready} = Workloads.prepare(ctx.term.id)
     assert [restored] = Catalog.list_workload(ctx.term.id)
     assert restored.id == row.id
-    assert restored.count == 3
+    assert Workloads.series_count(restored) == 3
   end
 
   test "deleting workload removes its meetings but refuses any placed meeting", ctx do
-    assert {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, ctx.attrs)
+    assert {:ok, :saved} = create_legacy_workload(ctx.term.id, ctx.attrs)
     [row] = Catalog.list_workload(ctx.term.id)
     plan = plan_fixture(term: ctx.term)
 
@@ -355,10 +372,27 @@ defmodule NeuZeit.WorkloadTest do
         week_mask: [1]
       )
 
+    [row] = Catalog.list_workload(ctx.term.id)
     assert {:error, {:conflict, _}} = Catalog.delete_workload(ctx.term.id, row)
     assert {:ok, _} = Planning.delete_placement(placement)
+    [row] = Catalog.list_workload(ctx.term.id)
     assert {:ok, :deleted} = Catalog.delete_workload(ctx.term.id, row)
     assert Catalog.list_workload(ctx.term.id) == []
     assert Catalog.list_sessions(ctx.term.id) == []
+  end
+
+  # Existing automatic workloads retain their solver-selected weeks. New public
+  # creation is covered separately and always creates repeating series.
+  defp create_legacy_workload(term_id, attrs) do
+    session =
+      session_fixture(
+        Map.merge(attrs, %{
+          term: Catalog.get_term!(term_id),
+          automatic_weeks: true
+        })
+      )
+
+    row = Enum.find(Catalog.list_workload(term_id), &(&1.id == session.workload_id))
+    Catalog.save_workload(term_id, row, attrs)
   end
 end

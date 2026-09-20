@@ -33,7 +33,8 @@ defmodule NeuZeitWeb.Scheduling.TeachingWeeks do
     """
   end
 
-  def weeks_label(weeks, total) do
+  @doc "Labels a week pattern. Use `explicit: true` to list irregular weeks."
+  def weeks_label(weeks, total, opts \\ []) do
     weeks = Enum.sort(Enum.uniq(weeks))
     all = Enum.to_list(1..total//1)
 
@@ -43,6 +44,7 @@ defmodule NeuZeitWeb.Scheduling.TeachingWeeks do
       weeks == Enum.filter(all, &(rem(&1, 2) == 1)) -> gettext("Odd weeks")
       weeks == Enum.filter(all, &(rem(&1, 2) == 0)) -> gettext("Even weeks")
       length(summarize(weeks)) == 1 -> gettext("Weeks %{list}", list: hd(summarize(weeks)))
+      opts[:explicit] -> gettext("Weeks %{list}", list: Enum.join(summarize(weeks), ", "))
       true -> ngettext("%{count} week", "%{count} weeks", length(weeks), count: length(weeks))
     end
   end

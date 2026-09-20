@@ -133,6 +133,29 @@ defmodule NeuZeitWeb.UI.ErrorsTest do
       end)
     end
 
+    test "names workload planning fields in localized validation messages" do
+      for {locale, labels, invalid} <- [
+            {"ru", ["Требуемые часы", "Количество занятий", "Чередование недель"],
+             "Проверьте значение."},
+            {"de", ["Sollstunden", "Anzahl der Termine", "Wochenwechsel"],
+             "Prüfen Sie diesen Wert."},
+            {"en", ["Required hours", "Number of sessions", "Alternating weeks"],
+             "Check this value."}
+          ] do
+        Gettext.with_locale(NeuZeitWeb.Gettext, locale, fn ->
+          for {field, label} <-
+                Enum.zip([:contact_hours, :rounding_mode, :remainder_parity], labels) do
+            changeset =
+              %NeuZeit.Catalog.Workload{}
+              |> Ecto.Changeset.change()
+              |> Ecto.Changeset.add_error(field, "is invalid")
+
+            assert Errors.message(changeset) == label <> ": " <> invalid
+          end
+        end)
+      end
+    end
+
     test "localizes a stale calculation while preserving its original context message" do
       original =
         "The plan changed while the solver was running. Your edits were kept. Run the solver again."

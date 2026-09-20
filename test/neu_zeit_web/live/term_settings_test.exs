@@ -2,7 +2,7 @@ defmodule NeuZeitWeb.TermSettingsTest do
   use NeuZeitWeb.ConnCase, async: false
   import NeuZeit.Fixtures
   alias NeuZeit.Catalog
-  alias NeuZeit.Catalog.Workload
+  alias NeuZeit.Catalog.Workloads
 
   test "the term hour unit controls workload conversion and does not change other terms", %{
     conn: conn
@@ -32,12 +32,14 @@ defmodule NeuZeitWeb.TermSettingsTest do
     }
 
     assert {:ok, :saved} = Catalog.save_workload(term.id, nil, attrs)
-    assert [%{count: 2} = row] = Catalog.list_workload(term.id)
-    assert Decimal.equal?(Workload.hours(row, 30), Decimal.new(6))
+    assert [row] = Catalog.list_workload(term.id)
+    assert Workloads.series_count(row) == 2
+    assert Decimal.equal?(Workloads.hours(row), Decimal.new(6))
 
     assert {:error, _} = Catalog.update_term(term, %{academic_hour_minutes: 45})
-    assert [%{count: 2} = unchanged] = Catalog.list_workload(term.id)
+    assert [unchanged] = Catalog.list_workload(term.id)
+    assert Workloads.series_count(unchanged) == 2
     assert Enum.map(row.sessions, & &1.id) == Enum.map(unchanged.sessions, & &1.id)
-    assert Decimal.equal?(Workload.hours(unchanged, 45), Decimal.new(6))
+    assert Decimal.equal?(Workloads.hours(unchanged), Decimal.new(6))
   end
 end

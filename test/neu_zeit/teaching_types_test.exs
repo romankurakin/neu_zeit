@@ -5,7 +5,7 @@ defmodule NeuZeit.TeachingTypesTest do
 
   test "starter names are available in all three languages without creating courses" do
     assert Enum.sort(Enum.map(Catalog.list_teaching_types(), & &1.id)) ==
-             ~w(exam lab lecture practical seminar)
+             ~w(exam lab lecture seminar)
 
     assert Catalog.list_courses() == []
     exam = Catalog.get_teaching_type!("exam")

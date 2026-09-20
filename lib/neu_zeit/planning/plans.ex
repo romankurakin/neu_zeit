@@ -134,7 +134,7 @@ defmodule NeuZeit.Planning.Plans do
           ]
         )
 
-      case NeuZeit.Catalog.Workload.check(term_id) do
+      case NeuZeit.Catalog.Workloads.check(term_id) do
         :ok -> :ok
         {:error, error} -> Repo.rollback(error)
       end

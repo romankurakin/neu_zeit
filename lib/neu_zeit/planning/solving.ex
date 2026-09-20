@@ -13,7 +13,7 @@ defmodule NeuZeit.Planning.Solving do
   def solve_plan(plan_id) do
     with :ok <- WriteSupport.ensure_draft_plan(plan_id),
          {:ok, :ready} <-
-           NeuZeit.Catalog.Workload.prepare(NeuZeit.Planning.get_plan!(plan_id).term_id),
+           NeuZeit.Catalog.Workloads.prepare(NeuZeit.Planning.get_plan!(plan_id).term_id),
          :ok <- validate_solver_input(plan_id),
          spec <- SpecBuilder.build!(plan_id),
          {:ok, result} <- solve_spec(spec),

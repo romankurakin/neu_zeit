@@ -1,5 +1,5 @@
 defmodule NeuZeit.Curriculum do
-  alias NeuZeit.Catalog.{Course, Term, Workload}
+  alias NeuZeit.Catalog.{Course, Term, Workloads}
   alias NeuZeit.Config
   alias NeuZeit.Repo
 
@@ -16,8 +16,8 @@ defmodule NeuZeit.Curriculum do
     slot_occurrences = course_slot_occurrences(term_id, course_id)
 
     workloads =
-      Workload.list(term_id)
-      |> Enum.filter(&(&1.session.course_component.course_id == course_id))
+      Workloads.list(term_id)
+      |> Enum.filter(&(&1.requirement.course_component.course_id == course_id))
 
     required_hours = required_hours(workloads, term.academic_hour_minutes)
 
@@ -47,8 +47,8 @@ defmodule NeuZeit.Curriculum do
   Returns contact-hour coverage for every course with teaching load or sessions in a term.
   """
   def term_coverage(term_id) do
-    Workload.list(term_id)
-    |> Enum.map(& &1.session.course_component.course)
+    Workloads.list(term_id)
+    |> Enum.map(& &1.requirement.course_component.course)
     |> Enum.uniq_by(& &1.id)
     |> Enum.sort_by(&{&1.title, &1.id})
     |> Enum.map(fn course ->
@@ -85,14 +85,14 @@ defmodule NeuZeit.Curriculum do
         {id, hours}
       end)
 
-    workloads = Workload.list(projection.term.id)
+    workloads = Workloads.list(projection.term.id)
 
     required_groups =
       workloads
       |> Enum.flat_map(fn row ->
         Enum.map(
-          row.session.cohorts,
-          &{{row.session.course_component.course_id, &1.id}, {row, &1}}
+          row.requirement.cohorts,
+          &{{row.requirement.course_component.course_id, &1.id}, {row, &1}}
         )
       end)
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
@@ -111,17 +111,17 @@ defmodule NeuZeit.Curriculum do
       entries = Map.get(session_groups, key, [])
       targets = Map.get(required_groups, key, [])
 
-      {session, cohort} =
+      {source, cohort} =
         case entries do
           [first | _] ->
             first
 
           [] ->
             {row, cohort} = hd(targets)
-            {row.session, cohort}
+            {row.requirement, cohort}
         end
 
-      course = session.course_component.course
+      course = source.course_component.course
 
       required =
         required_hours(Enum.map(targets, &elem(&1, 0)), projection.term.academic_hour_minutes)

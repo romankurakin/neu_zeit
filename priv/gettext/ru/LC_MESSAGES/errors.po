@@ -230,6 +230,13 @@ msgstr "Занятие должно проходить в учебную дат�
 msgid "Hours must cover a whole number of sessions of this duration."
 msgstr "Часы должны делиться на длительность занятия без остатка."
 
+#
+msgid "must be a non-empty list of weeks within the term"
+msgstr "Выберите хотя бы одну учебную неделю семестра."
+
+msgid "Changing this teaching load would delete session history. Keep the existing sessions."
+msgstr "Изменение нагрузки удалит историю занятий. Сохраните существующие занятия."
+
 msgid "Teaching load exceeds the available time."
 msgstr "Нагрузка превышает доступное учебное время."
 

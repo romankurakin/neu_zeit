@@ -58,11 +58,7 @@ defmodule NeuZeitWeb.Problem do
 
   def changeset_errors(%Ecto.Changeset{} = changeset) do
     changeset
-    |> Ecto.Changeset.traverse_errors(fn {message, opts} ->
-      Enum.reduce(opts, message, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
-      end)
-    end)
+    |> NeuZeitWeb.ApiJSON.errors()
     |> flatten_errors()
   end
 

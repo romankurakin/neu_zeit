@@ -321,8 +321,8 @@ defmodule NeuZeit.Catalog do
   def delete_session(_session),
     do: {:error, {:conflict, "Edit teaching load instead of individual sessions."}}
 
-  defdelegate list_workload(term_id), to: NeuZeit.Catalog.Workload, as: :list
-  defdelegate save_workload(term_id, original, attrs), to: NeuZeit.Catalog.Workload, as: :save
-  defdelegate delete_workload(term_id, original), to: NeuZeit.Catalog.Workload, as: :delete
+  defdelegate list_workload(term_id), to: NeuZeit.Catalog.Workloads, as: :list
+  defdelegate save_workload(term_id, original, attrs), to: NeuZeit.Catalog.Workloads, as: :save
+  defdelegate delete_workload(term_id, original), to: NeuZeit.Catalog.Workloads, as: :delete
   defdelegate error_changeset(schema, field, message), to: NeuZeit.Catalog.WriteSupport
 end

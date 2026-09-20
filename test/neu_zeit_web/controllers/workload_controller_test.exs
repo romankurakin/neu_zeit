@@ -24,8 +24,25 @@ defmodule NeuZeitWeb.WorkloadControllerTest do
 
     id = created["data"]["id"]
     assert created["data"]["cohort_ids"] == c.attrs.cohort_ids
-    assert created["data"]["automatic_weeks"]
-    assert length(Catalog.list_sessions(c.term.id)) == 2
+    refute created["data"]["automatic_weeks"]
+    assert created["data"]["required_hours"] == "4"
+    assert Decimal.equal?(Decimal.new(created["data"]["planned_hours"]), 4)
+    assert created["data"]["meeting_count"] == 2
+    assert created["data"]["series_count"] == 1
+
+    refute Enum.any?(
+             [
+               "count",
+               "academic_hour_minutes",
+               "course_component",
+               "teacher",
+               "slot_profile",
+               "cohorts"
+             ],
+             &Map.has_key?(created["data"], &1)
+           )
+
+    assert length(Catalog.list_sessions(c.term.id)) == 1
 
     assert %{"data" => [%{"id" => ^id}]} =
              get(c.conn, ~p"/api/terms/#{c.term}/workloads") |> json_response(200)
@@ -39,9 +56,59 @@ defmodule NeuZeitWeb.WorkloadControllerTest do
              )
              |> json_response(200)
 
-    assert length(Catalog.list_sessions(c.term.id)) == 3
+    assert length(Catalog.list_sessions(c.term.id)) == 2
     assert response(delete(c.conn, ~p"/api/terms/#{c.term}/workloads/#{id}"), 204) == ""
     assert Catalog.list_sessions(c.term.id) == []
+  end
+
+  test "all responses preserve 45 required hours and expose the rounded realization", c do
+    attrs = Map.merge(c.attrs, %{contact_hours: "45", week_mask: Enum.to_list(1..15)})
+
+    created =
+      post(c.conn, ~p"/api/terms/#{c.term}/workloads", workload: attrs) |> json_response(201)
+
+    id = created["data"]["id"]
+    shown = get(c.conn, ~p"/api/terms/#{c.term}/workloads/#{id}") |> json_response(200)
+    listed = get(c.conn, ~p"/api/terms/#{c.term}/workloads") |> json_response(200)
+
+    for data <- [created["data"], shown["data"], hd(listed["data"])] do
+      assert Decimal.equal?(Decimal.new(data["contact_hours"]), 45)
+      assert Decimal.equal?(Decimal.new(data["required_hours"]), 45)
+      assert Decimal.equal?(Decimal.new(data["planned_hours"]), 46)
+      assert data["meeting_count"] == 23
+      assert data["series_count"] == 2
+      assert data["rounding_mode"] == "up"
+      assert data["remainder_parity"] == "odd"
+    end
+
+    changed =
+      put(c.conn, ~p"/api/terms/#{c.term}/workloads/#{id}", workload: %{rounding_mode: "down"})
+      |> json_response(200)
+
+    assert Decimal.equal?(Decimal.new(changed["data"]["required_hours"]), 45)
+    assert Decimal.equal?(Decimal.new(changed["data"]["planned_hours"]), 44)
+    assert changed["data"]["meeting_count"] == 22
+    assert changed["data"]["rounding_mode"] == "down"
+    assert {:ok, :ready} = Catalog.Workloads.prepare(c.term.id)
+    reloaded = get(c.conn, ~p"/api/terms/#{c.term}/workloads/#{id}") |> json_response(200)
+    assert reloaded["data"]["planned_hours"] == changed["data"]["planned_hours"]
+  end
+
+  test "rejects invalid planning policies and ignores a requested legacy mode", c do
+    for policy <- [%{rounding_mode: "nearest"}, %{remainder_parity: "arbitrary"}] do
+      assert post(c.conn, ~p"/api/terms/#{c.term}/workloads",
+               workload: Map.merge(c.attrs, policy)
+             )
+             |> json_response(422)
+    end
+
+    created =
+      post(c.conn, ~p"/api/terms/#{c.term}/workloads",
+        workload: Map.put(c.attrs, :automatic_weeks, true)
+      )
+      |> json_response(201)
+
+    refute created["data"]["automatic_weeks"]
   end
 
   test "requires hours and rejects session mutation endpoints", c do

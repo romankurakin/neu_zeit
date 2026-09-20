@@ -2218,13 +2218,6 @@ msgstr ""
 msgid "Choose a time"
 msgstr ""
 
-#: lib/neu_zeit_web/live/session_live/index.ex:380
-#: lib/neu_zeit_web/live/workload_live/index.ex:153
-#: lib/neu_zeit_web/live/workload_live/index.ex:172
-#, elixir-autogen, elixir-format
-msgid "Consecutive time slots"
-msgstr ""
-
 #: lib/neu_zeit_web/components/scheduling/time_grid.ex:75
 #, elixir-autogen, elixir-format
 msgid "Day %{day}, time slot %{slot}"
@@ -2766,11 +2759,6 @@ msgstr ""
 msgid "Automatic week selection for %{automatic} meetings. Fixed weeks for %{fixed} sessions."
 msgstr ""
 
-#: lib/neu_zeit_web/live/workload_live/index.ex:176
-#, elixir-autogen, elixir-format
-msgid "Fixed teaching weeks"
-msgstr ""
-
 #: lib/neu_zeit_web/live/session_live/index.ex:394
 #: lib/neu_zeit_web/live/workload_live/index.ex:176
 #, elixir-autogen, elixir-format
@@ -2780,11 +2768,6 @@ msgstr ""
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:147
 #, elixir-autogen, elixir-format
 msgid "Week (saved immediately)"
-msgstr ""
-
-#: lib/neu_zeit_web/live/workload_live/index.ex:152
-#, elixir-autogen, elixir-format
-msgid "Academic hours"
 msgstr ""
 
 #: lib/neu_zeit_web/live/plan_live/reports.ex:56
@@ -3154,4 +3137,81 @@ msgstr ""
 #: lib/neu_zeit_web/live/calendar_live/index.ex:365
 #, elixir-autogen, elixir-format
 msgid "Outside term"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:247
+#, elixir-autogen, elixir-format
+msgid "No teaching types are assigned to courses. Open a course, add a teaching type and at least one allowed room, then return to teaching load."
+msgstr ""
+
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:445
+#, elixir-autogen, elixir-format
+msgid "%{count} session, %{hours} academic hours"
+msgid_plural "%{count} sessions, %{hours} academic hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:438
+#, elixir-autogen, elixir-format
+msgid "%{minutes} min, %{hours} academic hours"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:476
+#, elixir-autogen, elixir-format
+msgid "%{weeks}: %{count} session"
+msgid_plural "%{weeks}: %{count} sessions"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:462
+#, elixir-autogen, elixir-format
+msgid "Hours above the requirement: %{hours}."
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:464
+#, elixir-autogen, elixir-format
+msgid "Hours below the requirement: %{hours}."
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:216
+#, elixir-autogen, elixir-format
+msgid "Hours from sessions"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:314
+#, elixir-autogen, elixir-format
+msgid "Number of sessions"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:340
+#, elixir-autogen, elixir-format
+msgid "Proposed distribution"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:355
+#, elixir-autogen, elixir-format
+msgid "Required hours stay at %{hours}. Whole sessions cannot match them exactly at this duration."
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:224
+#: lib/neu_zeit_web/live/workload_live/index.ex:307
+#, elixir-autogen, elixir-format
+msgid "Session duration"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:227
+#, elixir-autogen, elixir-format
+msgid "Weekly pattern"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:228
+#: lib/neu_zeit_web/live/workload_live/index.ex:344
+#, elixir-autogen, elixir-format
+msgid "Weeks selected during calculation"
+msgstr ""
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:326
+#, elixir-autogen, elixir-format
+msgid "Alternating weeks"
 msgstr ""

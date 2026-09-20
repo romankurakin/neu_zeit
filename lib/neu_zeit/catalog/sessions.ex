@@ -221,7 +221,14 @@ defmodule NeuZeit.Catalog.Sessions do
     |> list_sessions()
     |> Enum.reject(& &1.automatic_weeks)
     |> Enum.group_by(&{&1.course_component_id, &1.teacher_id, &1.week_mask, &1.duration_slots})
-    |> Enum.filter(fn {_key, sessions} -> length(sessions) > 1 end)
+    |> Enum.filter(fn {_key, sessions} ->
+      # Repeated weekly series of one requirement are intentional. Only
+      # different attending groups can suggest a duplicate shared class.
+      sessions
+      |> Enum.map(fn session -> Enum.sort(Enum.map(session.cohorts, & &1.id)) end)
+      |> Enum.uniq()
+      |> length() > 1
+    end)
     |> Enum.map(fn {{component_id, _teacher, _mask, _duration}, sessions} ->
       %{
         course_component_id: component_id,

@@ -221,6 +221,13 @@ msgstr "Der Termin muss auf einen Unterrichtstag fallen."
 msgid "Hours must cover a whole number of sessions of this duration."
 msgstr "Die Stunden müssen ohne Rest durch die Dauer eines Termins teilbar sein."
 
+#
+msgid "must be a non-empty list of weeks within the term"
+msgstr "Wählen Sie mindestens eine Unterrichtswoche innerhalb des Semesters."
+
+msgid "Changing this teaching load would delete session history. Keep the existing sessions."
+msgstr "Die Änderung würde den Verlauf bestehender Einheiten löschen. Behalten Sie diese Einheiten bei."
+
 msgid "Teaching load exceeds the available time."
 msgstr "Der Lehrumfang überschreitet die verfügbare Unterrichtszeit."
 

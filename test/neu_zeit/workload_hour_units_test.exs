@@ -22,10 +22,15 @@ defmodule NeuZeit.WorkloadHourUnitsTest do
     end
 
     rows = Catalog.list_workload(term.id)
-    assert Enum.all?(rows, &(&1.count == 2))
-    assert {:ok, :ready} = Catalog.Workload.prepare(term.id)
-    assert :ok = Catalog.Workload.check(term.id)
-    assert Enum.map(Catalog.list_workload(term.id), & &1.count) == [2, 2]
+
+    assert Enum.all?(
+             rows,
+             &(Catalog.Workloads.series_count(&1) == 1 && Catalog.Workloads.meeting_count(&1) == 2)
+           )
+
+    assert {:ok, :ready} = Catalog.Workloads.prepare(term.id)
+    assert :ok = Catalog.Workloads.check(term.id)
+    assert Enum.map(Catalog.list_workload(term.id), &Catalog.Workloads.series_count/1) == [1, 1]
     plan = plan_fixture(term: term)
     coverage = Curriculum.plan_coverage(plan.id)
     assert length(coverage) == 1
@@ -33,14 +38,14 @@ defmodule NeuZeit.WorkloadHourUnitsTest do
     assert Curriculum.course_contact_coverage(term.id, component.course_id).required_hours == 6.0
 
     for {row, slot} <- Enum.with_index(rows, 1),
-        {session, week} <- Enum.with_index(row.sessions, 1) do
+        session <- row.sessions do
       placement_fixture(
         plan_id: plan.id,
         session_id: session.id,
         room_id: hd(component.allowed_rooms).id,
         day: 1,
         slot: slot,
-        week_mask: [week]
+        week_mask: session.week_mask
       )
     end
 

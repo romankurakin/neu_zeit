@@ -45,7 +45,18 @@ defmodule NeuZeit.AutomaticWeeksTest do
       slot_profile_id: profile.id
     }
 
-    {:ok, :saved} = Catalog.save_workload(term.id, nil, attrs)
+    session_fixture(
+      term: term,
+      component: component,
+      teacher: teacher,
+      cohorts: [cohort],
+      week_mask: [1, 2, 3],
+      automatic_weeks: true,
+      slot_profile_id: profile.id
+    )
+
+    [existing] = Catalog.list_workload(term.id)
+    {:ok, :saved} = Catalog.save_workload(term.id, existing, attrs)
     plan = plan_fixture(term: term)
     assert {:ok, _} = PlanRuns.solve(plan.id)
     placements = Planning.list_placements(plan.id)

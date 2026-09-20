@@ -102,15 +102,17 @@ defmodule NeuZeit.CurriculumTest do
   end
 
   defp save_hours(term, component, hours) do
+    session =
+      session_fixture(
+        term: term,
+        component: component,
+        automatic_weeks: true,
+        week_mask: Enum.to_list(1..term.weeks_count)
+      )
+
+    row = Enum.find(Catalog.list_workload(term.id), &(&1.id == session.workload_id))
+
     assert {:ok, :saved} =
-             Catalog.save_workload(term.id, nil, %{
-               course_component_id: component.id,
-               teacher_id: teacher_fixture().id,
-               cohort_ids: [cohort_fixture().id],
-               week_mask: Enum.to_list(1..term.weeks_count),
-               automatic_weeks: true,
-               duration_slots: 1,
-               contact_hours: hours
-             })
+             Catalog.save_workload(term.id, row, %{contact_hours: hours})
   end
 end

@@ -6,12 +6,25 @@ defmodule NeuZeit.PartialPublicationTest do
   test "publishes the first week after confirmation and later extends the timetable" do
     term = term_fixture()
     component = component_fixture()
+    teacher = teacher_fixture()
+    cohort = cohort_fixture()
+
+    session_fixture(
+      term: term,
+      component: component,
+      teacher: teacher,
+      cohorts: [cohort],
+      automatic_weeks: true,
+      week_mask: [1, 2, 3]
+    )
+
+    [existing] = Catalog.list_workload(term.id)
 
     {:ok, :saved} =
-      Catalog.save_workload(term.id, nil, %{
+      Catalog.save_workload(term.id, existing, %{
         course_component_id: component.id,
-        teacher_id: teacher_fixture().id,
-        cohort_ids: [cohort_fixture().id],
+        teacher_id: teacher.id,
+        cohort_ids: [cohort.id],
         week_mask: [1, 2, 3],
         duration_slots: 1,
         contact_hours: "6"

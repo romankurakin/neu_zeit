@@ -33,7 +33,11 @@ defmodule NeuZeitWeb.ApiJSON do
   def errors(%Ecto.Changeset{} = changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
       Enum.reduce(opts, message, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
+        placeholder = "%{#{key}}"
+
+        if String.contains?(acc, placeholder),
+          do: String.replace(acc, placeholder, to_string(value)),
+          else: acc
       end)
     end)
   end

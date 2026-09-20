@@ -8,11 +8,23 @@ defmodule NeuZeit.PlanCoverageTest do
     component = component_fixture()
     a = cohort_fixture()
     b = cohort_fixture()
+    teacher = teacher_fixture()
+
+    session_fixture(
+      term: term,
+      component: component,
+      teacher: teacher,
+      cohorts: [a, b],
+      automatic_weeks: true,
+      week_mask: [1, 2]
+    )
+
+    [existing] = Catalog.list_workload(term.id)
 
     assert {:ok, :saved} =
-             Catalog.save_workload(term.id, nil, %{
+             Catalog.save_workload(term.id, existing, %{
                course_component_id: component.id,
-               teacher_id: teacher_fixture().id,
+               teacher_id: teacher.id,
                cohort_ids: [a.id, b.id],
                week_mask: [1, 2],
                automatic_weeks: true,

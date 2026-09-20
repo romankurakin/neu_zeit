@@ -231,6 +231,13 @@ msgstr "A generated meeting must fall on a teaching date."
 msgid "Hours must cover a whole number of sessions of this duration."
 msgstr "Hours must cover a whole number of sessions of this duration."
 
+#
+msgid "must be a non-empty list of weeks within the term"
+msgstr "must be a non-empty list of weeks within the term"
+
+msgid "Changing this teaching load would delete session history. Keep the existing sessions."
+msgstr "Changing this teaching load would delete session history. Keep the existing sessions."
+
 msgid "Teaching load exceeds the available time."
 msgstr "Teaching load exceeds the available time."
 

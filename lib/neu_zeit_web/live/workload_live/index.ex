@@ -2,7 +2,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
   use NeuZeitWeb, :live_view
 
   alias NeuZeit.Catalog
-  alias NeuZeit.Catalog.Workload
+  alias NeuZeit.Catalog.{Workload, Workloads}
   alias NeuZeitWeb.Nav
 
   @impl true
@@ -18,7 +18,8 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
      |> assign(:cohorts, Catalog.list_cohorts())
      |> assign(:profiles, Catalog.list_slot_profiles(term_id))
      |> assign(:components, Catalog.list_course_components())
-     |> assign(:rows, Catalog.list_workload(term_id))
+     |> assign(:duration_options, Workloads.duration_options(term))
+     |> assign(:rows, Workloads.list(term_id))
      |> assign(:form, nil)
      |> assign(:editing, nil)
      |> assign(:deleting, nil)}
@@ -26,17 +27,12 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    rows = Catalog.list_workload(socket.assigns.term.id)
+    rows = Workloads.list(socket.assigns.term.id)
     socket = socket |> Nav.assign_return(params) |> assign(:rows, rows)
 
     case socket.assigns.live_action do
       :new ->
-        {:noreply,
-         open_form(socket, nil, %Workload{
-           week_mask: all_weeks(socket),
-           automatic_weeks: true,
-           academic_hour_minutes: socket.assigns.term.academic_hour_minutes
-         })}
+        {:noreply, open_form(socket, nil, Workload.new(socket.assigns.term))}
 
       :edit ->
         case Enum.find(rows, fn row ->
@@ -53,7 +49,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
              open_form(
                socket,
                row,
-               Workload.from_row(row, socket.assigns.term.academic_hour_minutes)
+               row.requirement
              )}
         end
 
@@ -65,23 +61,40 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
   defp open_form(socket, row, workload) do
     socket
     |> assign(:editing, row)
+    |> assign(:workload, workload)
     |> assign(:automatic_weeks, workload.automatic_weeks)
     |> assign(:week_mask, workload.week_mask)
     |> assign(:cohort_ids, workload.cohort_ids)
+    |> update_form(%{})
+  end
+
+  defp update_form(socket, params, action \\ nil) do
+    changeset =
+      socket.assigns.workload
+      |> Workload.changeset(socket.assigns.term, workload_attrs(socket, params))
+      |> Map.put(:action, action)
+
+    socket
+    |> assign(:form, to_form(changeset))
     |> assign(
-      :form,
-      to_form(
-        Workload.changeset(%{
-          workload
-          | term_id: socket.assigns.term.id
-        })
-      )
+      :preview,
+      Workload.preview(changeset, socket.assigns.term, socket.assigns.editing)
     )
+  end
+
+  defp workload_attrs(socket, params) do
+    params
+    |> Map.put("week_mask", socket.assigns.week_mask)
+    |> Map.put("cohort_ids", socket.assigns.cohort_ids)
+    |> Map.put("sequence_group", socket.assigns.workload.sequence_group)
   end
 
   defp all_weeks(socket), do: Enum.to_list(1..socket.assigns.term.weeks_count)
 
   @impl true
+  def handle_event("validate", %{"workload" => params}, socket),
+    do: {:noreply, update_form(socket, params, :validate)}
+
   def handle_event("week_mask_changed", %{"preset" => preset}, socket) do
     weeks = all_weeks(socket)
 
@@ -92,7 +105,8 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
         _ -> weeks
       end
 
-    {:noreply, assign(socket, :week_mask, mask)}
+    {:noreply,
+     socket |> assign(:week_mask, mask) |> update_form(socket.assigns.form.params, :validate)}
   end
 
   def handle_event("week_mask_changed", %{"week" => week}, socket) do
@@ -100,27 +114,24 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
     mask = socket.assigns.week_mask
 
     {:noreply,
-     assign(
-       socket,
+     socket
+     |> assign(
        :week_mask,
        if(week in mask, do: List.delete(mask, week), else: Enum.sort([week | mask]))
-     )}
+     )
+     |> update_form(socket.assigns.form.params, :validate)}
   end
 
   def handle_event("selection_changed", %{"selected" => ids}, socket),
-    do: {:noreply, assign(socket, :cohort_ids, ids)}
+    do:
+      {:noreply,
+       socket |> assign(:cohort_ids, ids) |> update_form(socket.assigns.form.params, :validate)}
 
   def handle_event("save", %{"workload" => params}, socket) do
-    attrs =
-      params
-      |> Map.put("week_mask", socket.assigns.week_mask)
-      |> Map.put("cohort_ids", socket.assigns.cohort_ids)
-      |> Map.put(
-        "sequence_group",
-        socket.assigns.editing && socket.assigns.editing.session.sequence_group
-      )
+    attrs = workload_attrs(socket, params)
+    socket = update_form(socket, params)
 
-    case Catalog.save_workload(socket.assigns.term.id, socket.assigns.editing, attrs) do
+    case Workloads.save(socket.assigns.term.id, socket.assigns.editing, attrs) do
       {:ok, :saved} ->
         {:noreply,
          socket
@@ -144,7 +155,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
     do: {:noreply, socket}
 
   def handle_event("delete_confirm", _params, socket) do
-    case Catalog.delete_workload(socket.assigns.term.id, socket.assigns.deleting) do
+    case Workloads.delete(socket.assigns.term.id, socket.assigns.deleting) do
       {:ok, :deleted} ->
         {:noreply,
          socket
@@ -185,42 +196,51 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
               <.link
                 navigate={
                   Nav.with_return(
-                    ~p"/courses/#{row.session.course_component.course_id}",
+                    ~p"/courses/#{row.requirement.course_component.course_id}",
                     ~p"/terms/#{@term}/workload"
                   )
                 }
                 class="link"
-              >{course_title(row.session.course_component.course)}</.link>
-              <div>{component_kind_label(row.session.course_component)}</div>
+              >{course_title(row.requirement.course_component.course)}</.link>
+              <div>{component_kind_label(row.requirement.course_component)}</div>
             </:col>
             <:col :let={row} label={gettext("Teacher")} class="whitespace-nowrap">
-              {row.session.teacher.name}
+              {row.requirement.teacher.name}
             </:col>
             <:col :let={row} label={gettext("Groups")} class="whitespace-nowrap">
-              {Enum.map_join(row.session.cohorts, ", ", & &1.name)}
+              {Enum.map_join(row.requirement.cohorts, ", ", & &1.name)}
             </:col>
-            <:col :let={row} label={gettext("Academic hours")} numeric>
-              {Workload.hours(row)}
+            <:col :let={row} label={gettext("Required hours")} numeric>
+              {decimal(Workloads.hours(row))}
             </:col>
-            <:col :let={row} label={gettext("Consecutive time slots")} numeric>
-              {row.session.duration_slots}
+            <:col :let={row} label={gettext("Hours from sessions")} numeric>
+              {rounded_decimal(Workloads.planned_hours(row, @term))}
             </:col>
-            <:col :let={row} label={gettext("Weeks")} class="whitespace-nowrap">
-              <span :if={
-                row.session.automatic_weeks && length(row.session.week_mask) == @term.weeks_count
-              }>{gettext("Automatic")}</span>
-              <.teaching_weeks
-                :if={
-                  !row.session.automatic_weeks || length(row.session.week_mask) != @term.weeks_count
-                }
-                weeks={row.session.week_mask}
-                total={@term.weeks_count}
-                compact
-              />
+            <:col :let={row} label={gettext("Difference")} numeric>
+              <span class={if !Decimal.equal?(row_difference(row, @term), 0), do: "text-warning"}>
+                {signed_decimal(row_difference(row, @term))}
+              </span>
+            </:col>
+            <:col :let={row} label={gettext("Session duration")}>
+              {duration_label(
+                Enum.find(@duration_options, &(&1.slots == row.requirement.duration_slots))
+              )}
+            </:col>
+            <:col :let={row} label={gettext("Weekly pattern")}>
+              <span :if={row.requirement.automatic_weeks}>{gettext(
+                "Weeks selected during calculation"
+              )}</span>
+              <div :if={!row.requirement.automatic_weeks}>
+                <p :for={
+                  label <- rhythm_labels(Enum.map(row.sessions, & &1.week_mask), @term.weeks_count)
+                }>
+                  {label}
+                </p>
+              </div>
             </:col>
             <:col :let={row} label={gettext("Time profile")} class="whitespace-nowrap">
-              {if row.session.slot_profile,
-                do: slot_profile_label(row.session.slot_profile),
+              {if row.requirement.slot_profile,
+                do: slot_profile_label(row.requirement.slot_profile),
                 else: gettext("No restriction")}
             </:col>
             <:action :let={row}>
@@ -239,7 +259,21 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
           class="order-first lg:order-last"
           on_close={JS.patch(~p"/terms/#{@term}/workload")}
         >
-          <.form for={@form} id="workload-form" phx-submit="save" class="flex flex-col gap-4">
+          <.form
+            for={@form}
+            id="workload-form"
+            phx-change="validate"
+            phx-submit="save"
+            class="flex flex-col gap-4"
+          >
+            <div :if={@components == []} id="workload-teaching-types-help" role="status">
+              <p>
+                {gettext(
+                  "No teaching types are assigned to courses. Open a course, add a teaching type and at least one allowed room, then return to teaching load."
+                )}
+              </p>
+              <.link navigate={~p"/courses"} class="link">{gettext("All courses")}</.link>
+            </div>
             <.input
               field={@form[:course_component_id]}
               type="select"
@@ -273,10 +307,70 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
             />
             <.input
               field={@form[:duration_slots]}
-              type="number"
-              label={gettext("Consecutive time slots")}
-              min="1"
+              type="select"
+              label={gettext("Session duration")}
+              options={Enum.map(@duration_options, &{duration_label(&1), &1.slots})}
             />
+            <.input
+              :if={@preview && @preview.lower_count != @preview.upper_count}
+              field={@form[:rounding_mode]}
+              type="select"
+              label={gettext("Number of sessions")}
+              options={rounding_options(@preview)}
+            />
+            <.input
+              :if={!@preview || @preview.lower_count == @preview.upper_count}
+              field={@form[:rounding_mode]}
+              type="hidden"
+            />
+            <.input
+              :if={@preview && @preview.parity_choice?}
+              field={@form[:remainder_parity]}
+              type="select"
+              label={gettext("Alternating weeks")}
+              options={[{gettext("Odd weeks"), "odd"}, {gettext("Even weeks"), "even"}]}
+            />
+            <.input
+              :if={!@preview || !@preview.parity_choice?}
+              field={@form[:remainder_parity]}
+              type="hidden"
+            />
+            <div
+              :if={@preview}
+              id="workload-preview"
+              role="status"
+              class="rounded-box bg-base-200 p-4"
+            >
+              <p class="type-heading">{gettext("Proposed distribution")}</p>
+              <p id="workload-preview-total">
+                {session_total_label(@preview.meeting_count, @preview.planned_hours)}
+              </p>
+              <p :if={!@preview.within_capacity?} id="workload-capacity-error" class="text-error">
+                {Errors.translate_validation({"Teaching load exceeds the available time.", []})}
+              </p>
+              <p :if={@preview.within_capacity? && @preview.automatic_weeks}>
+                {gettext("Weeks selected during calculation")}
+              </p>
+              <div
+                :if={@preview.within_capacity? && !@preview.automatic_weeks}
+                id="workload-preview-pattern"
+              >
+                <p :for={label <- rhythm_labels(@preview.masks, @term.weeks_count)}>{label}</p>
+              </div>
+              <div
+                :if={!Decimal.equal?(@preview.difference, 0)}
+                id="workload-hours-difference"
+                class="mt-2"
+              >
+                <p>{difference_label(@preview.difference)}</p>
+                <p>
+                  {gettext(
+                    "Required hours stay at %{hours}. Whole sessions cannot match them exactly at this duration.",
+                    hours: decimal(@preview.required_hours)
+                  )}
+                </p>
+              </div>
+            </div>
             <.input
               field={@form[:slot_profile_id]}
               type="select"
@@ -287,13 +381,11 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
             <details
               id="workload-week-limit"
               class="collapse collapse-arrow bg-base-200"
-              open={!@automatic_weeks}
+              open={length(@week_mask) != @term.weeks_count}
               phx-mounted={JS.ignore_attributes("open")}
             >
               <summary class="collapse-title">
-                {if @automatic_weeks,
-                  do: gettext("Restrict available weeks"),
-                  else: gettext("Fixed teaching weeks")}
+                {gettext("Restrict available weeks")}
               </summary>
               <div class="collapse-content">
                 <.week_selector
@@ -341,5 +433,67 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
     cohorts
     |> Enum.filter(&(&1.id in selected == selected?))
     |> Enum.map(&%{id: &1.id, label: &1.name})
+  end
+
+  defp decimal(value), do: value |> Decimal.normalize() |> Decimal.to_string(:normal)
+
+  defp rounded_decimal(value), do: value |> Decimal.round(2) |> decimal()
+
+  defp signed_decimal(value) do
+    if Decimal.compare(value, 0) == :gt, do: "+#{decimal(value)}", else: decimal(value)
+  end
+
+  defp row_difference(row, term),
+    do: Decimal.sub(Workloads.planned_hours(row, term), Workloads.hours(row))
+
+  defp duration_label(nil), do: ""
+
+  defp duration_label(option) do
+    gettext("%{minutes} min, %{hours} academic hours",
+      minutes: option.minutes,
+      hours: rounded_decimal(option.hours)
+    )
+  end
+
+  defp session_total_label(count, hours) do
+    ngettext(
+      "%{count} session, %{hours} academic hours",
+      "%{count} sessions, %{hours} academic hours",
+      count,
+      count: count,
+      hours: rounded_decimal(hours)
+    )
+  end
+
+  defp rounding_options(preview) do
+    for {mode, count, hours} <- [
+          {"up", preview.upper_count, preview.upper_hours},
+          {"down", preview.lower_count, preview.lower_hours}
+        ] do
+      {session_total_label(count, hours), mode}
+    end
+  end
+
+  defp difference_label(difference) do
+    if Decimal.compare(difference, 0) == :gt do
+      gettext("Hours above the requirement: %{hours}.", hours: decimal(difference))
+    else
+      gettext("Hours below the requirement: %{hours}.",
+        hours: decimal(Decimal.abs(difference))
+      )
+    end
+  end
+
+  defp rhythm_labels(masks, total) do
+    masks
+    |> Enum.map(&Enum.sort/1)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {mask, _count} -> {-length(mask), mask} end)
+    |> Enum.map(fn {mask, count} ->
+      ngettext("%{weeks}: %{count} session", "%{weeks}: %{count} sessions", count,
+        weeks: NeuZeitWeb.Scheduling.TeachingWeeks.weeks_label(mask, total, explicit: true),
+        count: count
+      )
+    end)
   end
 end
