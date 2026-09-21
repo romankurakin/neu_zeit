@@ -16,6 +16,7 @@ defmodule NeuZeit.Catalog.Workload do
     field :week_mask, {:array, :integer}, default: []
     field :duration_slots, :integer, default: 1
     field :automatic_weeks, :boolean, default: false
+    field :delivery_mode, Ecto.Enum, values: [:in_person, :online], default: :in_person
     field :contact_hours, :decimal
     field :rounding_mode, Ecto.Enum, values: [:up, :down], default: :up
     field :remainder_parity, Ecto.Enum, values: [:odd, :even], default: :odd
@@ -23,7 +24,7 @@ defmodule NeuZeit.Catalog.Workload do
     timestamps()
   end
 
-  @session_fields ~w(course_component_id teacher_id slot_profile_id cohort_ids week_mask duration_slots sequence_group automatic_weeks)a
+  @session_fields ~w(course_component_id teacher_id slot_profile_id cohort_ids week_mask duration_slots sequence_group automatic_weeks delivery_mode)a
   @policy_fields ~w(rounding_mode remainder_parity)a
 
   def new(%Term{} = term),
@@ -41,7 +42,8 @@ defmodule NeuZeit.Catalog.Workload do
       :teacher_id,
       :cohort_ids,
       :week_mask,
-      :duration_slots | @policy_fields
+      :duration_slots,
+      :delivery_mode | @policy_fields
     ])
     |> validate_number(:contact_hours, greater_than: 0)
     |> validate_length(:cohort_ids, min: 1)
@@ -57,6 +59,7 @@ defmodule NeuZeit.Catalog.Workload do
     |> foreign_key_constraint(:course_component_id)
     |> foreign_key_constraint(:teacher_id)
     |> foreign_key_constraint(:slot_profile_id)
+    |> check_constraint(:delivery_mode, name: :workloads_delivery_mode_ck)
   end
 
   @doc "Builds an editable proposal even when the selected rounding exceeds capacity."

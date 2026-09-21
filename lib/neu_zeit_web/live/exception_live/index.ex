@@ -49,14 +49,22 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
 
     socket
     |> assign(:editing, exception)
-    |> assign(:form, to_form(Planning.change_schedule_exception(exception)))
+    |> assign(
+      :form,
+      to_form(
+        Planning.change_schedule_exception(
+          exception,
+          normalize_payload(Map.take(params, ["kind", "new_delivery_mode"]))
+        )
+      )
+    )
   end
 
   defp apply_action(socket, :edit, %{"id" => id} = params) do
     exception = Planning.get_schedule_exception!(id, socket.assigns.term.id)
 
     attrs =
-      Map.take(params, ["kind", "new_date", "new_slot", "new_room_id"])
+      Map.take(params, ["kind", "new_date", "new_slot", "new_room_id", "new_delivery_mode"])
       |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
       |> Map.new()
 
@@ -88,13 +96,44 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
         "new_date" => nil,
         "new_slot" => nil,
         "new_room_id" => nil,
-        "new_teacher_id" => nil
+        "new_teacher_id" => nil,
+        "new_delivery_mode" => nil
       })
 
   defp normalize_payload(%{"kind" => "substitute"} = attrs),
-    do: Map.merge(attrs, %{"new_date" => nil, "new_slot" => nil, "new_room_id" => nil})
+    do:
+      Map.merge(attrs, %{
+        "new_date" => nil,
+        "new_slot" => nil,
+        "new_room_id" => nil,
+        "new_delivery_mode" => nil
+      })
 
   defp normalize_payload(attrs), do: attrs
+
+  defp normalize_delivery_payload(attrs, assigns) do
+    session_id = attrs["session_id"] || assigns.editing.session_id
+    session = Enum.find(assigns.sessions, &(&1.id == session_id))
+    mode = attrs["new_delivery_mode"]
+    mode = if mode in [nil, ""], do: session && session.delivery_mode, else: mode
+
+    if attrs["kind"] in ["move", "add"] && mode in [:online, "online"],
+      do: Map.put(attrs, "new_room_id", nil),
+      else: attrs
+  end
+
+  defp effective_delivery_mode(form, sessions) do
+    case form[:new_delivery_mode].value do
+      mode when mode in [nil, ""] ->
+        case Enum.find(sessions, &(&1.id == form[:session_id].value)) do
+          nil -> :in_person
+          session -> session.delivery_mode
+        end
+
+      mode ->
+        mode
+    end
+  end
 
   defp parse_slot(nil), do: nil
 
@@ -116,7 +155,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
 
   @impl true
   def handle_event("validate", %{"schedule_exception" => params}, socket) do
-    params = normalize_payload(params)
+    params = normalize_payload(params) |> normalize_delivery_payload(socket.assigns)
     params = if params["kind"] == "add", do: Map.put(params, "new_date", nil), else: params
     changeset = Planning.change_schedule_exception(socket.assigns.editing, params)
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
@@ -125,7 +164,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
   def handle_event("save", %{"schedule_exception" => params}, socket) do
     attrs = Map.put(params, "term_id", socket.assigns.term.id)
 
-    attrs = normalize_payload(attrs)
+    attrs = normalize_payload(attrs) |> normalize_delivery_payload(socket.assigns)
 
     attrs = if attrs["kind"] == "add", do: Map.put(attrs, "new_date", nil), else: attrs
 
@@ -226,7 +265,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
   end
 
   defp change_action("cancel"), do: gettext("Cancel dated session")
-  defp change_action("move"), do: gettext("Move dated session")
+  defp change_action("move"), do: gettext("Change date, time or format")
   defp change_action("substitute"), do: gettext("Replace teacher")
   defp change_action("add"), do: gettext("Add a dated session")
   defp change_action(_kind), do: gettext("Record a change")
@@ -290,6 +329,9 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
                 row.session.duration_slots
               )}</span>
               <span :if={row.new_room} class="text-base-content">, {row.new_room.name}</span>
+              <span :if={row.kind in ["move", "add"]}>
+                {delivery_mode_label(row.new_delivery_mode || row.session.delivery_mode)}
+              </span>
             </:col>
             <:col :let={row} label={gettext("Substitute teacher")}>
               {row.new_teacher && row.new_teacher.name}
@@ -358,7 +400,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
               label={gettext("Change")}
               options={[
                 {gettext("Cancel dated session"), "cancel"},
-                {gettext("Move dated session"), "move"},
+                {gettext("Change date, time or format"), "move"},
                 {gettext("Add a dated session"), "add"},
                 {gettext("Replace teacher"), "substitute"}
               ]}
@@ -371,6 +413,16 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
             />
 
             <div :if={to_string(@form[:kind].value) in ["move", "add"]} class="flex flex-col gap-2">
+              <.input
+                field={@form[:new_delivery_mode]}
+                type="select"
+                label={gettext("Delivery format")}
+                prompt={gettext("Use the series format")}
+                options={delivery_mode_options()}
+              />
+              <p :if={to_string(@form[:kind].value) == "move"} class="type-detail">
+                {gettext("To change only the format, keep the same date and time.")}
+              </p>
               <.date_field
                 :if={to_string(@form[:kind].value) == "move"}
                 field={@form[:new_date]}
@@ -391,6 +443,7 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
                 options={slot_options(@grid)}
               />
               <.input
+                :if={effective_delivery_mode(@form, @sessions) not in [:online, "online"]}
                 field={@form[:new_room_id]}
                 type="select"
                 label={

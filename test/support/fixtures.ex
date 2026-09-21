@@ -139,11 +139,17 @@ defmodule NeuZeit.Fixtures do
           duration_slots: 1,
           week_mask: [],
           automatic_weeks: false,
+          delivery_mode: :in_person,
           sequence_group: nil,
           slot_profile_id: nil
         },
         attrs
       )
+      |> Map.update!(:delivery_mode, fn
+        "online" -> :online
+        "in_person" -> :in_person
+        mode -> mode
+      end)
 
     repeats = if fields.automatic_weeks, do: 1, else: max(length(fields.week_mask), 1)
     duration = if is_integer(fields.duration_slots), do: max(fields.duration_slots, 1), else: 1
@@ -166,6 +172,7 @@ defmodule NeuZeit.Fixtures do
             :week_mask,
             :duration_slots,
             :automatic_weeks,
+            :delivery_mode,
             :sequence_group
           ])
         )

@@ -120,6 +120,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
         "new_date" => new_date || Date.to_iso8601(occurrence.date),
         "new_slot" => occurrence.slot,
         "new_room_id" => occurrence.room_id,
+        "new_delivery_mode" => Map.get(occurrence, :delivery_mode),
         "kind" => if(exception.kind == "add", do: "add", else: kind)
       }
 
@@ -132,6 +133,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
         "new_date" => new_date || Date.to_iso8601(occurrence.date),
         "new_slot" => occurrence.slot,
         "new_room_id" => occurrence.room_id,
+        "new_delivery_mode" => Map.get(occurrence, :delivery_mode),
         "return_to" => calendar_path(assigns)
       }
 
@@ -172,6 +174,8 @@ defmodule NeuZeitWeb.CalendarLive.Index do
             day: Date.day_of_week(e.occurrence_date),
             slot: p.slot,
             room_id: p.room_id,
+            delivery_mode:
+              Map.get(Map.get(sessions, p.session_id, %{}), :delivery_mode, :in_person),
             duration_slots: p.duration_slots,
             placement_id: p.id,
             exception_id: e.id,
@@ -459,7 +463,7 @@ defmodule NeuZeitWeb.CalendarLive.Index do
                     class="btn"
                   >{if occurrence.exception_id,
                     do: gettext("Edit change"),
-                    else: gettext("Move dated session")}</.link>
+                    else: gettext("Change date, time or format")}</.link>
                   <.link
                     :if={is_nil(occurrence.exception_id)}
                     navigate={action_path(assigns, occurrence, "substitute")}
@@ -561,6 +565,8 @@ defmodule NeuZeitWeb.CalendarLive.Index do
       teacher -> teacher.name
     end
   end
+
+  defp room_name(_rooms, nil), do: gettext("Online")
 
   defp room_name(rooms, room_id) do
     case Map.get(rooms, room_id) do

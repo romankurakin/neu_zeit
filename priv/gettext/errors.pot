@@ -320,3 +320,12 @@ msgstr ""
 
 msgid "Choose a valid time zone."
 msgstr ""
+
+msgid "must be blank for online sessions"
+msgstr ""
+
+msgid "cannot change while the session has locked placements"
+msgstr ""
+
+msgid "cannot change because an archived plan preserves this session"
+msgstr ""

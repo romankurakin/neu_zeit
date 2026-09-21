@@ -25,6 +25,15 @@ defmodule NeuZeitWeb.Scheduling.Labels do
     )
   end
 
+  def delivery_mode_label(mode) when mode in [:online, "online"], do: gettext("Online")
+  def delivery_mode_label(_mode), do: gettext("In person")
+
+  def delivery_mode_options,
+    do: [{gettext("In person"), "in_person"}, {gettext("Online"), "online"}]
+
+  def room_label(nil), do: gettext("Online")
+  def room_label(room), do: room.name
+
   def slot_profile_label(%{preset_key: "weekday_daytime", name: name}) do
     if NeuZeit.Catalog.SlotProfile.daytime_name?(name),
       do: gettext("Weekdays, daytime"),

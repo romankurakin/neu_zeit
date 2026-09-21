@@ -21,7 +21,7 @@ defmodule NeuZeit.Planning.SharedResources do
           where:
             p.status == "active" and p.term_id != ^term.id and
               t.starts_on <= ^term.ends_on and t.ends_on >= ^term.starts_on,
-          preload: [:term, placements: :room]
+          preload: [:term, placements: [:room, :session]]
       )
 
     ids = Enum.map(plans, & &1.term_id)
@@ -115,6 +115,8 @@ defmodule NeuZeit.Planning.SharedResources do
   end
 
   def candidate_errors(index, term, session, placement) do
+    placement = %{placement | session: session}
+
     Projection.project(term, [placement])
     |> Enum.flat_map(&occurrence_errors(index, term, session, &1))
     |> Enum.uniq()
@@ -123,6 +125,8 @@ defmodule NeuZeit.Planning.SharedResources do
   def blocked?(index, _term, _session, _placement) when map_size(index) == 0, do: false
 
   def blocked?(index, term, session, placement) do
+    placement = %{placement | session: session}
+
     Enum.any?(Projection.project(term, [placement]), fn occurrence ->
       matches(index, term, session, occurrence) != []
     end)
@@ -135,7 +139,10 @@ defmodule NeuZeit.Planning.SharedResources do
 
   defp keys(occurrence, session) do
     resources =
-      [{"room", occurrence.room_id}, {"teacher", occurrence.teacher_id || session.teacher_id}] ++
+      Enum.reject(
+        [{"room", occurrence.room_id}, {"teacher", occurrence.teacher_id || session.teacher_id}],
+        fn {_kind, id} -> is_nil(id) end
+      ) ++
         Enum.map(session.cohorts, &{"cohort", &1.id})
 
     for {kind, id} <- resources, do: {occurrence.date, kind, id}

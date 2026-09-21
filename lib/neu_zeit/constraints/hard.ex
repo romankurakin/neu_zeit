@@ -3,7 +3,7 @@ defmodule NeuZeit.Constraints.Hard do
   Week-set-aware hard timetable checks.
   """
 
-  alias NeuZeit.Catalog.{TeacherAvailabilityCell, WeekPattern}
+  alias NeuZeit.Catalog.{DeliveryMode, TeacherAvailabilityCell, WeekPattern}
   alias NeuZeit.Config
 
   def check_placements(placements, grid \\ nil) do
@@ -135,15 +135,25 @@ defmodule NeuZeit.Constraints.Hard do
 
   defp room_eligibility_errors(placements) do
     Enum.flat_map(placements, fn placement ->
-      allowed_ids =
-        placement.session.course_component.allowed_rooms
-        |> Enum.map(& &1.id)
-        |> MapSet.new()
+      cond do
+        DeliveryMode.room_valid?(
+          placement.session.delivery_mode,
+          placement.room_id,
+          placement.session.course_component
+        ) ->
+          []
 
-      if MapSet.member?(allowed_ids, placement.room_id) do
-        []
-      else
-        [error("room_not_allowed", [placement.id], "room is not allowed for this component")]
+        placement.session.delivery_mode == :online ->
+          [
+            error(
+              "delivery_room_mismatch",
+              [placement.id],
+              "online sessions do not use a room"
+            )
+          ]
+
+        true ->
+          [error("room_not_allowed", [placement.id], "room is not allowed for this component")]
       end
     end)
   end
@@ -231,7 +241,7 @@ defmodule NeuZeit.Constraints.Hard do
   end
 
   defp room_conflict(left, right) do
-    if left.room_id == right.room_id do
+    if not is_nil(left.room_id) and left.room_id == right.room_id do
       [
         error(
           "room_conflict",

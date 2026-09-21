@@ -203,6 +203,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
                 class="link"
               >{course_title(row.requirement.course_component.course)}</.link>
               <div>{component_kind_label(row.requirement.course_component)}</div>
+              <div>{delivery_mode_label(row.requirement.delivery_mode)}</div>
             </:col>
             <:col :let={row} label={gettext("Teacher")} class="whitespace-nowrap">
               {row.requirement.teacher.name}
@@ -269,7 +270,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
             <div :if={@components == []} id="workload-teaching-types-help" role="status">
               <p>
                 {gettext(
-                  "No teaching types are assigned to courses. Open a course, add a teaching type and at least one allowed room, then return to teaching load."
+                  "No teaching types are assigned to courses. Open a course, add a teaching type, then return to teaching load."
                 )}
               </p>
               <.link navigate={~p"/courses"} class="link">{gettext("All courses")}</.link>
@@ -292,6 +293,12 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
               label={gettext("Teacher")}
               prompt={gettext("Choose a teacher")}
               options={Enum.map(@teachers, &{&1.name, &1.id})}
+            />
+            <.input
+              field={@form[:delivery_mode]}
+              type="select"
+              label={gettext("Delivery format")}
+              options={delivery_mode_options()}
             />
             <.input
               field={@form[:contact_hours]}

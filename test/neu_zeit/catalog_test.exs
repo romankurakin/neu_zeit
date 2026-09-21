@@ -402,7 +402,7 @@ defmodule NeuZeit.CatalogTest do
     term = term_fixture()
     room_a = room_fixture()
     room_b = room_fixture()
-    component = component_fixture(rooms: [room_a, room_b])
+    component = component_fixture(rooms: [])
     session = session_fixture(term: term, component: component)
     plan = plan_fixture(term: term)
 
@@ -421,9 +421,7 @@ defmodule NeuZeit.CatalogTest do
 
     assert Enum.any?(errors, &(&1.type == "room_not_allowed"))
 
-    assert Catalog.get_course_component!(component.id).allowed_rooms
-           |> Enum.map(& &1.id)
-           |> Enum.sort() == Enum.sort([room_a.id, room_b.id])
+    assert Catalog.get_course_component!(component.id).allowed_rooms == []
 
     assert NeuZeit.Planning.check_plan(plan.id) == []
   end

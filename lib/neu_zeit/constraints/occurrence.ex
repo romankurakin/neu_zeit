@@ -6,7 +6,7 @@ defmodule NeuZeit.Constraints.Occurrence do
 
   import Ecto.Query, warn: false
 
-  alias NeuZeit.Catalog.{Session, Teacher, TeacherAvailabilityCell}
+  alias NeuZeit.Catalog.{DeliveryMode, Session, Teacher, TeacherAvailabilityCell}
   alias NeuZeit.Constraints.Projection
   alias NeuZeit.Repo
 
@@ -166,18 +166,31 @@ defmodule NeuZeit.Constraints.Occurrence do
           []
 
         session ->
-          allowed_room_ids = MapSet.new(session.course_component.allowed_rooms, & &1.id)
+          cond do
+            DeliveryMode.room_valid?(
+              occurrence.delivery_mode,
+              occurrence.room_id,
+              session.course_component
+            ) ->
+              []
 
-          if MapSet.member?(allowed_room_ids, occurrence.room_id) do
-            []
-          else
-            [
-              occurrence_error(
-                "room_not_allowed",
-                "room is not allowed for the exception session component",
-                occurrence
-              )
-            ]
+            occurrence.delivery_mode == :online ->
+              [
+                occurrence_error(
+                  "delivery_room_mismatch",
+                  "online sessions do not use a room",
+                  occurrence
+                )
+              ]
+
+            true ->
+              [
+                occurrence_error(
+                  "room_not_allowed",
+                  "room is not allowed for the exception session component",
+                  occurrence
+                )
+              ]
           end
       end
     end)
@@ -296,7 +309,7 @@ defmodule NeuZeit.Constraints.Occurrence do
   end
 
   defp room_conflict(left, right) do
-    if left.room_id == right.room_id do
+    if not is_nil(left.room_id) and left.room_id == right.room_id do
       [
         pair_error(
           "room_conflict",

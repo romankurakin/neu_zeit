@@ -12,6 +12,7 @@ defmodule NeuZeit.Catalog.Session do
     field :sequence_group, :string
     field :week_mask, {:array, :integer}
     field :duration_slots, :integer, default: 1
+    field :delivery_mode, Ecto.Enum, values: [:in_person, :online], default: :in_person
 
     field :cohort_ids, {:array, :binary_id}, virtual: true
 
@@ -36,7 +37,8 @@ defmodule NeuZeit.Catalog.Session do
       :slot_profile_id,
       :sequence_group,
       :week_mask,
-      :duration_slots
+      :duration_slots,
+      :delivery_mode
     ])
     |> validate_required([
       :workload_id,
@@ -45,7 +47,8 @@ defmodule NeuZeit.Catalog.Session do
       :automatic_weeks,
       :teacher_id,
       :week_mask,
-      :duration_slots
+      :duration_slots,
+      :delivery_mode
     ])
     |> validate_length(:sequence_group, max: 100)
     |> validate_duration()
@@ -55,6 +58,7 @@ defmodule NeuZeit.Catalog.Session do
     |> foreign_key_constraint(:teacher_id)
     |> foreign_key_constraint(:slot_profile_id, name: :sessions_slot_profile_term_fkey)
     |> check_constraint(:duration_slots, name: :sessions_duration_slots_positive_ck)
+    |> check_constraint(:delivery_mode, name: :sessions_delivery_mode_ck)
     |> unique_constraint([:id, :term_id])
     |> prepare_changes(&validate_week_mask_bounds/1)
     |> prepare_changes(&validate_profile_duration/1)
@@ -72,7 +76,8 @@ defmodule NeuZeit.Catalog.Session do
       :slot_profile_id,
       :sequence_group,
       :week_mask,
-      :duration_slots
+      :duration_slots,
+      :delivery_mode
     ])
     |> validate_required([
       :workload_id,
@@ -81,7 +86,8 @@ defmodule NeuZeit.Catalog.Session do
       :automatic_weeks,
       :teacher_id,
       :week_mask,
-      :duration_slots
+      :duration_slots,
+      :delivery_mode
     ])
     |> validate_length(:sequence_group, max: 100)
     |> validate_duration()
@@ -90,6 +96,7 @@ defmodule NeuZeit.Catalog.Session do
     |> foreign_key_constraint(:teacher_id)
     |> foreign_key_constraint(:slot_profile_id, name: :sessions_slot_profile_term_fkey)
     |> check_constraint(:duration_slots, name: :sessions_duration_slots_positive_ck)
+    |> check_constraint(:delivery_mode, name: :sessions_delivery_mode_ck)
     |> prepare_changes(&validate_week_mask_bounds/1)
     |> prepare_changes(&validate_profile_duration/1)
     |> prepare_changes(&validate_teacher_availability/1)

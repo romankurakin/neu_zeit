@@ -84,15 +84,41 @@ defmodule NeuZeit.Planning.ReadinessTest do
   end
 
   describe "room pools" do
-    test "a component can never end up with no rooms at all", ctx do
-      # The context rejects empty room pools, so readiness has no empty-pool state.
-      component = component(ctx, "X1", [room(ctx, "101")])
+    test "blocks an in-person component when the institution has no rooms", ctx do
+      component = component(ctx, "X0", [])
       session(ctx, component, teacher("Anna Weber"))
 
-      assert {:error, changeset} =
+      found = row(Readiness.report(ctx.term.id), :room_pools)
+
+      assert found.status == :blocked
+      assert found.count == 1
+      assert [%{course_code: "X0", rooms: 0}] = found.detail.missing
+    end
+
+    test "does not require a physical room for online teaching", ctx do
+      component = component(ctx, "WEB0", [])
+      session(ctx, component, teacher("Anna Weber"), %{"delivery_mode" => :online})
+
+      found = row(Readiness.report(ctx.term.id), :room_pools)
+
+      assert found.status == :ok
+      assert found.count == 0
+      assert found.detail.missing == []
+    end
+
+    test "an empty room selection means every institution room", ctx do
+      rooms = for n <- 1..3, do: room(ctx, "10#{n}")
+      component = component(ctx, "X1", [hd(rooms)])
+      session(ctx, component, teacher("Anna Weber"))
+
+      assert {:ok, _component} =
                Catalog.update_course_component(component, %{"allowed_room_ids" => []})
 
-      assert "must be a non-empty list of ids" in errors_on(changeset).allowed_room_ids
+      assert Catalog.get_course_component!(component.id).allowed_rooms == []
+
+      found = row(Readiness.report(ctx.term.id), :room_pools)
+      assert found.status == :ok
+      assert found.count == 0
     end
 
     test "warns on a pool of one and on a pool of more than five", ctx do

@@ -47,10 +47,13 @@ defmodule NeuZeitWeb.PlanLive.RunStatus do
   end
 
   defp narrow_pools(board) do
+    rooms = NeuZeit.Catalog.list_rooms()
+
     (Enum.map(board.placements, & &1.session) ++ board.unplaced)
+    |> Enum.reject(&(&1.delivery_mode == :online))
     |> Enum.map(& &1.course_component)
     |> Enum.uniq_by(& &1.id)
-    |> Enum.count(&(length(&1.allowed_rooms) == 1))
+    |> Enum.count(&(length(NeuZeit.Catalog.CourseComponent.room_options(&1, rooms)) == 1))
   end
 
   # The tick is an explicit input so LiveView updates elapsed time between solver events.

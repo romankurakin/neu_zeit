@@ -144,7 +144,8 @@ defmodule NeuZeit.Planning.Plans do
       exceptions =
         Repo.all(
           from e in ScheduleException,
-            where: e.term_id == ^term_id and e.status == "active"
+            where: e.term_id == ^term_id and e.status == "active",
+            preload: [:session]
         )
 
       case Occurrence.validate(

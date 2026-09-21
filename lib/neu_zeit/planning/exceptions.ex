@@ -99,7 +99,7 @@ defmodule NeuZeit.Planning.Exceptions do
   end
 
   defp validate_exception_change(term, changeset, previous) do
-    candidate = Ecto.Changeset.apply_changes(changeset)
+    candidate = changeset |> Ecto.Changeset.apply_changes() |> Repo.preload(:session)
 
     if changeset.valid? and exception_dates_valid?(term, candidate) do
       placements = active_placements(term.id)
@@ -174,7 +174,8 @@ defmodule NeuZeit.Planning.Exceptions do
     Repo.all(
       from p in Placement,
         join: plan in assoc(p, :plan),
-        where: plan.term_id == ^term_id and plan.status == "active"
+        where: plan.term_id == ^term_id and plan.status == "active",
+        preload: [:session]
     )
   end
 
@@ -184,7 +185,7 @@ defmodule NeuZeit.Planning.Exceptions do
         where: e.term_id == ^term_id and e.status == "active"
 
     query = if exclude_id, do: from(e in query, where: e.id != ^exclude_id), else: query
-    Repo.all(query)
+    Repo.all(from e in query, preload: [:session])
   end
 
   defp exception_dates_valid?(term, exception) do

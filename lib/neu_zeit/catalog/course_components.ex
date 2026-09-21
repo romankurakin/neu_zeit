@@ -27,12 +27,7 @@ defmodule NeuZeit.Catalog.CourseComponents do
 
   def create_course_component(attrs) do
     with {:ok, allowed_room_ids} <-
-           WriteSupport.normalize_existing_ids(
-             WriteSupport.attr(attrs, :allowed_room_ids, []),
-             :allowed_room_ids,
-             %CourseComponent{},
-             Room
-           ) do
+           normalize_rooms(WriteSupport.attr(attrs, :allowed_room_ids, [])) do
       Multi.new()
       |> Multi.run(:shared_schedule_lock, fn _repo, _changes ->
         {:ok, NeuZeit.Planning.SharedResources.lock!()}
@@ -48,12 +43,7 @@ defmodule NeuZeit.Catalog.CourseComponents do
 
   def update_course_component(%CourseComponent{} = component, attrs) do
     with {:ok, allowed_room_ids} <-
-           WriteSupport.maybe_normalize_existing_ids(
-             WriteSupport.attr(attrs, :allowed_room_ids),
-             :allowed_room_ids,
-             %CourseComponent{},
-             Room
-           ) do
+           normalize_room_changes(WriteSupport.attr(attrs, :allowed_room_ids)) do
       WriteSupport.transaction_result(fn ->
         current =
           Repo.one!(
@@ -80,6 +70,17 @@ defmodule NeuZeit.Catalog.CourseComponents do
 
   def change_course_component(%CourseComponent{} = component, attrs \\ %{}),
     do: CourseComponent.changeset(component, attrs)
+
+  def available_rooms(%{allowed_rooms: []}), do: NeuZeit.Catalog.list_rooms()
+  def available_rooms(%{allowed_rooms: rooms}), do: rooms
+
+  defp normalize_room_changes(nil), do: {:ok, nil}
+  defp normalize_room_changes(ids), do: normalize_rooms(ids)
+
+  defp normalize_rooms([]), do: {:ok, []}
+
+  defp normalize_rooms(ids),
+    do: WriteSupport.normalize_existing_ids(ids, :allowed_room_ids, %CourseComponent{}, Room)
 
   defp lock_component_terms(component_id) do
     # A session can concurrently move onto this component. Locking the complete

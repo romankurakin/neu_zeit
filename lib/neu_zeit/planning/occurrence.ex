@@ -10,6 +10,7 @@ defmodule NeuZeit.Planning.Occurrence do
     :day,
     :slot,
     :duration_slots,
+    :delivery_mode,
     :room_id,
     :teacher_id,
     :placement_id,

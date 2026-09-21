@@ -91,6 +91,34 @@ defmodule NeuZeit.Solver.SpecBuilderTest do
     assert spec.soft.sequence_pairs == []
   end
 
+  test "an unrestricted component picks up rooms created after the component" do
+    term = term_fixture()
+    component = component_fixture(rooms: [])
+
+    assert component.allowed_rooms == []
+
+    later_room = room_fixture()
+    session = session_fixture(term: term, component: component)
+    plan = plan_fixture(term: term)
+
+    assert [%{id: id, allowed_rooms: room_ids}] = SpecBuilder.build!(plan.id).sessions
+    assert id == session.id
+    assert room_ids == [later_room.id]
+  end
+
+  test "an explicit room selection does not admit other institution rooms" do
+    term = term_fixture()
+    allowed = room_fixture()
+    _other = room_fixture()
+    component = component_fixture(rooms: [allowed])
+    session = session_fixture(term: term, component: component)
+    plan = plan_fixture(term: term)
+
+    assert [%{id: id, allowed_rooms: room_ids}] = SpecBuilder.build!(plan.id).sessions
+    assert id == session.id
+    assert room_ids == [allowed.id]
+  end
+
   test "marks teaching cells after a partial final week as excluded" do
     term =
       term_fixture(

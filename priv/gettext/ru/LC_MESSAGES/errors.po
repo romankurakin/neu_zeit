@@ -287,3 +287,12 @@ msgstr "Нельзя изменить время после ввода нагр�
 
 msgid "Choose a valid time zone."
 msgstr "Выберите часовой пояс из списка."
+
+msgid "must be blank for online sessions"
+msgstr "Онлайн-занятию аудитория не нужна."
+
+msgid "cannot change while the session has locked placements"
+msgstr "Сначала снимите закрепление занятий в расписании."
+
+msgid "cannot change because an archived plan preserves this session"
+msgstr "Нельзя изменить формат занятия, сохранённого в архивном расписании. Создайте отдельную нагрузку."

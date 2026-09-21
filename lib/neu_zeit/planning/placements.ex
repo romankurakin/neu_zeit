@@ -105,9 +105,11 @@ defmodule NeuZeit.Planning.Placements do
          :ok <- WriteSupport.ensure_draft_plan_status(plan),
          %Session{} = session <- Repo.get(Session, session_id),
          true <- plan.term_id == session.term_id do
+      attrs = WriteSupport.stringify_keys(attrs)
+      attrs = if session.delivery_mode == :online, do: Map.put(attrs, "room_id", nil), else: attrs
+
       {:ok,
        attrs
-       |> WriteSupport.stringify_keys()
        |> Map.put("term_id", plan.term_id)
        |> Map.put(
          "week_mask",

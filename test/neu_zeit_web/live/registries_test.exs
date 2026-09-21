@@ -186,14 +186,15 @@ defmodule NeuZeitWeb.RegistriesTest do
       refute has_element?(live, ~s{#add-component-form option[value="lab"]})
     end
 
-    test "a component cannot be created without a room", %{conn: conn} do
+    test "a component created without rooms allows any available room", %{conn: conn} do
       course = course()
       {:ok, live, _html} = live(conn, ~p"/courses/#{course}")
 
       html = live |> form("#add-component-form", %{"kind" => "lab"}) |> render_submit()
 
-      assert html =~ "at least one room"
-      assert Catalog.get_course!(course.id).components == []
+      assert html =~ "Any available room"
+      assert [component] = Catalog.get_course!(course.id).components
+      assert Catalog.get_course_component!(component.id).allowed_rooms == []
     end
 
     test "translations can be added, changed, and removed", %{conn: conn} do

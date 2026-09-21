@@ -123,6 +123,7 @@ defmodule NeuZeit.Planning.Quality do
 
   defp building_transitions(placements) do
     placements
+    |> Enum.reject(&is_nil(&1.room))
     |> Enum.sort_by(& &1.slot)
     |> Enum.map(& &1.room.building_id)
     |> Enum.chunk_every(2, 1, :discard)
@@ -187,6 +188,7 @@ defmodule NeuZeit.Planning.Quality do
   @doc false
   def rooms(placements) do
     placements
+    |> Enum.reject(&is_nil(&1.room_id))
     |> Enum.group_by(& &1.room_id)
     |> Enum.map(fn {_room_id, used} ->
       room = hd(used).room

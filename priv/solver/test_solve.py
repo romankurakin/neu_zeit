@@ -64,6 +64,37 @@ class FixedSearch:
 
 
 class SearchTests(unittest.TestCase):
+    def test_online_sessions_share_a_time_without_a_fictitious_room_conflict(self):
+        spec = small_spec()
+        spec["grid"] = {"days_count": 1, "slots_per_day": 1}
+        for session in spec["sessions"]:
+            session.update(delivery_mode="online", allowed_rooms=[])
+        spec["hard"]["exclusive_groups"] = []
+
+        result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(
+            {assignment["room"] for assignment in result["assignment"].values()},
+            {None},
+        )
+        self.assertEqual(
+            {(assignment["day"], assignment["slot"]) for assignment in result["assignment"].values()},
+            {(1, 1)},
+        )
+
+    def test_online_sessions_still_obey_teacher_and_cohort_exclusivity(self):
+        spec = small_spec()
+        spec["grid"] = {"days_count": 1, "slots_per_day": 1}
+        for session in spec["sessions"]:
+            session.update(delivery_mode="online", allowed_rooms=[])
+        spec["hard"]["room_groups"] = []
+
+        result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "INFEASIBLE")
+
     def test_failed_second_phase_keeps_full_cost_and_feasible_status(self):
         first = FixedSearch({"a": 0, "b": 1})
         failed = unittest.mock.Mock()
