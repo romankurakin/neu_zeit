@@ -20,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Check deployment data preservation
+        run: python3 -m unittest discover -s deploy -p 'test_*.py'
+
       - uses: docker/setup-buildx-action@v4
 
       - name: Build the development image

@@ -50,17 +50,21 @@ docker compose -f compose.prod.yaml run --rm migrate && \
 
 ## Demonstration host
 
-**Deploy demonstration host** creates a demo server and serves it over HTTPS at a permanent `IP.sslip.io` address. If the server exists, it returns the same URL without updating the application. Select **Recreate demo** to deploy another revision. This deletes the server and its demonstration database, then creates a new server at the same reserved IP.
+**Deploy demonstration host** creates two kinds of server in a project VPC. The database server is persistent. Application servers contain no database service or database volume. No SSH key is needed.
 
-**Undeploy demonstration host** deletes the server, database and reserved IP. It releases all billable resources created by these workflows. The old URL is no longer reserved. Before deploying again, reserve a new IPv4 and update `DEMO_RESERVED_IP`. Repeating Undeploy after cleanup is safe.
+Deploy builds a new application server with cloud-init and connects it to the existing PostgreSQL server over its private address. PostgreSQL listens only on that private interface; a cloud firewall allows connections only from tagged application servers. The database host is created only for a new installation. If application servers exist but the database host is missing, deployment stops rather than creating an empty replacement.
 
-Both workflows use the `DIGITALOCEAN_ACCESS_TOKEN` secret. No SSH key is required. The token needs permission to list, create and delete droplets, use tags, read actions, and read, assign/unassign and delete reserved IPs.
+The candidate runs migrations and passes its container health check before the permanent IP moves. Deploy verifies HTTPS at the new server before deleting old application servers. If candidate startup fails, the old application remains. If HTTPS verification fails after a switch, the IP returns to the old application when one exists. Database migrations are not rolled back automatically and must remain compatible with the old application during the handover.
 
-Reserve an IPv4 address once in DigitalOcean and save it as the repository Actions variable `DEMO_RESERVED_IP`. The workflows always use that address and its region. They refuse to take an address assigned to another server. Use **Recreate demo** to keep the link when deploying another revision. **Undeploy** releases the address to stop its charges.
+Set the Actions variable `DEMO_RESERVED_IP` to a reserved IPv4. Set the secrets `DIGITALOCEAN_ACCESS_TOKEN`, `DEMO_DATABASE_PASSWORD` (64 random hexadecimal characters) and `DEMO_SECRET_KEY_BASE` (at least 64 characters). Keep both application secrets stable between deployments. Changing the password secret does not change the existing PostgreSQL password. The API token needs access to project droplets, tags, VPCs, firewalls, reserved IPs, actions and snapshots.
 
-[Reserved IPv4 pricing](https://docs.digitalocean.com/products/networking/reserved-ips/details/pricing/): free while assigned to a droplet; $0.01/hour, up to $5/month, while unassigned. No domain purchase is needed. GitHub variables, secrets and your local database backup are not billable DigitalOcean resources and are kept.
+The default sizes are 1 vCPU / 1 GB for the database and 2 vCPU / 2 GB for application builds. Replacement temporarily runs an additional application server. The database server keeps daily PostgreSQL dumps on its own disk. They survive application replacements but not database-server loss. Off-server disaster-recovery backups are not configured by these workflows.
 
-First boot builds the release, so HTTPS becomes available a few minutes after creation. A demo created before this setup needs one **Recreate demo** run to configure the permanent hostname. The old ordinary droplet IP cannot be converted into a reserved IP, so share the new permanent link once after that run.
+An existing single-server installation is never automatically replaced or attached to a new empty database. Deployment stops before making changes. Export its database, restore it on the dedicated database server, verify the restored records and configure the stable secrets before moving the application. Keep the original server until that migration is verified. This one-time migration requires access to the existing database; subsequent deployments do not require SSH.
+
+**Undeploy demonstration host** is the separate destructive action. It removes the project's servers, databases, retained snapshots, reserved IP, firewall and VPC. Other projects are not touched. These workflows create no separate volumes or managed databases. Successful cleanup stops future charges for its resources; accrued usage is still payable. To install again, reserve an IPv4 and update `DEMO_RESERVED_IP`.
+
+[DigitalOcean documents](https://docs.digitalocean.com/products/droplets/how-to/destroy/) that automatic backups can remain after server deletion until their retention period ends. Manually retained snapshots require explicit deletion; Undeploy removes project snapshots before deleting their servers.
 
 ## Guides
 

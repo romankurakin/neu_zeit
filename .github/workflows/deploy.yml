@@ -4,15 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: Branch, tag or commit for a new demo
+        description: Branch, tag or commit to deploy
         default: main
+      database_size:
+        description: "First deployment only: database droplet size"
+        default: s-1vcpu-1gb
       size:
         description: "New host only: droplet size. The solver uses two cores."
         default: s-2vcpu-2gb
-      recreate:
-        description: Recreate demo with this revision (deletes the demo database, keeps the URL)
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -22,7 +21,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DROPLET: neu-zeit-demo
   DEMO_RESERVED_IP: ${{ vars.DEMO_RESERVED_IP }}
 
 jobs:
@@ -36,17 +34,20 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-      - name: Check the revision before replacing a demo
+      - name: Check the requested revision
         env:
           REVISION: ${{ inputs.revision }}
         run: |
           [[ "$REVISION" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || exit 1
           git fetch --no-tags --depth 1 origin "$REVISION"
+          echo "DEPLOY_REVISION=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
 
       - name: Deploy with the permanent address
         env:
-          REVISION: ${{ inputs.revision }}
+          REVISION: ${{ env.DEPLOY_REVISION }}
           SIZE: ${{ inputs.size }}
-          RECREATE: ${{ inputs.recreate }}
+          DATABASE_SIZE: ${{ inputs.database_size }}
+          DATABASE_PASSWORD: ${{ secrets.DEMO_DATABASE_PASSWORD }}
+          SECRET_KEY_BASE: ${{ secrets.DEMO_SECRET_KEY_BASE }}
           REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}.git
         run: bash deploy/demo.sh deploy
