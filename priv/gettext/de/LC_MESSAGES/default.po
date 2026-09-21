@@ -1484,11 +1484,6 @@ msgstr[1] "%{count} erlaubte Zeitfenster"
 msgid "A profile used by a session cannot be deleted."
 msgstr "Ein Profil, das einer Einheit zugewiesen ist, kann nicht gelöscht werden."
 
-#: lib/neu_zeit_web/live/course_live/show.ex:216
-#, elixir-autogen, elixir-format
-msgid "Add a teaching type and choose its allowed rooms."
-msgstr "Fügen Sie eine Lehrform hinzu und wählen Sie erlaubte Räume."
-
 #: lib/neu_zeit_web/live/course_live/show.ex:293
 #, elixir-autogen, elixir-format
 msgid "Add teaching type"
@@ -1587,21 +1582,6 @@ msgstr "Prüfen Sie, ob dieselben Studierenden zu diesen Gruppen gehören. Diese
 msgid "Choose a teaching type"
 msgstr "Lehrform auswählen"
 
-#: lib/neu_zeit_web/live/course_live/show.ex:267
-#, elixir-autogen, elixir-format
-msgid "Choose at least one allowed room."
-msgstr "Wählen Sie mindestens einen erlaubten Raum."
-
-#: lib/neu_zeit_web/live/course_live/show.ex:177
-#, elixir-autogen, elixir-format
-msgid "Choose at least one room"
-msgstr "Mindestens einen Raum wählen"
-
-#: lib/neu_zeit_web/live/course_live/show.ex:87
-#, elixir-autogen, elixir-format
-msgid "Choose at least one room for the new teaching type."
-msgstr "Wählen Sie mindestens einen Raum für die neue Lehrform."
-
 #: lib/neu_zeit_web/live/plan_live/index.ex:61
 #, elixir-autogen, elixir-format
 msgid "Copy created: %{name}."
@@ -1631,11 +1611,6 @@ msgstr "Tage mit einer Einheit"
 #, elixir-autogen, elixir-format
 msgid "Deletion cannot be undone. Only terms without sessions or plans can be deleted."
 msgstr "Das Löschen ist endgültig. Nur Semester ohne Einheiten oder Pläne können gelöscht werden."
-
-#: lib/neu_zeit_web/live/term_live/show.ex:280
-#, elixir-autogen, elixir-format
-msgid "Each teaching type has two to five allowed rooms."
-msgstr "Jede Lehrform hat zwei bis fünf erlaubte Räume."
 
 #: lib/neu_zeit_web/live/term_live/show.ex:290
 #, elixir-autogen, elixir-format
@@ -1732,11 +1707,6 @@ msgstr "Keine Platzierungen fixiert."
 #, elixir-autogen, elixir-format
 msgid "No possible duplicate sessions found."
 msgstr "Keine möglichen doppelten Einheiten gefunden."
-
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:181
-#, elixir-autogen, elixir-format
-msgid "No rooms are allowed. Add rooms to this teaching type."
-msgstr "Keine Räume erlaubt. Fügen Sie dieser Lehrform Räume hinzu."
 
 #: lib/neu_zeit_web/live/plan_live/reports.ex:82
 #, elixir-autogen, elixir-format
@@ -2584,13 +2554,6 @@ msgstr "Termin absagen"
 msgid "Deleting this plan also deletes its placements. The active plan cannot be deleted."
 msgstr "Die Platzierungen werden mit dem Plan gelöscht. Der aktive Plan kann nicht gelöscht werden."
 
-#: lib/neu_zeit_web/live/calendar_live/index.ex:400
-#: lib/neu_zeit_web/live/exception_live/index.ex:224
-#: lib/neu_zeit_web/live/exception_live/index.ex:321
-#, elixir-autogen, elixir-format
-msgid "Move dated session"
-msgstr "Termin verschieben"
-
 #: lib/neu_zeit_web/live/plan_live/reports.ex:97
 #, elixir-autogen, elixir-format
 msgid "No group overlaps flagged"
@@ -3140,12 +3103,6 @@ msgstr "Erster Tag"
 msgid "Outside term"
 msgstr "Außerhalb des Semesters"
 
-#: lib/neu_zeit_web/live/workload_live/index.ex:247
-#, elixir-autogen, elixir-format
-msgid "No teaching types are assigned to courses. Open a course, add a teaching type and at least one allowed room, then return to teaching load."
-msgstr "Den Fächern sind noch keine Lehrformen zugeordnet. Öffnen Sie ein Fach, fügen Sie eine Lehrform und mindestens einen zulässigen Raum hinzu und kehren Sie zum Lehrumfang zurück."
-
-
 #: lib/neu_zeit_web/live/workload_live/index.ex:445
 #, elixir-autogen, elixir-format
 msgid "%{count} session, %{hours} academic hours"
@@ -3216,3 +3173,83 @@ msgstr "Die Wochen werden bei der Berechnung gewählt"
 #, elixir-autogen, elixir-format
 msgid "Alternating weeks"
 msgstr "Wochenwechsel"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:226
+#, elixir-autogen, elixir-format
+msgid "Add a teaching type. You can restrict its rooms later."
+msgstr "Fügen Sie eine Unterrichtsart hinzu. Die Räume können Sie später einschränken."
+
+#: lib/neu_zeit_web/live/course_live/show.ex:180
+#, elixir-autogen, elixir-format
+msgid "Any available room"
+msgstr "Jeder freie Raum"
+
+#: lib/neu_zeit_web/live/calendar_live/index.ex:466
+#: lib/neu_zeit_web/live/exception_live/index.ex:268
+#: lib/neu_zeit_web/live/exception_live/index.ex:403
+#, elixir-autogen, elixir-format
+msgid "Change date, time or format"
+msgstr "Datum, Uhrzeit oder Format ändern"
+
+#: lib/neu_zeit_web/components/ui/errors.ex:318
+#: lib/neu_zeit_web/live/exception_live/index.ex:419
+#: lib/neu_zeit_web/live/session_live/index.ex:261
+#: lib/neu_zeit_web/live/workload_live/index.ex:300
+#, elixir-autogen, elixir-format
+msgid "Delivery format"
+msgstr "Durchführungsform"
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:29
+#: lib/neu_zeit_web/components/scheduling/labels.ex:32
+#, elixir-autogen, elixir-format
+msgid "In person"
+msgstr "Präsenz"
+
+#: lib/neu_zeit_web/live/course_live/show.ex:277
+#, elixir-autogen, elixir-format
+msgid "Leave the room list empty to use any available room."
+msgstr "Lassen Sie die Liste leer, um jeden freien Raum zuzulassen."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:356
+#, elixir-autogen, elixir-format
+msgid "No rooms are available. Add a room or review the room restrictions."
+msgstr "Keine Räume verfügbar. Fügen Sie einen Raum hinzu oder prüfen Sie die Raumbeschränkungen."
+
+#: lib/neu_zeit_web/live/workload_live/index.ex:272
+#, elixir-autogen, elixir-format
+msgid "No teaching types are assigned to courses. Open a course, add a teaching type, then return to teaching load."
+msgstr "Den Fächern sind noch keine Unterrichtsarten zugewiesen. Öffnen Sie ein Fach, fügen Sie eine Unterrichtsart hinzu und kehren Sie zum Lehrumfang zurück."
+
+#: lib/neu_zeit_web/components/scheduling/labels.ex:28
+#: lib/neu_zeit_web/components/scheduling/labels.ex:32
+#: lib/neu_zeit_web/components/scheduling/labels.ex:34
+#: lib/neu_zeit_web/components/scheduling/session_card.ex:62
+#: lib/neu_zeit_web/live/calendar_live/index.ex:569
+#, elixir-autogen, elixir-format
+msgid "Online"
+msgstr "Online"
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:424
+#, elixir-autogen, elixir-format
+msgid "To change only the format, keep the same date and time."
+msgstr "Um nur das Format zu ändern, behalten Sie Datum und Uhrzeit bei."
+
+#: lib/neu_zeit_web/live/exception_live/index.ex:420
+#, elixir-autogen, elixir-format
+msgid "Use the series format"
+msgstr "Format der Reihe verwenden"
+
+#: lib/neu_zeit_web/live/term_live/show.ex:279
+#, elixir-autogen, elixir-format
+msgid "In-person sessions need an available room. Add rooms or review the room restrictions."
+msgstr "Präsenzunterricht benötigt einen verfügbaren Raum. Fügen Sie Räume hinzu oder prüfen Sie die Raumbeschränkungen."
+
+#: lib/neu_zeit_web/live/term_live/show.ex:284
+#, elixir-autogen, elixir-format
+msgid "No room issues found."
+msgstr "Keine Raumprobleme festgestellt."
+
+#: lib/neu_zeit_web/components/ui/errors.ex:153
+#, elixir-autogen, elixir-format
+msgid "Online sessions do not use a room."
+msgstr "Online-Unterricht benötigt keinen Raum."

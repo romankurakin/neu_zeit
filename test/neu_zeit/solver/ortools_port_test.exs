@@ -85,6 +85,36 @@ defmodule NeuZeit.Solver.OrToolsPortTest do
     refute assignment["s1"]["slot"] == assignment["s2"]["slot"]
   end
 
+  test "real solver emits null rooms and permits unrelated online sessions at one time" do
+    spec = %{
+      grid: %{days_count: 1, slots_per_day: 1},
+      rooms: [%{id: "room-a", building_id: "main"}],
+      sessions: [
+        %{id: "online-a", delivery_mode: "online", allowed_rooms: [], weeks: [1]},
+        %{id: "online-b", delivery_mode: "online", allowed_rooms: [], weeks: [1]}
+      ],
+      fixed: %{},
+      current: %{},
+      hard: %{room_groups: [], exclusive_groups: []},
+      soft: %{
+        weights: %{building: 0, gaps: 0, sequence: 0, perturbation: 0},
+        building_groups: [],
+        gap_groups: [],
+        sequence_pairs: []
+      },
+      requirements: %{all_sessions_placed: true},
+      solver: %{time_limit: 1, gap: 0.0, workers: 1}
+    }
+
+    assert {:ok, %{"ok" => true, "assignment" => assignment}} =
+             OrToolsPort.solve(spec, timeout: 30_000)
+
+    assert assignment == %{
+             "online-a" => %{"day" => 1, "slot" => 1, "room" => nil},
+             "online-b" => %{"day" => 1, "slot" => 1, "room" => nil}
+           }
+  end
+
   test "solver avoids days whose weeks collide with excluded dates" do
     spec = %{
       grid: %{days_count: 2, slots_per_day: 1},

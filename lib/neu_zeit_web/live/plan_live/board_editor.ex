@@ -199,6 +199,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
         <section class="flex flex-col gap-2">
           <div class="flex flex-col gap-1">
             <p>{@selected_session.teacher.name}</p>
+            <p class="type-detail">{delivery_mode_label(@selected_session.delivery_mode)}</p>
             <p class="type-detail">{Enum.map_join(@selected_session.cohorts, ", ", & &1.name)}</p>
             <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 type-detail">
               <.teaching_weeks weeks={@selected_session.week_mask} total={@term.weeks_count} />
@@ -263,7 +264,10 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
               </select>
             </form>
             <form
-              :if={@selected_placement && @plan.status == "draft"}
+              :if={
+                @selected_placement && @plan.status == "draft" &&
+                  @selected_session.delivery_mode != :online
+              }
               id="placement-room"
               phx-change="change_room"
               class="flex flex-col gap-1"
@@ -278,7 +282,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
                 disabled={@selected_placement.locked}
               >
                 <option
-                  :for={room <- @selected_session.course_component.allowed_rooms}
+                  :for={room <- NeuZeit.Catalog.available_rooms(@selected_session.course_component)}
                   value={room.id}
                   selected={room.id == @selected_placement.room_id}
                 >
@@ -349,13 +353,13 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
                   )}
                 </p>
                 <p :if={@assessment == []} class="type-detail">
-                  {gettext("No rooms are allowed. Add rooms to this teaching type.")}
+                  {gettext("No rooms are available. Add a room or review the room restrictions.")}
                 </p>
                 <div
                   :for={choice <- @assessment}
                   class="border border-base-300 rounded-box p-2 type-detail"
                 >
-                  <p class="font-semibold">{choice.room.name}</p>
+                  <p class="font-semibold">{room_label(choice.room)}</p>
                   <ul :if={choice.errors != []} class="text-error">
                     <li :for={error <- choice.errors}>{Errors.entry_message(error)}</li>
                   </ul>
@@ -363,7 +367,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
                     :if={choice.errors == []}
                     class="btn mt-1"
                     phx-click="apply_position"
-                    phx-value-room-id={choice.room.id}
+                    phx-value-room-id={choice.room && choice.room.id}
                     disabled={@selected_placement && @selected_placement.locked}
                   >
                     {gettext("Place here")}

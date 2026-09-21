@@ -16,11 +16,12 @@ defmodule NeuZeit.Catalog.ScheduleValidation do
         session.automatic_weeks != old_session.automatic_weeks
 
     duration_changed? = session.duration_slots != old_session.duration_slots
+    delivery_changed? = session.delivery_mode != old_session.delivery_mode
 
     conflict_fields_changed? =
       mask_changed? or session.teacher_id != old_session.teacher_id or
         session.course_component_id != old_session.course_component_id or duration_changed? or
-        session.slot_profile_id != old_session.slot_profile_id
+        session.slot_profile_id != old_session.slot_profile_id or delivery_changed?
 
     if not conflict_fields_changed? and not cohorts_replaced? do
       {:ok, :unchanged}
@@ -34,15 +35,17 @@ defmodule NeuZeit.Catalog.ScheduleValidation do
             select: p.plan_id
         )
 
-      with :ok <- validate_resynced_plans(repo, session, plan_ids),
+      with :ok <- protect_archived_delivery_changes(repo, session, delivery_changed?),
+           :ok <- protect_locked_delivery_changes(repo, session, delivery_changed?),
+           :ok <- validate_resynced_plans(repo, session, plan_ids),
            :ok <-
              validate_active_projection(
                repo,
                session.term_id,
                {session.id, if(session.automatic_weeks, do: nil, else: session.week_mask),
-                session.duration_slots}
+                session.duration_slots, session.delivery_mode}
              ) do
-        if mask_changed? or duration_changed? do
+        if mask_changed? or duration_changed? or delivery_changed? do
           now = DateTime.utc_now() |> DateTime.truncate(:second)
 
           updates = [duration_slots: session.duration_slots, updated_at: now]
@@ -52,12 +55,55 @@ defmodule NeuZeit.Catalog.ScheduleValidation do
               do: updates,
               else: Keyword.put(updates, :week_mask, session.week_mask)
 
+          updates =
+            if delivery_changed? and session.delivery_mode == :online,
+              do: Keyword.put(updates, :room_id, nil),
+              else: updates
+
           from(p in Placement, where: p.session_id == ^session.id and p.plan_id in ^plan_ids)
           |> repo.update_all(set: updates)
         end
 
         {:ok, :revalidated}
       end
+    end
+  end
+
+  defp protect_archived_delivery_changes(_repo, _session, false), do: :ok
+
+  defp protect_archived_delivery_changes(repo, session, true) do
+    archived? =
+      repo.exists?(
+        from p in Placement,
+          join: plan in Plan,
+          on: plan.id == p.plan_id,
+          where: p.session_id == ^session.id and plan.status == "archived"
+      )
+
+    if archived? do
+      {:error,
+       Ecto.Changeset.change(session)
+       |> Ecto.Changeset.add_error(
+         :delivery_mode,
+         "cannot change because an archived plan preserves this session"
+       )}
+    else
+      :ok
+    end
+  end
+
+  defp protect_locked_delivery_changes(_repo, _session, false), do: :ok
+
+  defp protect_locked_delivery_changes(repo, session, true) do
+    if repo.exists?(from p in Placement, where: p.session_id == ^session.id and p.locked == true) do
+      {:error,
+       Ecto.Changeset.change(session)
+       |> Ecto.Changeset.add_error(
+         :delivery_mode,
+         "cannot change while the session has locked placements"
+       )}
+    else
+      :ok
     end
   end
 
@@ -86,9 +132,12 @@ defmodule NeuZeit.Catalog.ScheduleValidation do
                 session: %{
                   placement.session
                   | week_mask: session.week_mask,
-                    automatic_weeks: session.automatic_weeks
+                    automatic_weeks: session.automatic_weeks,
+                    delivery_mode: session.delivery_mode
                 },
-                duration_slots: session.duration_slots
+                duration_slots: session.duration_slots,
+                room_id: if(session.delivery_mode == :online, do: nil, else: placement.room_id),
+                room: if(session.delivery_mode == :online, do: nil, else: placement.room)
             }
           else
             placement
@@ -189,14 +238,16 @@ defmodule NeuZeit.Catalog.ScheduleValidation do
       repo.all(
         from p in Placement,
           join: plan in assoc(p, :plan),
-          where: plan.term_id == ^term_id and plan.status == "active"
+          where: plan.term_id == ^term_id and plan.status == "active",
+          preload: [:session]
       )
       |> override_session_snapshot(session_override)
 
     exceptions =
       repo.all(
         from e in ScheduleException,
-          where: e.term_id == ^term_id and e.status == "active"
+          where: e.term_id == ^term_id and e.status == "active",
+          preload: [:session]
       )
 
     Occurrence.validate(term, placements, exceptions, require_origins: true)
@@ -204,13 +255,18 @@ defmodule NeuZeit.Catalog.ScheduleValidation do
 
   defp override_session_snapshot(placements, nil), do: placements
 
-  defp override_session_snapshot(placements, {session_id, week_mask, duration_slots}) do
+  defp override_session_snapshot(
+         placements,
+         {session_id, week_mask, duration_slots, delivery_mode}
+       ) do
     Enum.map(placements, fn placement ->
       if placement.session_id == session_id,
         do: %{
           placement
           | week_mask: week_mask || placement.week_mask,
-            duration_slots: duration_slots
+            duration_slots: duration_slots,
+            room_id: if(delivery_mode == :online, do: nil, else: placement.room_id),
+            session: %{placement.session | delivery_mode: delivery_mode}
         },
         else: placement
     end)

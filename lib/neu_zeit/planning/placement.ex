@@ -38,7 +38,6 @@ defmodule NeuZeit.Planning.Placement do
       :session_id,
       :term_id,
       :week_mask,
-      :room_id,
       :day,
       :slot,
       :duration_slots

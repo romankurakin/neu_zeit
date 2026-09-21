@@ -248,6 +248,54 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     assert exception.new_room_id == ctx.other_room.id
   end
 
+  test "changes one occurrence to online at the same date and time and can revert it", ctx do
+    {:ok, view, _html} =
+      live(
+        ctx.conn,
+        ~p"/terms/#{ctx.term}/exceptions/new?kind=move&session_id=#{ctx.session.id}&date=2026-09-14&new_date=2026-09-14&new_slot=1"
+      )
+
+    view
+    |> form("#exception-form",
+      schedule_exception: %{
+        session_id: ctx.session.id,
+        kind: "move",
+        occurrence_date: "2026-09-14",
+        new_date: "2026-09-14",
+        new_slot: 1,
+        new_delivery_mode: "online"
+      }
+    )
+    |> render_change()
+
+    refute has_element?(view, "select[name='schedule_exception[new_room_id]']")
+
+    fill(view, %{
+      session_id: ctx.session.id,
+      kind: "move",
+      occurrence_date: "2026-09-14",
+      new_date: "2026-09-14",
+      new_slot: 1,
+      new_delivery_mode: "online",
+      reason: "Remote guest lecture",
+      created_by: "admin"
+    })
+
+    assert [exception] = Planning.list_schedule_exceptions(ctx.term.id)
+    assert exception.new_delivery_mode == :online
+    assert exception.new_room_id == nil
+
+    {:ok, calendar, _html} = live(ctx.conn, ~p"/terms/#{ctx.term}/calendar?week=2")
+    assert has_element?(calendar, "#calendar-day-2026-09-14", "Online")
+
+    assert {:ok, _reverted} =
+             Planning.update_schedule_exception(exception, %{status: "reverted"})
+
+    {:ok, calendar, _html} = live(ctx.conn, ~p"/terms/#{ctx.term}/calendar?week=2")
+    assert has_element?(calendar, "#calendar-day-2026-09-14", "101")
+    refute has_element?(calendar, "#calendar-day-2026-09-14", "Online")
+  end
+
   test "refuses a move onto a non-teaching day and says why", %{conn: conn} = ctx do
     {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/exceptions/new")
 

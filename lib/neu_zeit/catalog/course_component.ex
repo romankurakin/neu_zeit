@@ -30,4 +30,12 @@ defmodule NeuZeit.Catalog.CourseComponent do
     |> foreign_key_constraint(:course_id)
     |> unique_constraint([:course_id, :kind])
   end
+
+  def room_options(%{allowed_rooms: []}, rooms), do: rooms
+  def room_options(%{allowed_rooms: rooms}, _rooms), do: rooms
+
+  def room_allowed?(%{allowed_rooms: []}, room_id), do: not is_nil(room_id)
+
+  def room_allowed?(%{allowed_rooms: rooms}, room_id),
+    do: Enum.any?(rooms, &(&1.id == room_id))
 end

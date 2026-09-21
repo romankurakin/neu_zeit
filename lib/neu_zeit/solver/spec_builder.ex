@@ -6,6 +6,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
   """
 
   alias NeuZeit.Catalog.TeacherAvailabilityCell
+  alias NeuZeit.Catalog.DeliveryMode
   alias NeuZeit.Constraints.{Hard, Soft}
   alias NeuZeit.Planning.Placement
   alias NeuZeit.Solver.Snapshot
@@ -25,7 +26,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
 
     session_specs =
       Enum.map(sessions, fn session ->
-        spec = session_spec(session, config.grid)
+        spec = session_spec(session, config.grid, rooms)
 
         masks =
           if session.automatic_weeks,
@@ -35,7 +36,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
         blocked =
           for mask <- masks,
               start <- spec.allowed_starts,
-              room <- spec.allowed_rooms,
+              room <- DeliveryMode.room_options(session.delivery_mode, spec.allowed_rooms),
               placement = %Placement{
                 id: session.id,
                 session_id: session.id,
@@ -103,12 +104,21 @@ defmodule NeuZeit.Solver.SpecBuilder do
     %{id: to_string(room.id), building_id: to_string(room.building_id)}
   end
 
-  defp session_spec(session, grid) do
+  defp session_spec(session, grid, rooms) do
     %{
       id: to_string(session.id),
       teacher: to_string(session.teacher_id),
       cohorts: Enum.map(session.cohorts, &to_string(&1.id)),
-      allowed_rooms: Enum.map(session.course_component.allowed_rooms, &to_string(&1.id)),
+      delivery_mode: session.delivery_mode,
+      allowed_rooms:
+        if(DeliveryMode.physical?(session.delivery_mode),
+          do:
+            Enum.map(
+              NeuZeit.Catalog.CourseComponent.room_options(session.course_component, rooms),
+              &to_string(&1.id)
+            ),
+          else: []
+        ),
       allowed_starts: allowed_starts(session, grid),
       duration_slots: session.duration_slots,
       weeks: session.week_mask,
@@ -119,7 +129,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
         key =
           {session.course_component_id, session.teacher_id,
            Enum.sort(Enum.map(session.cohorts, & &1.id)), session.duration_slots,
-           session.slot_profile_id, session.week_mask}
+           session.slot_profile_id, session.week_mask, session.delivery_mode}
 
         Map.merge(spec, %{
           choose_week: true,
@@ -174,7 +184,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
   defp placement_map(placements) do
     Map.new(placements, fn placement ->
       {to_string(placement.session_id),
-       %{day: placement.day, slot: placement.slot, room: to_string(placement.room_id)}
+       %{day: placement.day, slot: placement.slot, room: encode_room(placement.room_id)}
        |> then(fn value ->
          if Map.get(placement.session, :automatic_weeks, false),
            do: Map.put(value, :weeks, placement.week_mask),
@@ -182,4 +192,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
        end)}
     end)
   end
+
+  defp encode_room(nil), do: nil
+  defp encode_room(room_id), do: to_string(room_id)
 end

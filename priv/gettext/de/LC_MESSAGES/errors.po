@@ -278,3 +278,12 @@ msgstr "Zeiten können nach der Eingabe von Lehrumfang, Verfügbarkeit oder Zeit
 
 msgid "Choose a valid time zone."
 msgstr "Wählen Sie eine Zeitzone aus der Liste."
+
+msgid "must be blank for online sessions"
+msgstr "Bei Online-Unterricht muss das Feld leer bleiben."
+
+msgid "cannot change while the session has locked placements"
+msgstr "Lösen Sie zuerst die fixierten Termine im Stundenplan."
+
+msgid "cannot change because an archived plan preserves this session"
+msgstr "Das Format eines Unterrichts in einem archivierten Plan kann nicht geändert werden. Legen Sie einen eigenen Lehrumfang an."

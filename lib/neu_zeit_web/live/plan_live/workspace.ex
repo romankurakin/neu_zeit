@@ -86,7 +86,8 @@ defmodule NeuZeitWeb.PlanLive.Workspace do
             s.teacher_id == id
 
           {"room", id} when not is_nil(id) ->
-            Enum.any?(s.course_component.allowed_rooms, &(&1.id == id))
+            s.delivery_mode != :online &&
+              NeuZeit.Catalog.CourseComponent.room_allowed?(s.course_component, id)
 
           _ ->
             true

@@ -9,7 +9,7 @@ defmodule NeuZeit.Planning.Feasibility do
 
   import Ecto.Query
 
-  alias NeuZeit.Catalog.{TeacherAvailabilityCell, WeekPattern}
+  alias NeuZeit.Catalog.{DeliveryMode, TeacherAvailabilityCell, WeekPattern}
   alias NeuZeit.Config
   alias NeuZeit.Planning.Placement
   alias NeuZeit.Repo
@@ -30,7 +30,13 @@ defmodule NeuZeit.Planning.Feasibility do
 
     busy = busy_index(others, session)
     occupied_rooms = room_index(others)
-    allowed_rooms = Enum.map(session.course_component.allowed_rooms, & &1.id)
+
+    allowed_rooms =
+      DeliveryMode.room_options(
+        session.delivery_mode,
+        Enum.map(NeuZeit.Catalog.available_rooms(session.course_component), & &1.id)
+      )
+
     availability = term_availability(session)
     term = NeuZeit.Catalog.get_term!(session.term_id)
     external = NeuZeit.Planning.SharedResources.external_index(term)
@@ -85,7 +91,18 @@ defmodule NeuZeit.Planning.Feasibility do
       room_pool: %{
         course_id: session.course_component.course_id,
         component_id: session.course_component_id,
-        rooms: Enum.map(session.course_component.allowed_rooms, &%{id: &1.id, name: &1.name})
+        rooms:
+          if(DeliveryMode.physical?(session.delivery_mode),
+            do:
+              Enum.map(
+                NeuZeit.Catalog.available_rooms(session.course_component),
+                &%{
+                  id: &1.id,
+                  name: &1.name
+                }
+              ),
+            else: []
+          )
       },
       alternatives: map_size(legal),
       alternative_rooms_here:
@@ -102,14 +119,20 @@ defmodule NeuZeit.Planning.Feasibility do
     term = NeuZeit.Catalog.get_term!(session.term_id)
     external = NeuZeit.Planning.SharedResources.external_index(term)
 
-    Enum.map(session.course_component.allowed_rooms, fn room ->
+    rooms =
+      DeliveryMode.room_options(
+        session.delivery_mode,
+        NeuZeit.Catalog.available_rooms(session.course_component)
+      )
+
+    Enum.map(rooms, fn room ->
       candidate = %Placement{
         id: "candidate",
         plan_id: plan_id,
         term_id: session.term_id,
         session_id: session.id,
         session: session,
-        room_id: room.id,
+        room_id: room && room.id,
         room: room,
         day: day,
         slot: slot,
@@ -128,7 +151,9 @@ defmodule NeuZeit.Planning.Feasibility do
             Enum.map_join(related, "; ", fn p ->
               weeks = Enum.filter(p.week_mask, &(&1 in session.week_mask)) |> Enum.join(", ")
 
-              "#{p.session.course_component.course.title}, #{p.session.teacher.name}, #{p.room.name}, #{weeks}"
+              room = if p.room, do: p.room.name, else: "Online"
+
+              "#{p.session.course_component.course.title}, #{p.session.teacher.name}, #{room}, #{weeks}"
             end)
 
           error
@@ -185,7 +210,9 @@ defmodule NeuZeit.Planning.Feasibility do
   end
 
   defp room_index(placements) do
-    Enum.reduce(placements, %{}, fn placement, acc ->
+    placements
+    |> Enum.reject(&is_nil(&1.room_id))
+    |> Enum.reduce(%{}, fn placement, acc ->
       add_cells(acc, placement, placement.room_id)
     end)
   end
@@ -209,11 +236,12 @@ defmodule NeuZeit.Planning.Feasibility do
 
   defp free_rooms(allowed_rooms, occupied, day, cells, week_mask) do
     Enum.filter(allowed_rooms, fn room_id ->
-      Enum.all?(cells, fn slot ->
-        occupied
-        |> Map.get({room_id, day, slot}, [])
-        |> Enum.all?(&(not WeekPattern.overlap?(&1, week_mask)))
-      end)
+      is_nil(room_id) or
+        Enum.all?(cells, fn slot ->
+          occupied
+          |> Map.get({room_id, day, slot}, [])
+          |> Enum.all?(&(not WeekPattern.overlap?(&1, week_mask)))
+        end)
     end)
   end
 

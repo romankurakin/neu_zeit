@@ -149,6 +149,44 @@ defmodule NeuZeitWeb.PlanLiveTest do
       refute has_element?(live, "#board-tray-session-#{created.id}")
     end
 
+    test "places, locks, unlocks and unplaces an online session without a room",
+         %{
+           conn: conn
+         } = ctx do
+      created = session(ctx, "WEB110", "Anna Weber", %{"delivery_mode" => :online})
+      live = board(conn, ctx)
+
+      live |> element("#board-tray-session-#{created.id}") |> render_click()
+      assert has_element?(live, "#session-inspector", "Online")
+
+      live |> element("#board-cell-2-3 > button") |> render_click()
+      assert has_element?(live, "button[phx-click='apply_position']", "Place here")
+      refute has_element?(live, "button[phx-click='apply_position'][phx-value-room-id]")
+      live |> element("button[phx-click='apply_position']", "Place here") |> render_click()
+
+      assert [%{session_id: id, room_id: nil, day: 2, slot: 3}] =
+               Planning.list_placements(ctx.plan.id)
+
+      assert id == created.id
+      assert has_element?(live, "#board [data-session-id='#{created.id}']", "Online")
+
+      live
+      |> element("#session-inspector button.btn[phx-click='toggle_lock']", "Lock")
+      |> render_click()
+
+      assert [%{locked: true, room_id: nil}] = Planning.list_placements(ctx.plan.id)
+      assert has_element?(live, "#session-inspector button[disabled]", "Remove from timetable")
+
+      live
+      |> element("#session-inspector button.btn[phx-click='toggle_lock']", "Unlock")
+      |> render_click()
+
+      live |> element("#session-inspector button", "Remove from timetable") |> render_click()
+
+      assert Planning.list_placements(ctx.plan.id) == []
+      assert has_element?(live, "#board-tray-session-#{created.id}")
+    end
+
     test "dropping onto the tray unplaces a session", %{conn: conn} = ctx do
       created = session(ctx, "INF110", "Anna Weber")
       live = board(conn, ctx)

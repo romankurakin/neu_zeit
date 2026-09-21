@@ -9,7 +9,8 @@ import demo
 IP = "192.0.2.10"
 REVISION = "a" * 40
 ENV = {"REVISION": REVISION, "DATABASE_PASSWORD": "b" * 64,
-       "SECRET_KEY_BASE": "c" * 64, "REPOSITORY_URL": "https://github.com/example/demo.git"}
+       "SECRET_KEY_BASE": "c" * 64, "REPOSITORY_URL": "https://github.com/example/demo.git",
+       "DEMO_SSH_KEY_IDS": "123"}
 VPC = {"id": "vpc-id", "name": demo.NAME, "region": "fra1"}
 
 
@@ -38,6 +39,8 @@ class DeploymentTest(unittest.TestCase):
 
     def do(self, *args):
         self.calls.append(args)
+        if args == ("compute", "ssh-key", "list"):
+            return [{"id": 123}]
         if args == ("vpcs", "list"):
             return [VPC]
         if args == ("compute", "firewall", "list"):
@@ -99,6 +102,35 @@ class DeploymentTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "stable"):
                 self.deploy()
         self.assertEqual(self.calls, [])
+
+    def test_missing_ssh_key_configuration_stops_before_changes(self):
+        with patch.dict(os.environ, {"DEMO_SSH_KEY_IDS": ""}):
+            with self.assertRaisesRegex(RuntimeError, "SSH key IDs"):
+                self.deploy()
+        self.assertEqual(self.calls, [])
+
+    def test_unknown_ssh_key_stops_before_changes(self):
+        with patch.dict(os.environ, {"DEMO_SSH_KEY_IDS": "999"}):
+            with self.assertRaisesRegex(RuntimeError, "missing from this DigitalOcean account"):
+                self.deploy()
+        self.assertEqual(self.calls, [("compute", "ssh-key", "list")])
+
+    def test_both_host_roles_receive_the_configured_ssh_keys(self):
+        for role in (demo.DB_TAG, demo.APP_TAG):
+            with patch.object(demo, "do", side_effect=[[self.candidate], [self.candidate]]) as api:
+                demo.create_host(role, role, "fra1", "vpc-id", "s-1vcpu-2gb", {})
+            args = api.call_args_list[0].args
+            self.assertEqual(args[args.index("--ssh-keys") + 1], "123")
+
+    def test_database_firewall_allows_ssh_but_keeps_postgres_private(self):
+        with patch.object(demo, "create_host", return_value=self.candidate), \
+             patch.object(demo, "assign"), patch.object(demo, "wait_until"):
+            self.deploy()
+        call = next(c for c in self.calls if c[:3] == ("compute", "firewall", "update"))
+        rules = call[call.index("--inbound-rules") + 1]
+        self.assertIn("protocol:tcp,ports:22,address:0.0.0.0/0", rules)
+        self.assertIn("protocol:tcp,ports:5432,tag:" + demo.APP_TAG, rules)
+        self.assertNotIn("ports:5432,address:", rules)
 
     def test_failed_https_returns_ip_to_old_application(self):
         with patch.object(demo, "create_host", return_value=self.candidate), \

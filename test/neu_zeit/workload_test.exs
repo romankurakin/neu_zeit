@@ -31,6 +31,16 @@ defmodule NeuZeit.WorkloadTest do
     assert Repo.aggregate(NeuZeit.Planning.Placement, :count) == 0
   end
 
+  test "online delivery is copied from a workload to every generated session", ctx do
+    assert {:ok, :saved} =
+             Catalog.save_workload(ctx.term.id, nil, Map.put(ctx.attrs, :delivery_mode, :online))
+
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert row.requirement.delivery_mode == :online
+    assert row.sessions != []
+    assert Enum.all?(row.sessions, &(&1.delivery_mode == :online))
+  end
+
   test "hour edits retain session IDs and avoid duplicate batches", ctx do
     {:ok, :saved} = create_legacy_workload(ctx.term.id, ctx.attrs)
     [original] = Catalog.list_workload(ctx.term.id)

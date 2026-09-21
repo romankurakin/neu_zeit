@@ -149,6 +149,9 @@ defmodule NeuZeitWeb.UI.Errors do
   defp diagnostic_message("duration_mismatch"),
     do: gettext("Placement duration must match the session duration.")
 
+  defp diagnostic_message("delivery_room_mismatch"),
+    do: gettext("Online sessions do not use a room.")
+
   defp diagnostic_message("room_not_allowed"),
     do: gettext("Choose a room allowed for this teaching type.")
 
@@ -310,6 +313,10 @@ defmodule NeuZeitWeb.UI.Errors do
   defp field_label(:building_id), do: gettext("Building")
   defp field_label(:new_teacher_id), do: gettext("Substitute teacher")
   defp field_label(field) when field in [:room_id, :new_room_id], do: gettext("Room")
+
+  defp field_label(field) when field in [:delivery_mode, :new_delivery_mode],
+    do: gettext("Delivery format")
+
   defp field_label(:allowed_room_ids), do: gettext("Allowed rooms")
   defp field_label(:slot_profile_id), do: gettext("Time profile")
   defp field_label(:week_mask), do: gettext("Teaching weeks")

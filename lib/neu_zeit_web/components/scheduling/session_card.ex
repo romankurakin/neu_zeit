@@ -57,8 +57,9 @@ defmodule NeuZeitWeb.Scheduling.SessionCard do
         </span>
         <span :if={@placement} class="flex items-start gap-2">
           <.icon name="hero-map-pin" class="size-4 shrink-0 self-center" />
-          <span><span class="sr-only">{gettext("Room")}:</span> {@placement.room.name}</span>
+          <span><span class="sr-only">{gettext("Room")}:</span> {room_label(@placement.room)}</span>
         </span>
+        <span :if={!@placement && Map.get(@session, :delivery_mode) == :online}>{gettext("Online")}</span>
         <span :if={!@placement && Map.get(@session, :automatic_weeks, false)}>
           {gettext("Week selected automatically")}
         </span>

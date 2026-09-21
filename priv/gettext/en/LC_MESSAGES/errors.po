@@ -288,3 +288,12 @@ msgstr "Time settings cannot change after teaching load, availability or time pr
 
 msgid "Choose a valid time zone."
 msgstr "Choose a valid time zone."
+
+msgid "must be blank for online sessions"
+msgstr "must be blank for online sessions"
+
+msgid "cannot change while the session has locked placements"
+msgstr "cannot change while the session has locked placements"
+
+msgid "cannot change because an archived plan preserves this session"
+msgstr "cannot change because an archived plan preserves this session"

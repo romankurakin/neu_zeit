@@ -71,6 +71,21 @@ defmodule NeuZeit.Solver.PureContractTest do
     assert [%{duration_slots: 2, week_mask: [1, 2]}] = validated.placements
   end
 
+  test "builds and validates an online assignment with no room", %{
+    snapshot: snapshot,
+    result: result,
+    session: session
+  } do
+    online = %{session | delivery_mode: :online}
+    snapshot = %{snapshot | sessions: [online]}
+    result = put_in(result, ["assignment", session.id, "room"], nil)
+
+    assert [%{delivery_mode: :online, allowed_rooms: []}] = SpecBuilder.build(snapshot).sessions
+
+    assert {:ok, %{placements: [%{room_id: nil, room: nil}]}} =
+             ResultValidator.validate_snapshot(snapshot, SpecBuilder.build(snapshot), result)
+  end
+
   test "rejects a room outside the snapshot and a moved lock", %{
     snapshot: snapshot,
     result: result,

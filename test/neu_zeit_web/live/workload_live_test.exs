@@ -52,6 +52,32 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     assert Workloads.meeting_count(row) == 3
   end
 
+  test "creates online teaching through the workload form", %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+
+    assert has_element?(view, "#workload_delivery_mode option[value='online']", "Online")
+
+    view
+    |> form("#workload-form",
+      workload: %{
+        course_component_id: ctx.component.id,
+        teacher_id: ctx.teacher.id,
+        delivery_mode: "online",
+        contact_hours: "4",
+        duration_slots: "1",
+        slot_profile_id: ""
+      }
+    )
+    |> render_submit()
+
+    assert_patch(view, ~p"/terms/#{ctx.term}/workload")
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert row.requirement.delivery_mode == :online
+    assert Enum.all?(row.sessions, &(&1.delivery_mode == :online))
+    assert has_element?(view, "#workload-#{row.id}", "Online")
+  end
+
   test "missing groups keep the form and show an error", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
 

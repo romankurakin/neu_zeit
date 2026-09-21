@@ -274,8 +274,14 @@ defmodule NeuZeitWeb.TermLive.Show do
         partial: detail.partial
       )
 
+  defp detail_for(%{key: :room_pools, detail: %{missing: [_ | _]}}),
+    do:
+      gettext(
+        "In-person sessions need an available room. Add rooms or review the room restrictions."
+      )
+
   defp detail_for(%{key: :room_pools, count: 0}),
-    do: gettext("Each teaching type has two to five allowed rooms.")
+    do: gettext("No room issues found.")
 
   defp detail_for(%{key: :room_pools, detail: detail}),
     do:

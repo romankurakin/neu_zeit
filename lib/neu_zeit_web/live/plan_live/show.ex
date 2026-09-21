@@ -153,7 +153,13 @@ defmodule NeuZeitWeb.PlanLive.Show do
     end
   end
 
-  def handle_event("apply_position", %{"room-id" => room_id}, socket) do
+  def handle_event("apply_position", params, socket) do
+    room_id =
+      case params["room-id"] do
+        "" -> nil
+        value -> value
+      end
+
     case socket.assigns.target do
       {day, slot} -> place(socket, socket.assigns.selected_session_id, day, slot, room_id)
       _ -> {:noreply, socket}
@@ -374,9 +380,13 @@ defmodule NeuZeitWeb.PlanLive.Show do
         session = Enum.find(socket.assigns.board.unplaced, &(&1.id == session_id))
 
         room_id =
-          room_id || first_free_room(socket, session, day, slot) ||
-            (session && List.first(session.course_component.allowed_rooms) &&
-               hd(session.course_component.allowed_rooms).id)
+          if session && session.delivery_mode == :online do
+            nil
+          else
+            room_id || first_free_room(socket, session, day, slot) ||
+              (session && List.first(Catalog.available_rooms(session.course_component)) &&
+                 hd(Catalog.available_rooms(session.course_component)).id)
+          end
 
         Planning.create_placement(%{
           "plan_id" => plan_id,

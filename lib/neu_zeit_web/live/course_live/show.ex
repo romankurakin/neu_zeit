@@ -64,8 +64,9 @@ defmodule NeuZeitWeb.CourseLive.Show do
     end
   end
 
-  def handle_event("add_component", %{"kind" => kind, "room_ids" => room_ids}, socket) do
-    # A new teaching type needs at least one allowed room.
+  def handle_event("add_component", %{"kind" => kind} = params, socket) do
+    room_ids = Map.get(params, "room_ids", [])
+
     attrs = %{
       "course_id" => socket.assigns.course.id,
       "kind" => kind,
@@ -87,14 +88,6 @@ defmodule NeuZeitWeb.CourseLive.Show do
       {:error, reason} ->
         {:noreply, Errors.put(socket, reason)}
     end
-  end
-
-  def handle_event("add_component", %{"kind" => _kind}, socket) do
-    {:noreply,
-     Errors.put(
-       socket,
-       {:conflict, gettext("Choose at least one room for the new teaching type.")}
-     )}
   end
 
   def handle_event("delete_component_prompt", %{"id" => id}, socket),
@@ -181,10 +174,10 @@ defmodule NeuZeitWeb.CourseLive.Show do
   end
 
   # Room counts are advice; they do not impose a scheduling constraint.
-  defp pool_status(count) when count in 2..5, do: :ok
+  defp pool_status(count) when count == 0 or count in 2..5, do: :ok
   defp pool_status(_count), do: :warning
 
-  defp pool_advice(0), do: gettext("Choose at least one room")
+  defp pool_advice(0), do: gettext("Any available room")
   defp pool_advice(1), do: gettext("1 room. Check whether alternatives are available.")
 
   defp pool_advice(count) when count > 5,
@@ -230,7 +223,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
           <div :if={@components == []} class="mb-4">
             <.empty_state
               title={gettext("No teaching types yet")}
-              message={gettext("Add a teaching type and choose its allowed rooms.")}
+              message={gettext("Add a teaching type. You can restrict its rooms later.")}
               icon="hero-squares-2x2"
             />
           </div>
@@ -281,7 +274,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
             class="mt-6 rounded-box border border-dashed border-base-300 p-4"
           >
             <p class="mb-4 type-detail text-base-content">
-              {gettext("Choose at least one allowed room.")}
+              {gettext("Leave the room list empty to use any available room.")}
             </p>
 
             <div class="flex flex-wrap items-start gap-4">

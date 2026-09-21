@@ -258,6 +258,9 @@ defmodule NeuZeitWeb.SessionLive.Index do
                 {component_kind_label(session.course_component)}
               </span>
             </:col>
+            <:col :let={session} label={gettext("Delivery format")}>
+              {delivery_mode_label(session.delivery_mode)}
+            </:col>
             <:col :let={session} label={gettext("Teacher")}>{session.teacher.name}</:col>
             <:col :let={session} label={gettext("Groups")}>
               <span class="flex flex-wrap gap-1">

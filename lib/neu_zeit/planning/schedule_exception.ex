@@ -11,6 +11,7 @@ defmodule NeuZeit.Planning.ScheduleException do
     field :occurrence_date, :date
     field :new_date, :date
     field :new_slot, :integer
+    field :new_delivery_mode, Ecto.Enum, values: [:in_person, :online]
     field :reason, :string
     field :status, :string, default: "active"
     field :created_by, :string
@@ -35,6 +36,7 @@ defmodule NeuZeit.Planning.ScheduleException do
       :occurrence_date,
       :new_date,
       :new_slot,
+      :new_delivery_mode,
       :new_room_id,
       :new_teacher_id,
       :reason,
@@ -57,6 +59,7 @@ defmodule NeuZeit.Planning.ScheduleException do
       name: :exceptions_one_override_per_occurrence
     )
     |> check_constraint(:kind, name: :exceptions_payload_ck)
+    |> check_constraint(:new_delivery_mode, name: :exceptions_new_delivery_mode_ck)
   end
 
   defp validate_author(changeset) do
@@ -86,28 +89,67 @@ defmodule NeuZeit.Planning.ScheduleException do
     new_slot = get_field(changeset, :new_slot)
     new_room_id = get_field(changeset, :new_room_id)
     new_teacher_id = get_field(changeset, :new_teacher_id)
+    new_delivery_mode = get_field(changeset, :new_delivery_mode)
 
     cond do
       kind == "substitute" ->
         changeset
         |> validate_required([:new_teacher_id])
         |> then(fn cs ->
-          Enum.reduce([:new_date, :new_slot, :new_room_id], cs, fn field, acc ->
+          Enum.reduce([:new_date, :new_slot, :new_room_id, :new_delivery_mode], cs, fn field,
+                                                                                       acc ->
             if get_field(acc, field),
               do: add_error(acc, field, "must be blank for teacher substitutions"),
               else: acc
           end)
         end)
 
-      kind == "cancel" && (new_slot || new_room_id || new_teacher_id) ->
+      kind == "cancel" && (new_slot || new_room_id || new_teacher_id || new_delivery_mode) ->
         changeset
         |> add_error(:new_slot, "must be blank for cancellations")
         |> add_error(:new_room_id, "must be blank for cancellations")
         |> add_error(:new_teacher_id, "must be blank for cancellations")
+        |> add_error(:new_delivery_mode, "must be blank for cancellations")
 
-      kind in ["move", "add"] && (is_nil(new_slot) || is_nil(new_room_id)) ->
+      kind in ["move", "add"] ->
         changeset
-        |> validate_required([:new_slot, :new_room_id])
+        |> validate_required([:new_slot])
+        |> validate_delivery_room()
+
+      true ->
+        changeset
+    end
+  end
+
+  defp validate_delivery_room(changeset) do
+    mode =
+      case get_field(changeset, :new_delivery_mode) do
+        nil ->
+          repo = changeset.repo || NeuZeit.Repo
+
+          case get_field(changeset, :session_id) do
+            nil ->
+              :in_person
+
+            session_id ->
+              case repo.get(NeuZeit.Catalog.Session, session_id) do
+                %{delivery_mode: mode} -> mode
+                _ -> :in_person
+              end
+          end
+
+        mode ->
+          mode
+      end
+
+    room_id = get_field(changeset, :new_room_id)
+
+    cond do
+      mode == :in_person and is_nil(room_id) ->
+        add_error(changeset, :new_room_id, "can't be blank")
+
+      mode == :online and not is_nil(room_id) ->
+        add_error(changeset, :new_room_id, "must be blank for online sessions")
 
       true ->
         changeset

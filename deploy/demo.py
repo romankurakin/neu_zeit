@@ -96,12 +96,21 @@ def release_ip(ip):
 def create_host(name, role, region, vpc, size, values):
     script = ROOT / ("bootstrap-database.sh" if role == DB_TAG else "bootstrap-application.sh")
     content = "#!/bin/bash\n" + "\n".join(k + "=" + shlex.quote(v) for k, v in values.items())
+    content += "\n" + "\n".join([
+        "set -euo pipefail",
+        "install -d -m 755 /etc/ssh/sshd_config.d",
+        "printf '%s\\n' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' "
+        "'PermitRootLogin prohibit-password' > /etc/ssh/sshd_config.d/00-neu-zeit.conf",
+        "/usr/sbin/sshd -t",
+        "systemctl restart ssh",
+    ])
     content += "\n" + script.read_text()
     with tempfile.NamedTemporaryFile(mode="w") as boot:
         boot.write(content)
         boot.flush()
         args = ["compute", "droplet", "create", name, "--image", "ubuntu-24-04-x64",
                 "--region", region, "--vpc-uuid", vpc, "--size", size,
+                "--ssh-keys", os.environ["DEMO_SSH_KEY_IDS"],
                 "--tag-names", NAME + "," + role, "--user-data-file", boot.name,
                 "--enable-monitoring", "--wait"]
         created = first(do(*args))
@@ -145,6 +154,12 @@ def deploy(ip, reserved, droplets):
         raise RuntimeError("Reserved IP is attached to a different host; refusing to move it")
     if apps and not database:
         raise RuntimeError("Database host is missing; refusing to create an empty replacement")
+    key_ids = os.environ.get("DEMO_SSH_KEY_IDS", "")
+    if not re.fullmatch(r"[0-9]+(?:,[0-9]+)*", key_ids):
+        raise RuntimeError("Set DEMO_SSH_KEY_IDS to comma-separated DigitalOcean SSH key IDs")
+    available_keys = {str(key["id"]) for key in do("compute", "ssh-key", "list")}
+    if not set(key_ids.split(",")).issubset(available_keys):
+        raise RuntimeError("DEMO_SSH_KEY_IDS contains an SSH key missing from this DigitalOcean account")
     region = reserved["region"]["slug"]
     vpc = one([v for v in do("vpcs", "list") if v["name"] == NAME], "project VPCs")
     if not vpc:
@@ -161,10 +176,12 @@ def deploy(ip, reserved, droplets):
         if tag not in tags:
             do("compute", "tag", "create", tag)
     firewalls = do("compute", "firewall", "list")
-    if not any(f["name"] == DB_TAG for f in firewalls):
-        do("compute", "firewall", "create", "--name", DB_TAG, "--tag-names", DB_TAG,
-           "--inbound-rules", "protocol:tcp,ports:5432,tag:" + APP_TAG,
-           "--outbound-rules", "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0")
+    firewall = one([f for f in firewalls if f["name"] == DB_TAG], "database firewalls")
+    operation = ["update", firewall["id"]] if firewall else ["create"]
+    do("compute", "firewall", *operation, "--name", DB_TAG, "--tag-names", DB_TAG,
+       "--inbound-rules", "protocol:tcp,ports:22,address:0.0.0.0/0 "
+       "protocol:tcp,ports:5432,tag:" + APP_TAG,
+       "--outbound-rules", "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0")
     if not database:
         database = create_host(DB_TAG, DB_TAG, region, vpc["id"],
                                os.environ.get("DATABASE_SIZE", "s-1vcpu-512mb-10gb"),

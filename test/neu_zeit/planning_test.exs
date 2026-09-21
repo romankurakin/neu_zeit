@@ -91,6 +91,182 @@ defmodule NeuZeit.PlanningTest do
     assert Enum.any?(errors, &(&1.type == "room_conflict"))
   end
 
+  test "online placements use no room and do not create a fictitious room conflict" do
+    term = term_fixture()
+
+    first =
+      session_fixture(
+        term: term,
+        delivery_mode: :online,
+        teacher: teacher_fixture(),
+        cohorts: [cohort_fixture()]
+      )
+
+    second =
+      session_fixture(
+        term: term,
+        delivery_mode: :online,
+        teacher: teacher_fixture(),
+        cohorts: [cohort_fixture()]
+      )
+
+    plan = plan_fixture(term: term)
+
+    for session <- [first, second] do
+      assert {:ok, placement} =
+               Planning.create_placement(%{
+                 plan_id: plan.id,
+                 session_id: session.id,
+                 room_id: nil,
+                 day: 1,
+                 slot: 1
+               })
+
+      assert placement.room_id == nil
+    end
+
+    assert Planning.check_plan(plan.id) == []
+  end
+
+  test "online placements retain teacher conflicts and clear a submitted room" do
+    term = term_fixture()
+    teacher = teacher_fixture()
+
+    first =
+      session_fixture(
+        term: term,
+        delivery_mode: :online,
+        teacher: teacher,
+        cohorts: [cohort_fixture()]
+      )
+
+    second =
+      session_fixture(
+        term: term,
+        delivery_mode: :online,
+        teacher: teacher,
+        cohorts: [cohort_fixture()]
+      )
+
+    plan = plan_fixture(term: term)
+
+    assert {:ok, normalized} =
+             Planning.create_placement(%{
+               plan_id: plan.id,
+               session_id: first.id,
+               room_id: room_fixture().id,
+               day: 1,
+               slot: 1
+             })
+
+    assert normalized.room_id == nil
+
+    assert {:error, %{errors: conflict_errors}} =
+             Planning.create_placement(%{
+               plan_id: plan.id,
+               session_id: second.id,
+               room_id: nil,
+               day: 1,
+               slot: 1
+             })
+
+    assert Enum.any?(conflict_errors, &(&1.type == "teacher_conflict"))
+  end
+
+  test "in-person placements still require an actual allowed room" do
+    term = term_fixture()
+    session = session_fixture(term: term, delivery_mode: :in_person)
+    plan = plan_fixture(term: term)
+
+    assert {:error, %{errors: errors}} =
+             Planning.create_placement(%{
+               plan_id: plan.id,
+               session_id: session.id,
+               room_id: nil,
+               day: 1,
+               slot: 1
+             })
+
+    assert Enum.any?(errors, &(&1.type == "room_not_allowed"))
+  end
+
+  test "an online occurrence can switch to in-person only with an allowed room" do
+    term = term_fixture()
+    room = room_fixture()
+    component = component_fixture(rooms: [room])
+    session = session_fixture(term: term, component: component, delivery_mode: :online)
+    plan = plan_fixture(term: term)
+
+    assert {:ok, _placement} =
+             Planning.create_placement(%{
+               plan_id: plan.id,
+               session_id: session.id,
+               room_id: nil,
+               day: 1,
+               slot: 1
+             })
+
+    assert {:ok, _plan} = Planning.publish_plan(plan.id)
+
+    attrs = %{
+      session_id: session.id,
+      kind: "move",
+      occurrence_date: term.starts_on,
+      new_date: term.starts_on,
+      new_slot: 1,
+      new_delivery_mode: :in_person,
+      created_by: "Test administrator",
+      reason: "Meet on campus"
+    }
+
+    assert {:error, changeset} = Planning.create_schedule_exception(attrs)
+    assert errors_on(changeset).new_room_id == ["can't be blank"]
+
+    assert {:ok, exception} =
+             Planning.create_schedule_exception(Map.put(attrs, :new_room_id, room.id))
+
+    assert exception.new_delivery_mode == :in_person
+    assert exception.new_room_id == room.id
+  end
+
+  test "an added occurrence inherits online delivery and needs no room" do
+    term = term_fixture()
+    session = session_fixture(term: term, delivery_mode: :online)
+    plan = plan_fixture(term: term)
+
+    assert {:ok, _placement} =
+             Planning.create_placement(%{
+               plan_id: plan.id,
+               session_id: session.id,
+               room_id: nil,
+               day: 1,
+               slot: 1
+             })
+
+    assert {:ok, _plan} = Planning.publish_plan(plan.id)
+
+    assert {:ok, exception} =
+             Planning.create_schedule_exception(%{
+               session_id: session.id,
+               kind: "add",
+               occurrence_date: Date.add(term.starts_on, 1),
+               new_slot: 2,
+               new_room_id: nil,
+               created_by: "Test administrator",
+               reason: "Extra remote class"
+             })
+
+    assert exception.new_delivery_mode == nil
+    assert exception.new_room_id == nil
+
+    assert %{occurrences: occurrences} = Planning.project_active_term(term.id)
+
+    assert Enum.any?(occurrences, fn occurrence ->
+             occurrence.exception_id == exception.id and occurrence.source == :add and
+               occurrence.delivery_mode == :online and is_nil(occurrence.room_id)
+           end)
+  end
+
   test "duration reserves every occupied slot and cannot extend past the day" do
     term = term_fixture()
     room = room_fixture()
@@ -1205,8 +1381,7 @@ defmodule NeuZeit.PlanningTest do
     assert {:error, %Ecto.Changeset{} = changeset} =
              Planning.create_placement(%{plan_id: plan.id, session_id: session.id})
 
-    assert %{room_id: ["can't be blank"], day: ["can't be blank"], slot: ["can't be blank"]} =
-             errors_on(changeset)
+    assert %{day: ["can't be blank"], slot: ["can't be blank"]} = errors_on(changeset)
   end
 
   test "project_active_term returns an empty projection when nothing is published" do

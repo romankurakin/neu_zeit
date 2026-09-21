@@ -137,25 +137,42 @@ defmodule NeuZeit.Planning.Readiness do
   end
 
   # Suggest reviewing room pools outside the usual range of two to five.
-  # The context rejects empty pools.
   defp room_pools(sessions) do
+    sessions = Enum.filter(sessions, &(&1.delivery_mode == :in_person))
+
     components =
       sessions
       |> Enum.map(& &1.course_component)
       |> Enum.uniq_by(& &1.id)
 
+    rooms = NeuZeit.Catalog.list_rooms()
+
+    components =
+      Enum.map(
+        components,
+        &%{&1 | allowed_rooms: NeuZeit.Catalog.CourseComponent.room_options(&1, rooms)}
+      )
+
     grouped = Enum.group_by(components, &pool_band(length(&1.allowed_rooms)))
+    missing = Map.get(grouped, :missing, [])
     narrow = Map.get(grouped, :narrow, [])
     broad = Map.get(grouped, :broad, [])
 
-    status = if narrow == [] and broad == [], do: :ok, else: :warning
+    status =
+      cond do
+        missing != [] -> :blocked
+        narrow == [] and broad == [] -> :ok
+        true -> :warning
+      end
 
-    item(:room_pools, status, length(narrow) + length(broad), %{
+    item(:room_pools, status, length(missing) + length(narrow) + length(broad), %{
+      missing: describe_components(missing),
       narrow: describe_components(narrow),
       broad: describe_components(broad)
     })
   end
 
+  defp pool_band(0), do: :missing
   defp pool_band(1), do: :narrow
   defp pool_band(n) when n > 5, do: :broad
   defp pool_band(_n), do: :ok

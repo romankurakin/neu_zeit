@@ -272,6 +272,8 @@ defmodule NeuZeit.Catalog do
     end
   end
 
+  defdelegate available_rooms(component), to: NeuZeit.Catalog.CourseComponents
+
   defdelegate list_course_components(), to: NeuZeit.Catalog.CourseComponents
 
   defdelegate list_teaching_types(), to: NeuZeit.Catalog.TeachingTypes

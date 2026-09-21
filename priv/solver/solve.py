@@ -104,7 +104,9 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
 
     for session in sessions:
         session_id = session["id"]
-        allowed_rooms = [room for room in session["allowed_rooms"] if room in rooms]
+        allowed_rooms = [
+            room for room in candidate_rooms(session) if room is None or room in rooms
+        ]
 
         for slot_index in session["allowed_starts"]:
             for room in allowed_rooms:
@@ -136,7 +138,7 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
             key = (
                 str(session["id"]),
                 (int(blocked["day"]) - 1) * slots_per_day + int(blocked["slot"]) - 1,
-                str(blocked["room"]),
+                normalize_room(blocked.get("room")),
             )
             variable = (
                 x.weekly.get((*key, int(blocked["week"])))
@@ -328,7 +330,7 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
     for session in sessions:
         session_id = session["id"]
         for slot_index in session["allowed_starts"]:
-            for room in session["allowed_rooms"]:
+            for room in candidate_rooms(session):
                 variable = x.get((session_id, slot_index, room))
                 if variable is not None and solver.boolean_value(variable):
                     assignment[session_id] = slot_to_day_slot(
@@ -421,7 +423,7 @@ def add_week_overlap_constraints(
         for session_id in session_ids:
             session = by_id[session_id]
 
-            candidate_rooms = rooms if rooms is not None else session["allowed_rooms"]
+            room_candidates = rooms if rooms is not None else candidate_rooms(session)
             for start_index in session["allowed_starts"]:
                 if not covers_slot(
                     start_index,
@@ -431,7 +433,7 @@ def add_week_overlap_constraints(
                 ):
                     continue
 
-                for room in candidate_rooms:
+                for room in room_candidates:
                     variable = candidates.get((session["id"], start_index, room))
                     if variable is not None:
                         variables.append(variable)
@@ -483,7 +485,7 @@ def excluded_day_terms(x, sessions, excluded_cells, slots_per_day, weight):
 
             for slot in range(slots_per_day):
                 slot_index = (day - 1) * slots_per_day + slot
-                for room in session["allowed_rooms"]:
+                for room in candidate_rooms(session):
                     variable = x.get((session["id"], slot_index, room))
                     if variable is not None:
                         terms.append(weight * lost * variable)
@@ -577,7 +579,7 @@ def automatic_workload_terms(model, x, sessions, weight, existing_ids):
                 (week, start, room)
                 for week in weeks
                 for start in group[0]["allowed_starts"]
-                for room in group[0]["allowed_rooms"]
+                for room in candidate_rooms(group[0])
             )
             orders = [
                 sum(
@@ -617,7 +619,7 @@ def building_terms(
                 for session in sessions:
                     for slot in range(slots_per_day):
                         slot_index = day * slots_per_day + slot
-                        for room in session["allowed_rooms"]:
+                        for room in candidate_rooms(session):
                             if room_buildings.get(room) == building:
                                 variable = weekly_x.get(
                                     (session["id"], slot_index, room)
@@ -671,7 +673,7 @@ def gap_terms(model, x, groups, sessions_by_id, days_count, slots_per_day, weigh
                         ):
                             continue
 
-                        for room in session["allowed_rooms"]:
+                        for room in candidate_rooms(session):
                             variable = weekly_x.get((session["id"], start_index, room))
                             if variable is not None:
                                 variables.append(variable)
@@ -724,7 +726,7 @@ def active_day_terms(
             for session in sessions:
                 for slot in range(slots_per_day):
                     slot_index = day * slots_per_day + slot
-                    for room in session["allowed_rooms"]:
+                    for room in candidate_rooms(session):
                         variable = weekly_x.get((session["id"], slot_index, room))
                         if variable is not None:
                             variables.append(variable)
@@ -763,12 +765,12 @@ def sequence_terms(model, x, pairs, sessions_by_id, slots_per_day, weight):
 
             left_variables = [
                 x[(left["id"], left_start, room)]
-                for room in left["allowed_rooms"]
+                for room in candidate_rooms(left)
                 if (left["id"], left_start, room) in x
             ]
             right_variables = [
                 x[(right["id"], right_start, room)]
-                for room in right["allowed_rooms"]
+                for room in candidate_rooms(right)
                 if (right["id"], right_start, room) in x
             ]
             if not left_variables or not right_variables:
@@ -845,6 +847,7 @@ def normalize_sessions(raw_sessions, days_count, slots_per_day):
         sessions.append(
             {
                 "id": str(session["id"]),
+                "delivery_mode": session.get("delivery_mode", "in_person"),
                 "allowed_rooms": [str(room) for room in session["allowed_rooms"]],
                 "allowed_starts": sorted(starts),
                 "duration_slots": duration,
@@ -874,7 +877,7 @@ def normalize_placements(raw, slots_per_day):
         normalized[str(session_id)] = {
             "day": day,
             "slot": slot,
-            "room": str(placement["room"]),
+            "room": normalize_room(placement.get("room")),
             "slot_index": (day - 1) * slots_per_day + (slot - 1),
             "weeks": [int(week) for week in placement.get("weeks", [])],
         }
@@ -886,8 +889,17 @@ def slot_to_day_slot(slot_index, slots_per_day, room):
     return {
         "day": slot_index // slots_per_day + 1,
         "slot": slot_index % slots_per_day + 1,
-        "room": str(room),
+        "room": room,
     }
+
+
+def candidate_rooms(session):
+    """Return physical room IDs, or one roomless candidate for an online session."""
+    return [None] if session.get("delivery_mode") == "online" else session["allowed_rooms"]
+
+
+def normalize_room(room):
+    return None if room is None else str(room)
 
 
 def error_result(status: str, message: str, started: float):

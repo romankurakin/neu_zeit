@@ -23,7 +23,7 @@ defmodule NeuZeit.Constraints.Projection do
       occurrence.source == :template and
         (MapSet.member?(excluded, occurrence.date) or not TermDates.within?(term, occurrence.date))
     end)
-    |> Enum.sort_by(&{Date.to_iso8601(&1.date), &1.slot, &1.room_id, &1.session_id})
+    |> Enum.sort_by(&{Date.to_iso8601(&1.date), &1.slot, &1.room_id || "", &1.session_id})
   end
 
   @doc """
@@ -50,6 +50,7 @@ defmodule NeuZeit.Constraints.Projection do
         day: placement.day,
         slot: placement.slot,
         duration_slots: placement.duration_slots || 1,
+        delivery_mode: session_delivery_mode(placement),
         room_id: placement.room_id,
         teacher_id: session_teacher(placement),
         placement_id: placement.id,
@@ -96,6 +97,11 @@ defmodule NeuZeit.Constraints.Projection do
                 day: Date.day_of_week(date),
                 slot: exception.new_slot,
                 duration_slots: occurrence.duration_slots,
+                delivery_mode:
+                  NeuZeit.Catalog.DeliveryMode.effective(
+                    %{delivery_mode: occurrence.delivery_mode},
+                    exception.new_delivery_mode
+                  ),
                 room_id: exception.new_room_id,
                 teacher_id: Map.get(exception, :new_teacher_id) || occurrence.teacher_id,
                 exception_id: exception.id,
@@ -118,6 +124,8 @@ defmodule NeuZeit.Constraints.Projection do
         day: Date.day_of_week(date),
         slot: exception.new_slot,
         duration_slots: exception_duration(exception),
+        delivery_mode:
+          NeuZeit.Catalog.DeliveryMode.effective(exception.session, exception.new_delivery_mode),
         room_id: exception.new_room_id,
         teacher_id: Map.get(exception, :new_teacher_id) || session_teacher(exception),
         exception_id: exception.id,
@@ -129,6 +137,11 @@ defmodule NeuZeit.Constraints.Projection do
 
   defp session_teacher(%{session: %{teacher_id: id}}), do: id
   defp session_teacher(_record), do: nil
+
+  defp session_delivery_mode(%{session: session}),
+    do: NeuZeit.Catalog.DeliveryMode.effective(session)
+
+  defp session_delivery_mode(_record), do: :in_person
 
   defp after_term?(%{ends_on: %Date{} = ends_on}, date), do: Date.after?(date, ends_on)
   defp after_term?(_term, _date), do: false

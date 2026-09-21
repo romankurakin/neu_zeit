@@ -71,7 +71,7 @@ defmodule NeuZeit.Solver.ResultValidator do
     do: {:error, errors(error("invalid_solver_output", "solver did not return an assignment"))}
 
   defp parse_placement(placement) when is_map(placement) do
-    with {:ok, room_id} <- cast_uuid(field(placement, :room), "room"),
+    with {:ok, room_id} <- cast_optional_uuid(field(placement, :room), "room"),
          {:ok, day} <- cast_positive_integer(field(placement, :day), "day"),
          {:ok, slot} <- cast_positive_integer(field(placement, :slot), "slot") do
       weeks = field(placement, :weeks)
@@ -110,7 +110,9 @@ defmodule NeuZeit.Solver.ResultValidator do
   end
 
   defp rooms_for_assignment(assignment, all_rooms) do
-    room_ids = assignment |> Map.values() |> Enum.map(& &1.room) |> Enum.uniq()
+    room_ids =
+      assignment |> Map.values() |> Enum.map(& &1.room) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
     rooms = all_rooms |> Map.new(&{&1.id, &1}) |> Map.take(room_ids)
 
     if map_size(rooms) == length(room_ids) do
@@ -143,7 +145,7 @@ defmodule NeuZeit.Solver.ResultValidator do
           slot: placement.slot,
           locked: Map.has_key?(fixed, session_id),
           session: session,
-          room: Map.fetch!(rooms, placement.room)
+          room: if(placement.room, do: Map.fetch!(rooms, placement.room), else: nil)
         }
       end)
 
@@ -193,6 +195,9 @@ defmodule NeuZeit.Solver.ResultValidator do
   end
 
   defp cast_uuid(_value, field_name), do: {:error, "#{field_name} must be a UUID"}
+
+  defp cast_optional_uuid(nil, _field_name), do: {:ok, nil}
+  defp cast_optional_uuid(value, field_name), do: cast_uuid(value, field_name)
 
   defp cast_positive_integer(value, _field_name) when is_integer(value) and value > 0,
     do: {:ok, value}
