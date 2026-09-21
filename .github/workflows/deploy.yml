@@ -47,6 +47,7 @@ jobs:
           REVISION: ${{ env.DEPLOY_REVISION }}
           SIZE: ${{ inputs.size }}
           DATABASE_SIZE: ${{ inputs.database_size }}
+          DEMO_SSH_KEY_IDS: ${{ vars.DEMO_SSH_KEY_IDS }}
           DATABASE_PASSWORD: ${{ secrets.DEMO_DATABASE_PASSWORD }}
           SECRET_KEY_BASE: ${{ secrets.DEMO_SECRET_KEY_BASE }}
           REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}.git
