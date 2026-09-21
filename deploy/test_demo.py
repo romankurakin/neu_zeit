@@ -210,6 +210,17 @@ class DeploymentTest(unittest.TestCase):
                 demo.undeploy(IP, self.reserved, self.droplets)
         self.assertFalse(any("delete" in call for call in self.calls))
 
+    def test_release_tolerates_a_stale_listing_after_deletion(self):
+        answers = [None, [{"ip": IP}], RuntimeError("404 not found"), []]
+
+        def wait(check, seconds, **kwargs):
+            self.assertFalse(check())
+            self.assertTrue(check())
+
+        with patch.object(demo, "do", side_effect=answers), \
+             patch.object(demo, "wait_until", side_effect=wait):
+            demo.release_ip(IP)
+
 
 if __name__ == "__main__":
     unittest.main()

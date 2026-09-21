@@ -78,8 +78,8 @@ def release_ip(ip):
         try:
             do("compute", "reserved-ip", "delete", ip, "--force")
         except RuntimeError as error:
-            # DigitalOcean can still be finishing an unassignment after its action completes.
-            if "422" not in str(error):
+            # Provider listings can lag behind a completed deletion or unassignment.
+            if not any(code in str(error) for code in ("404", "422")):
                 raise
 
     release()
