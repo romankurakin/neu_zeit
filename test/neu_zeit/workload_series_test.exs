@@ -230,10 +230,8 @@ defmodule NeuZeit.WorkloadSeriesTest do
     assert {:error, %{"status" => "INFEASIBLE"}} = NeuZeit.Solver.solve(spec, timeout: 15_000)
     [_, second] = Workloads.list(term.id)
     assert {:ok, :saved} = Catalog.save_workload(term.id, second, %{remainder_parity: "even"})
-    spec = plan.id |> SpecBuilder.build!() |> put_in([:solver, :time_limit], 5)
-    assert {:ok, result} = NeuZeit.Solver.solve(spec, timeout: 15_000)
+    assert {:ok, result} = Planning.solve_plan(plan.id)
     assert result["status"] in ["OPTIMAL", "FEASIBLE"]
-    assert {:ok, _} = NeuZeit.Planning.Solving.solve_plan_with_spec(plan.id, spec, result)
     assert Planning.check_plan(plan.id) == []
   end
 
@@ -399,12 +397,11 @@ defmodule NeuZeit.WorkloadSeriesTest do
       assert length(rows) == length(unquote(hours))
       plan = plan_fixture(term: c.term)
       assert {:ok, :ready} = Workloads.prepare(c.term.id)
-      spec = plan.id |> SpecBuilder.build!() |> put_in([:solver, :time_limit], 5)
+      spec = SpecBuilder.build!(plan.id)
       refute Enum.any?(spec.sessions, &Map.get(&1, :choose_week, false))
       assert length(spec.sessions) == if(length(unquote(hours)) == 1, do: 2, else: 6)
-      assert {:ok, result} = NeuZeit.Solver.solve(spec, timeout: 15_000)
+      assert {:ok, result} = Planning.solve_plan(plan.id)
       assert result["status"] in ["OPTIMAL", "FEASIBLE"]
-      assert {:ok, _} = NeuZeit.Planning.Solving.solve_plan_with_spec(plan.id, spec, result)
       assert Planning.check_plan(plan.id) == []
       assert length(Planning.list_placements(plan.id)) == length(spec.sessions)
 
