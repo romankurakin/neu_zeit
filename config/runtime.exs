@@ -14,6 +14,13 @@ config :neu_zeit, NeuZeitWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
+  config :neu_zeit,
+    solver_workers:
+      String.to_integer(
+        System.get_env("SOLVER_WORKERS") || "#{min(System.schedulers_online(), 8)}"
+      ),
+    solver_max_concurrency: String.to_integer(System.get_env("SOLVER_MAX_CONCURRENCY") || "1")
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

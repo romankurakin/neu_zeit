@@ -8,10 +8,10 @@ on:
         default: main
       database_size:
         description: "First deployment only: database droplet size"
-        default: s-1vcpu-1gb
+        default: s-1vcpu-512mb-10gb
       size:
-        description: "New host only: droplet size. The solver uses two cores."
-        default: s-2vcpu-2gb
+        description: "Application droplet size"
+        default: s-1vcpu-2gb
 
 permissions:
   contents: read

@@ -7,6 +7,7 @@ defmodule NeuZeit.Config do
 
   def load! do
     Defaults.policy()
+    |> put_in([:solver, :workers], Application.get_env(:neu_zeit, :solver_workers, 8))
     |> validate!()
   end
 

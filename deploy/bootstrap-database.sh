@@ -11,7 +11,8 @@ chmod 600 /opt/neu-zeit/database/environment
 docker run -d --name database --restart unless-stopped \
   --env-file /opt/neu-zeit/database/environment \
   -e POSTGRES_USER=postgres -e POSTGRES_DB=neu_zeit \
-  -p "$PRIVATE_IP:5432:5432" -v neu_zeit_database:/var/lib/postgresql/data postgres:17-alpine
+  -p "$PRIVATE_IP:5432:5432" -v neu_zeit_database:/var/lib/postgresql/data postgres:17-alpine \
+  -c shared_buffers=64MB -c max_connections=30 -c work_mem=2MB -c maintenance_work_mem=32MB
 install -d -m 700 /opt/neu-zeit/backups
 cat > /etc/cron.daily/neu-zeit-backup <<'BACKUP'
 #!/bin/bash

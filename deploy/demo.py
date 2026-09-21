@@ -145,14 +145,14 @@ def deploy(ip, reserved, droplets):
            "--outbound-rules", "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0")
     if not database:
         database = create_host(DB_TAG, DB_TAG, region, vpc["id"],
-                               os.environ.get("DATABASE_SIZE", "s-1vcpu-1gb"),
+                               os.environ.get("DATABASE_SIZE", "s-1vcpu-512mb-10gb"),
                                {"DATABASE_PASSWORD": password})
     values = {"DATABASE_PASSWORD": password, "DATABASE_HOST": address(database, "private"),
               "SECRET_KEY_BASE": secret, "HOST": ip.replace(".", "-") + ".sslip.io",
               "REVISION": revision, "REPOSITORY_URL": repository,
               "APPLICATION_COMPOSE": base64.b64encode((ROOT / "compose.application.yaml").read_bytes()).decode()}
     candidate = create_host(APP_TAG + "-" + str(int(time.time())), APP_TAG, region, vpc["id"],
-                            os.environ.get("SIZE", "s-2vcpu-2gb"), values)
+                            os.environ.get("SIZE", "s-1vcpu-2gb"), values)
     switched = False
     try:
         wait_until(lambda: ready("http://" + address(candidate, "public") + "/__deployment", revision))

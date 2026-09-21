@@ -4,6 +4,24 @@ defmodule NeuZeit.Solver.RunnerTest do
   alias NeuZeit.Solver.Runner
   alias NeuZeit.TestSupport.HangingSolver
 
+  test "deployment can limit solver workers and simultaneous calculations" do
+    old_workers = Application.get_env(:neu_zeit, :solver_workers)
+    old_concurrency = Application.get_env(:neu_zeit, :solver_max_concurrency)
+
+    on_exit(fn ->
+      for {key, value} <- [solver_workers: old_workers, solver_max_concurrency: old_concurrency] do
+        if is_nil(value),
+          do: Application.delete_env(:neu_zeit, key),
+          else: Application.put_env(:neu_zeit, key, value)
+      end
+    end)
+
+    Application.put_env(:neu_zeit, :solver_workers, 1)
+    Application.put_env(:neu_zeit, :solver_max_concurrency, 1)
+    assert NeuZeit.Config.load!().solver.workers == 1
+    assert Runner.max_concurrency() == 1
+  end
+
   test "derives safe process concurrency from CP-SAT worker count" do
     expected = max(div(System.schedulers_online(), NeuZeit.Config.load!().solver.workers), 1)
     assert Runner.max_concurrency() == expected
