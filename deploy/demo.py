@@ -24,7 +24,7 @@ def do(*args):
                             capture_output=True, text=True)
     if result.returncode:
         # Do not print command arguments: a future command may contain secrets.
-        raise RuntimeError(result.stderr.strip() or "DigitalOcean command failed")
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "DigitalOcean command failed")
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
@@ -49,13 +49,13 @@ def report(message):
             summary.write(message + "\n")
 
 
-def wait_until(check, seconds=900):
+def wait_until(check, seconds=900, description="deployment readiness"):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         if check():
             return
         time.sleep(10)
-    raise RuntimeError("Timed out waiting for deployment readiness")
+    raise RuntimeError("Timed out waiting for " + description)
 
 
 def ready(url, revision):
@@ -71,6 +71,26 @@ def assign(ip, droplet_id):
     result = first(do("compute", "action", "wait", action["id"]))
     if result["status"] != "completed":
         raise RuntimeError("Reserved IP assignment failed")
+
+
+def release_ip(ip):
+    def release():
+        try:
+            do("compute", "reserved-ip", "delete", ip, "--force")
+        except RuntimeError as error:
+            # DigitalOcean can still be finishing an unassignment after its action completes.
+            if "422" not in str(error):
+                raise
+
+    release()
+
+    def released():
+        if not any(r["ip"] == ip for r in do("compute", "reserved-ip", "list")):
+            return True
+        release()
+        return False
+
+    wait_until(released, 300, description="reserved IP release")
 
 
 def create_host(name, role, region, vpc, size, values):
@@ -180,6 +200,11 @@ def undeploy(ip, reserved, droplets):
     owner = (reserved.get("droplet") or {}).get("id") if reserved else None
     if owner and owner not in ids:
         raise RuntimeError("Reserved IP belongs to another project; refusing to delete resources")
+    if owner:
+        action = first(do("compute", "reserved-ip-action", "unassign", ip))
+        result = first(do("compute", "action", "wait", action["id"]))
+        if result["status"] != "completed":
+            raise RuntimeError("Reserved IP unassignment failed; project servers were retained")
     # Discover retained images before deleting the hosts they belong to.
     snapshots = [s for s in do("compute", "snapshot", "list")
                  if str(s["resource_id"]) in {str(i) for i in ids} or NAME in s.get("tags", [])]
@@ -189,14 +214,13 @@ def undeploy(ip, reserved, droplets):
         do("compute", "droplet", "delete", droplet["id"], "--force")
     wait_until(lambda: not any(d["id"] in ids for d in do("compute", "droplet", "list")), 300)
     if reserved:
-        do("compute", "reserved-ip", "delete", ip, "--force")
+        release_ip(ip)
     for firewall in do("compute", "firewall", "list"):
         if firewall["name"] == DB_TAG:
             do("compute", "firewall", "delete", firewall["id"], "--force")
     for vpc in do("vpcs", "list"):
         if vpc["name"] == NAME:
             do("vpcs", "delete", vpc["id"], "--force")
-    wait_until(lambda: not any(r["ip"] == ip for r in do("compute", "reserved-ip", "list")), 120)
     snapshot_ids = {str(s["id"]) for s in snapshots}
     wait_until(lambda: not any(str(s["id"]) in snapshot_ids for s in do("compute", "snapshot", "list")), 120)
     # These workflows create no automatic cloud backups, separate volumes or managed databases.

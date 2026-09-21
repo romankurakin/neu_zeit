@@ -48,6 +48,10 @@ class DeploymentTest(unittest.TestCase):
             return self.snapshots
         if args == ("compute", "reserved-ip", "list"):
             return []
+        if args[:3] == ("compute", "reserved-ip-action", "unassign"):
+            return [{"id": 456}]
+        if args[:3] == ("compute", "action", "wait"):
+            return [{"status": "completed"}]
         if args[:3] == ("compute", "snapshot", "delete"):
             self.snapshots = [s for s in self.snapshots if s["id"] != args[3]]
         if args[:3] == ("compute", "droplet", "delete"):
@@ -134,7 +138,7 @@ class DeploymentTest(unittest.TestCase):
         foreign = host(99, "other-project")
         foreign["tags"] = []
         self.droplets.append(foreign)
-        with patch.object(demo, "wait_until", side_effect=lambda check, seconds: self.assertTrue(check())):
+        with patch.object(demo, "wait_until", side_effect=lambda check, seconds, **kwargs: self.assertTrue(check())):
             demo.undeploy(IP, self.reserved, self.droplets)
         self.assertEqual(self.droplets, [foreign])
         self.assertIn(("compute", "snapshot", "delete", "snapshot-1", "--force"), self.calls)
@@ -148,6 +152,31 @@ class DeploymentTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "another project"):
             demo.undeploy(IP, self.reserved, self.droplets)
         self.assertEqual(self.calls, [])
+
+    def test_release_retries_while_provider_finishes_unassignment(self):
+        answers = [RuntimeError("422 unprocessable"), [{"ip": IP}], None, []]
+
+        def wait(check, seconds, **kwargs):
+            self.assertFalse(check())
+            self.assertTrue(check())
+
+        with patch.object(demo, "do", side_effect=answers) as api, \
+             patch.object(demo, "wait_until", side_effect=wait):
+            demo.release_ip(IP)
+        self.assertEqual(api.call_count, 4)
+
+    def test_unassignment_failure_keeps_servers(self):
+        original = self.do
+
+        def api(*args):
+            if args[:3] == ("compute", "action", "wait"):
+                return [{"status": "errored"}]
+            return original(*args)
+
+        with patch.object(demo, "do", side_effect=api):
+            with self.assertRaisesRegex(RuntimeError, "servers were retained"):
+                demo.undeploy(IP, self.reserved, self.droplets)
+        self.assertFalse(any("delete" in call for call in self.calls))
 
 
 if __name__ == "__main__":
