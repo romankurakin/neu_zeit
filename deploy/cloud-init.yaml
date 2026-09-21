@@ -19,17 +19,20 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/sh
-      # The deploy workflow fills in __REPOSITORY__ and __REVISION__.
+      # The deploy workflow supplies the repository, revision and permanent host.
       set -eu
 
       APPLICATION=/opt/neu-zeit/application
-      git clone --depth 1 --branch "__REVISION__" "__REPOSITORY__" "${APPLICATION}"
+      mkdir -p "${APPLICATION}"
       cd "${APPLICATION}"
+      git init
+      git remote add origin "__REPOSITORY__"
+      git fetch --depth 1 origin "__REVISION__"
+      git checkout --detach FETCH_HEAD
 
       # sslip.io resolves this name back to the address, so Caddy can get a
       # certificate for it without a registered domain.
-      ADDRESS="$(curl -fsS --retry 5 --retry-delay 3 https://api.ipify.org)"
-      HOST="$(printf '%s' "${ADDRESS}" | tr '.' '-').sslip.io"
+      HOST="__HOST__"
 
       # The secrets are made here. They reach neither the log nor the repository.
       {

@@ -50,13 +50,17 @@ docker compose -f compose.prod.yaml run --rm migrate && \
 
 ## Demonstration host
 
-**Deploy demonstration host** in the Actions tab creates a droplet that builds
-this repository and serves it over HTTPS. **Undeploy demonstration host**
-deletes it, and the demonstration database with it. Both need the
-`DIGITALOCEAN_ACCESS_TOKEN` secret.
+**Deploy demonstration host** creates a demo server and serves it over HTTPS at a permanent `IP.sslip.io` address. If the server exists, it returns the same URL without updating the application. Select **Recreate demo** to deploy another revision. This deletes the server and its demonstration database, then creates a new server at the same reserved IP.
 
-First boot builds the release, so the printed address answers a few minutes
-later.
+**Undeploy demonstration host** deletes the server, database and reserved IP. It releases all billable resources created by these workflows. The old URL is no longer reserved. Before deploying again, reserve a new IPv4 and update `DEMO_RESERVED_IP`. Repeating Undeploy after cleanup is safe.
+
+Both workflows use the `DIGITALOCEAN_ACCESS_TOKEN` secret. No SSH key is required. The token needs permission to list, create and delete droplets, use tags, read actions, and read, assign/unassign and delete reserved IPs.
+
+Reserve an IPv4 address once in DigitalOcean and save it as the repository Actions variable `DEMO_RESERVED_IP`. The workflows always use that address and its region. They refuse to take an address assigned to another server. Use **Recreate demo** to keep the link when deploying another revision. **Undeploy** releases the address to stop its charges.
+
+[Reserved IPv4 pricing](https://docs.digitalocean.com/products/networking/reserved-ips/details/pricing/): free while assigned to a droplet; $0.01/hour, up to $5/month, while unassigned. No domain purchase is needed. GitHub variables, secrets and your local database backup are not billable DigitalOcean resources and are kept.
+
+First boot builds the release, so HTTPS becomes available a few minutes after creation. A demo created before this setup needs one **Recreate demo** run to configure the permanent hostname. The old ordinary droplet IP cannot be converted into a reserved IP, so share the new permanent link once after that run.
 
 ## Guides
 
