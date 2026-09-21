@@ -49,7 +49,7 @@ def report(message):
             summary.write(message + "\n")
 
 
-def wait_until(check, seconds=900, description="deployment readiness"):
+def wait_until(check, seconds=1800, description="deployment readiness"):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         if check():
@@ -156,8 +156,10 @@ def deploy(ip, reserved, droplets):
     if database and (database["vpc_uuid"] != vpc["id"] or database["region"]["slug"] != region):
         raise RuntimeError("Database host is outside the project network")
     # Create firewall protection before provisioning the database.
+    tags = {tag["name"] for tag in do("compute", "tag", "list")}
     for tag in (NAME, APP_TAG, DB_TAG):
-        do("compute", "tag", "create", tag)
+        if tag not in tags:
+            do("compute", "tag", "create", tag)
     firewalls = do("compute", "firewall", "list")
     if not any(f["name"] == DB_TAG for f in firewalls):
         do("compute", "firewall", "create", "--name", DB_TAG, "--tag-names", DB_TAG,
