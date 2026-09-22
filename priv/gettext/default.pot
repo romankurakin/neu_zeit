@@ -3252,3 +3252,13 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Online sessions do not use a room."
 msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex
+#, elixir-autogen, elixir-format
+msgid "After rounding"
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex
+#, elixir-autogen, elixir-format
+msgid "Status compares calendar hours with the selected rounding. Difference compares them with the original requirement."
+msgstr ""

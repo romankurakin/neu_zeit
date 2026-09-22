@@ -128,7 +128,7 @@ defmodule NeuZeit.Planning.Readiness do
 
     partial = length(sessions) - full - automatic
 
-    item(:week_masks, :unknown, partial, %{
+    item(:week_masks, if(automatic > 0, do: :unknown, else: :ok), partial, %{
       total: length(sessions),
       every_week: full,
       automatic: automatic,

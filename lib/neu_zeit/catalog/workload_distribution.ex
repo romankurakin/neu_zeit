@@ -128,11 +128,13 @@ defmodule NeuZeit.Catalog.WorkloadDistribution do
   def meeting_count(sessions), do: Enum.reduce(sessions, 0, &(repeats(&1) + &2))
 
   def planned_hours(sessions, %Term{} = term) do
-    sessions
-    |> Enum.reduce(0, fn session, sum ->
+    academic_hours(planned_minutes(sessions, term), term)
+  end
+
+  def planned_minutes(sessions, %Term{} = term) do
+    Enum.reduce(sessions, 0, fn session, sum ->
       sum + repeats(session) * session.duration_slots * slot_minutes(term.grid)
     end)
-    |> academic_hours(term)
   end
 
   def synchronized?(workload, %Term{} = term, sessions) do

@@ -95,6 +95,9 @@ defmodule NeuZeitWeb.PlanLive.Reports do
       <p>{gettext("Academic hours (%{minutes} min)", minutes: @term.academic_hour_minutes)}</p>
       <p class="type-detail text-base-content">
         {gettext("Courses not entered here are not included in the totals.")}
+        {gettext(
+          "Status compares calendar hours with the selected rounding. Difference compares them with the original requirement."
+        )}
       </p>
 
       <p class="type-detail font-semibold">
@@ -115,18 +118,23 @@ defmodule NeuZeitWeb.PlanLive.Reports do
         </:col>
         <:col :let={row} label={gettext("Required hours")} numeric>
           {if row.required_hours,
-            do: Float.round(row.required_hours * 60 / @term.academic_hour_minutes, 1),
+            do: Float.round(row.required_hours * 60 / @term.academic_hour_minutes, 2),
+            else: gettext("Not set")}
+        </:col>
+        <:col :let={row} label={gettext("After rounding")} numeric>
+          {if row.rounded_hours,
+            do: Float.round(row.rounded_hours * 60 / @term.academic_hour_minutes, 2),
             else: gettext("Not set")}
         </:col>
         <:col :let={row} label={gettext("Planned hours")} numeric>
-          {Float.round(row.planned_hours * 60 / @term.academic_hour_minutes, 1)}
+          {Float.round(row.planned_hours * 60 / @term.academic_hour_minutes, 2)}
         </:col>
         <:col :let={row} label={gettext("Calendar hours")} numeric>
-          {Float.round(row.calendar_hours * 60 / @term.academic_hour_minutes, 1)}
+          {Float.round(row.calendar_hours * 60 / @term.academic_hour_minutes, 2)}
         </:col>
         <:col :let={row} label={gettext("Difference")} numeric>
           {if row.delta_hours,
-            do: Float.round(row.delta_hours * 60 / @term.academic_hour_minutes, 1),
+            do: Float.round(row.delta_hours * 60 / @term.academic_hour_minutes, 2),
             else: gettext("Not checked")}
         </:col>
         <:col :let={row} label={gettext("Status")}>

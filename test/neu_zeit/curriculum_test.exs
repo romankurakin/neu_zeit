@@ -101,6 +101,18 @@ defmodule NeuZeit.CurriculumTest do
     assert coverage.status == :ok
   end
 
+  test "keeps fractional requirements precise until display and shares term coverage calculations" do
+    term = term_fixture(%{academic_hour_minutes: 50})
+    component = component_fixture()
+    save_hours(term, component, "45.01")
+    coverage = Curriculum.course_contact_coverage(term.id, component.course_id)
+    assert_in_delta coverage.required_hours, 45.01 * 50 / 60, 0.000001
+    assert coverage.rounded_hours == 39.0
+    assert coverage.status == :ok
+    assert [row] = Curriculum.term_coverage(term.id)
+    assert Map.take(row, Map.keys(coverage)) == coverage
+  end
+
   defp save_hours(term, component, hours) do
     session =
       session_fixture(

@@ -25,6 +25,25 @@ defmodule NeuZeit.WorkloadSeriesTest do
     %{term: term, component: component, teacher: teacher, cohort: cohort, attrs: attrs}
   end
 
+  test "preparation repairs several incomplete workloads in the same transaction", c do
+    for _ <- 1..3 do
+      attrs = Map.put(c.attrs, :course_component_id, component_fixture().id)
+      assert {:ok, :saved} = Catalog.save_workload(c.term.id, nil, attrs)
+    end
+
+    for row <- Workloads.list(c.term.id) do
+      assert {:ok, _} = Sessions.delete_generated_session(hd(row.sessions))
+    end
+
+    assert {:ok, :ready} = Workloads.prepare(c.term.id)
+    assert :ok = Workloads.check(c.term.id)
+    rows = Workloads.list(c.term.id)
+    assert length(rows) == 3
+    assert Enum.all?(rows, &(Workloads.meeting_count(&1) == 23))
+    assert {:ok, :ready} = Workloads.prepare(c.term.id)
+    assert Enum.map(Workloads.list(c.term.id), & &1.sessions) == Enum.map(rows, & &1.sessions)
+  end
+
   test "45 required hours produce two recurring series and 46 planned hours", c do
     assert {:ok, :saved} = Catalog.save_workload(c.term.id, nil, c.attrs)
     [row] = Workloads.list(c.term.id)

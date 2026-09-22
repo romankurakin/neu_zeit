@@ -64,84 +64,89 @@ defmodule NeuZeit.Catalog.Workloads do
     Repo.transaction(fn ->
       term = lock_term!(term_id)
 
-      changeset =
-        Workload.changeset((original && original.requirement) || Workload.new(term), term, attrs)
-
-      workload =
-        case apply_action(changeset, :insert) do
-          {:ok, workload} -> workload
-          {:error, error} -> Repo.rollback(error)
-        end
-
-      current = list(term_id)
-      snapshot = current_snapshot!(current, original)
-      session_attrs = Workload.session_attributes(workload)
-
-      if Enum.any?(current, fn row ->
-           row.id != (original && original.id) && identity(row.requirement) == identity(workload)
-         end) do
-        Repo.rollback(
-          add_error(
-            changeset,
-            :course_component_id,
-            "This teaching load already exists. Edit its hours."
-          )
-        )
-      end
-
-      proposal =
-        WorkloadDistribution.propose(workload, term, snapshot,
-          parity_changed?: Map.has_key?(changeset.changes, :remainder_parity)
-        )
-
-      protect_removals!(proposal, snapshot, changeset)
-      requirement = unwrap!(Repo.insert_or_update(changeset), changeset)
-
-      Enum.each(proposal.removed, &unwrap!(Sessions.delete_generated_session(&1), changeset))
-
-      for {session, mask} <- proposal.retained do
-        unwrap!(
-          Sessions.update_generated_session(session, Map.put(session_attrs, :week_mask, mask)),
-          changeset
-        )
-      end
-
-      for mask <- proposal.new_masks do
-        unwrap!(
-          Sessions.create_generated_session(
-            requirement.id,
-            session_attrs |> Map.put(:term_id, term_id) |> Map.put(:week_mask, mask)
-          ),
-          changeset
-        )
-      end
-
-      Repo.delete_all(
-        from wc in NeuZeit.Catalog.WorkloadCohort,
-          where: wc.workload_id == ^requirement.id
-      )
-
-      Repo.insert_all(
-        NeuZeit.Catalog.WorkloadCohort,
-        Enum.map(workload.cohort_ids, &%{workload_id: requirement.id, cohort_id: &1})
-      )
-
-      requirement
+      save_locked(term, original, attrs, index(list(term_id)))
     end)
+  end
+
+  defp save_locked(term, original, attrs, current) do
+    term_id = term.id
+
+    changeset =
+      Workload.changeset((original && original.requirement) || Workload.new(term), term, attrs)
+
+    workload =
+      case apply_action(changeset, :insert) do
+        {:ok, workload} -> workload
+        {:error, error} -> Repo.rollback(error)
+      end
+
+    snapshot = current_snapshot!(current.rows, original)
+    session_attrs = Workload.session_attributes(workload)
+
+    duplicate_ids = Map.get(current.identities, identity(workload), [])
+
+    if Enum.any?(duplicate_ids, &(&1 != (original && original.id))) do
+      Repo.rollback(
+        add_error(
+          changeset,
+          :course_component_id,
+          "This teaching load already exists. Edit its hours."
+        )
+      )
+    end
+
+    proposal =
+      WorkloadDistribution.propose(workload, term, snapshot,
+        parity_changed?: Map.has_key?(changeset.changes, :remainder_parity)
+      )
+
+    protect_removals!(proposal, snapshot, changeset)
+    requirement = unwrap!(Repo.insert_or_update(changeset), changeset)
+
+    Enum.each(proposal.removed, &unwrap!(Sessions.delete_generated_session(&1), changeset))
+
+    for {session, mask} <- proposal.retained do
+      unwrap!(
+        Sessions.update_generated_session(session, Map.put(session_attrs, :week_mask, mask)),
+        changeset
+      )
+    end
+
+    for mask <- proposal.new_masks do
+      unwrap!(
+        Sessions.create_generated_session(
+          requirement.id,
+          session_attrs |> Map.put(:term_id, term_id) |> Map.put(:week_mask, mask)
+        ),
+        changeset
+      )
+    end
+
+    Repo.delete_all(
+      from wc in NeuZeit.Catalog.WorkloadCohort,
+        where: wc.workload_id == ^requirement.id
+    )
+
+    Repo.insert_all(
+      NeuZeit.Catalog.WorkloadCohort,
+      Enum.map(workload.cohort_ids, &%{workload_id: requirement.id, cohort_id: &1})
+    )
+
+    requirement
   end
 
   def prepare(term_id) do
     Repo.transaction(fn ->
       term = lock_term!(term_id)
 
-      for row <- list(term_id) do
+      rows = list(term_id)
+      current = index(rows)
+
+      for row <- rows do
         case row.requirement |> Workload.changeset(term) |> apply_action(:insert) do
           {:ok, workload} ->
             unless WorkloadDistribution.synchronized?(workload, term, row.sessions) do
-              case save(term_id, row, %{}) do
-                {:ok, _} -> :ok
-                {:error, error} -> Repo.rollback(error)
-              end
+              save_locked(term, row, %{}, current)
             end
 
           {:error, error} ->
@@ -169,7 +174,7 @@ defmodule NeuZeit.Catalog.Workloads do
   def delete(term_id, original) do
     Repo.transaction(fn ->
       lock_term!(term_id)
-      snapshot = current_snapshot!(list(term_id), original)
+      snapshot = current_snapshot!(Map.new(list(term_id), &{&1.id, &1}), original)
 
       if MapSet.size(snapshot.placed_ids) > 0,
         do: Repo.rollback({:conflict, "Remove placements before deleting this teaching load."})
@@ -225,10 +230,17 @@ defmodule NeuZeit.Catalog.Workloads do
         )
   end
 
+  defp index(rows) do
+    %{
+      rows: Map.new(rows, &{&1.id, &1}),
+      identities: Enum.group_by(rows, &identity(&1.requirement), & &1.id)
+    }
+  end
+
   defp current_snapshot!(_rows, nil), do: nil
 
   defp current_snapshot!(rows, %WorkloadSnapshot{} = original) do
-    current = Enum.find(rows, &(&1.id == original.id))
+    current = Map.get(rows, original.id)
 
     if current && fingerprint(current) == fingerprint(original),
       do: current,

@@ -3,6 +3,62 @@ defmodule NeuZeit.PlanCoverageTest do
   import NeuZeit.Fixtures
   alias NeuZeit.{Catalog, Curriculum, Planning}
 
+  for {mode, expected} <- [{"up", 48.0}, {"down", 44.0}] do
+    test "selected #{mode} rounding is fulfilled, but one cancelled meeting is a deficit" do
+      term = term_fixture()
+      room = room_fixture()
+      component = component_fixture(rooms: [room])
+      cohort = cohort_fixture()
+      teacher = teacher_fixture()
+
+      assert {:ok, :saved} =
+               Catalog.save_workload(term.id, nil, %{
+                 course_component_id: component.id,
+                 teacher_id: teacher.id,
+                 cohort_ids: [cohort.id],
+                 contact_hours: "45",
+                 duration_slots: 2,
+                 week_mask: Enum.to_list(1..term.weeks_count),
+                 rounding_mode: unquote(mode)
+               })
+
+      [session] = Catalog.list_sessions(term.id)
+      plan = plan_fixture(term: term)
+
+      placement_fixture(
+        plan_id: plan.id,
+        session_id: session.id,
+        room_id: room.id,
+        day: 1,
+        slot: 1
+      )
+
+      assert [row] = Curriculum.plan_coverage(plan.id)
+      assert row.required_hours == 33.75
+      assert row.rounded_hours == unquote(expected) * 45 / 60
+      assert row.calendar_hours == row.rounded_hours
+      assert row.status == :ok
+      assert row.planned_status == :ok
+      assert_in_delta row.delta_hours, (unquote(expected) - 45) * 45 / 60, 0.000001
+      assert {:ok, _} = Planning.publish_plan(plan.id)
+      [first | _] = Planning.project_plan(plan.id).occurrences
+
+      assert {:ok, _} =
+               Planning.create_schedule_exception(%{
+                 session_id: session.id,
+                 kind: "cancel",
+                 occurrence_date: first.date,
+                 reason: "Cancelled meeting",
+                 created_by: "Administrator"
+               })
+
+      assert [changed] = Curriculum.plan_coverage(plan.id)
+      assert changed.status == :under
+      assert changed.planned_status == :ok
+      assert changed.calendar_hours == changed.rounded_hours - 3
+    end
+  end
+
   test "combines automatic meetings and saved fixed repetitions per group" do
     term = term_fixture()
     component = component_fixture()

@@ -62,6 +62,14 @@ defmodule NeuZeit.Planning.ReadinessTest do
 
   defp row(report, key), do: Enum.find(report, &(&1.key == key))
 
+  test "selected teaching weeks are a valid schedule pattern", ctx do
+    c = component(ctx, "Alternating", [room(ctx, "101")])
+    session(ctx, c, teacher("Teacher"), %{"week_mask" => [1, 3, 5]})
+    check = row(Readiness.report(ctx.term.id), :week_masks)
+    assert check.status == :ok
+    assert check.detail.partial == 1
+  end
+
   test "a term with nothing in it blocks only on unplaced sessions", %{term: term} do
     report = Readiness.report(term.id)
 

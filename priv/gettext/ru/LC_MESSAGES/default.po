@@ -3275,3 +3275,13 @@ msgstr "Проблем с аудиториями не найдено."
 #, elixir-autogen, elixir-format
 msgid "Online sessions do not use a room."
 msgstr "Онлайн-занятия не занимают аудиторию."
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex
+#, elixir-autogen, elixir-format
+msgid "After rounding"
+msgstr "После округления"
+
+#: lib/neu_zeit_web/live/plan_live/reports.ex
+#, elixir-autogen, elixir-format
+msgid "Status compares calendar hours with the selected rounding. Difference compares them with the original requirement."
+msgstr "Статус сравнивает календарные часы с объёмом после округления. Разница рассчитана относительно исходного требования."
