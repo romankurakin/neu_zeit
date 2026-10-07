@@ -434,7 +434,9 @@ defmodule NeuZeitWeb.ExceptionLive.FormComponent do
             if (input.value === "") {
               restore(input, key);
             }
-            input.addEventListener("change", () => remember(input, key));
+            input.addEventListener("change", () => {
+              remember(input, key);
+            });
           },
         });
       </script>

@@ -160,10 +160,18 @@ defmodule NeuZeitWeb.UI.Combobox do
 
         bindSearch() {
           const search = this.search();
-          search.addEventListener("input", () => this.applySearch(search.value, true));
-          search.addEventListener("focus", () => this.applySearch("", true));
-          search.addEventListener("keydown", (event) => this.onKey(event));
-          search.addEventListener("blur", () => this.restore());
+          search.addEventListener("input", () => {
+            this.applySearch(search.value, true);
+          });
+          search.addEventListener("focus", () => {
+            this.applySearch("", true);
+          });
+          search.addEventListener("keydown", (event) => {
+            this.onKey(event);
+          });
+          search.addEventListener("blur", () => {
+            this.restore();
+          });
         },
 
         /** Writes the choice and tells the form. @param {HTMLElement} option */
@@ -204,6 +212,11 @@ defmodule NeuZeitWeb.UI.Combobox do
           }
         },
 
+        /** The list is open unless the hook hid it. */
+        isOpen() {
+          return this.list().hidden === false;
+        },
+
         list() {
           return required(this.el, "[role=listbox]", "list");
         },
@@ -228,7 +241,7 @@ defmodule NeuZeitWeb.UI.Combobox do
 
         /** Moves the highlight through the shown options. @param {number} step */
         moveSelection(step) {
-          if (this.list().hidden) {
+          if (!this.isOpen()) {
             this.applySearch(this.search().value, true);
           }
           const visible = this.visible();
@@ -244,9 +257,9 @@ defmodule NeuZeitWeb.UI.Combobox do
           } else if (event.key === "ArrowUp") {
             event.preventDefault();
             this.moveSelection(backward);
-          } else if (event.key === "Enter" && !this.list().hidden) {
+          } else if (event.key === "Enter" && this.isOpen()) {
             this.pickSelection(event);
-          } else if (event.key === "Escape" && !this.list().hidden) {
+          } else if (event.key === "Escape" && this.isOpen()) {
             event.preventDefault();
             event.stopPropagation();
             this.restore();
@@ -285,7 +298,7 @@ defmodule NeuZeitWeb.UI.Combobox do
         /** The search box shows the choice again when the typed text chose nothing. */
         restore() {
           globalThis.setTimeout(() => {
-            if (this.list().hidden) {
+            if (!this.isOpen()) {
               return;
             }
             const { value } = this.hidden();
@@ -313,7 +326,7 @@ defmodule NeuZeitWeb.UI.Combobox do
         updated() {
           const focused = document.activeElement === this.search();
           const { value } = this.hidden();
-          if (!this.list().hidden) {
+          if (this.isOpen()) {
             this.applySearch(this.search().value, true);
           } else if (!focused) {
             this.search().value = optionFor(this.options(), value)?.dataset.label ?? "";
@@ -322,7 +335,7 @@ defmodule NeuZeitWeb.UI.Combobox do
         },
 
         visible() {
-          return this.options().filter((option) => !option.hidden);
+          return this.options().filter((option) => option.hidden === false);
         },
       });
     </script>

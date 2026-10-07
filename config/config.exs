@@ -56,8 +56,8 @@ config :volt, :lint,
   root: ".",
   sources: ["assets/js/**/*.ts", "assets/vendor/**/*.ts", "assets/colocated/dev/*/*/*.js"],
   ignore: ["assets/colocated/*/*/index.js"],
-  plugins: [:typescript, :unicorn, :oxc],
-  env: [:browser],
+  plugins: ["typescript", "unicorn", "oxc"],
+  env: ["browser"],
   tsgolint: "node_modules/.bin/tsgolint",
   rules: %{
     "correctness" => :deny,
@@ -65,18 +65,8 @@ config :volt, :lint,
     "pedantic" => :deny,
     "perf" => :deny,
     "style" => :deny,
-    # Volt requires explicit names for type-aware rules.
-    "typescript/await-thenable" => :deny,
-    "typescript/no-floating-promises" => :deny,
-    "typescript/no-misused-promises" => :deny,
-    "typescript/no-unsafe-argument" => :deny,
-    "typescript/no-unsafe-assignment" => :deny,
-    "typescript/no-unsafe-call" => :deny,
-    "typescript/no-unsafe-member-access" => :deny,
-    "typescript/no-unsafe-return" => :deny,
-    "typescript/restrict-plus-operands" => :deny,
-    "typescript/switch-exhaustiveness-check" => :deny,
-    "typescript/unbound-method" => :deny,
+    # DOM elements and events cannot be readonly types.
+    "typescript/prefer-readonly-parameter-types" => :allow,
     # Conflicts with eslint/no-ternary.
     "unicorn/prefer-ternary" => :allow
   },
@@ -93,7 +83,7 @@ config :volt, :lint,
     },
     %{
       files: ["assets/vendor/heroicons.ts"],
-      env: %{browser: false, node: true}
+      env: %{"browser" => false, "node" => true}
     }
   ]
 
