@@ -132,7 +132,7 @@ defmodule NeuZeitWeb.PeopleLive.Index do
 
   defp persist(socket, {:error, reason}), do: {:noreply, Errors.put(socket, reason, as: :form)}
 
-  # Show an error when a teacher or group is still referenced by a session.
+  # The list disables deletion of used records; this catches a concurrent change.
   defp delete("cohorts", cohort) do
     Catalog.delete_cohort(cohort)
   rescue
@@ -154,8 +154,38 @@ defmodule NeuZeitWeb.PeopleLive.Index do
     |> assign(:teachers, Catalog.list_teachers())
     |> assign(:cohorts, Catalog.list_cohorts())
     |> assign(:teacher_usage, usage.teachers)
+    |> assign(:teacher_exceptions, Catalog.teacher_exception_usage())
     |> assign(:cohort_usage, usage.cohorts)
   end
+
+  # Names the reference that prevents deletion, or nil when the record is free.
+  defp teacher_blocker(assigns, teacher) do
+    sessions = Map.get(assigns.teacher_usage, teacher.id, 0)
+    changes = Map.get(assigns.teacher_exceptions, teacher.id, 0)
+
+    cond do
+      sessions > 0 ->
+        sessions_blocker(sessions)
+
+      changes > 0 ->
+        ngettext("Named in %{count} one-off change", "Named in %{count} one-off changes", changes,
+          count: changes
+        )
+
+      true ->
+        nil
+    end
+  end
+
+  defp cohort_blocker(assigns, cohort) do
+    case Map.get(assigns.cohort_usage, cohort.id, 0) do
+      0 -> nil
+      count -> sessions_blocker(count)
+    end
+  end
+
+  defp sessions_blocker(count),
+    do: ngettext("Used by %{count} session", "Used by %{count} sessions", count, count: count)
 
   # Flag short single-token names as possible abbreviations.
   defp placeholder?(%{name: name}) do
@@ -177,7 +207,9 @@ defmodule NeuZeitWeb.PeopleLive.Index do
       terms={@navigation_terms}
       current_term={@navigation_term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header title={gettext("Teachers and groups")}>
         <:actions>
           <.link patch={~p"/people?tab=#{@tab}&new=1"} class="btn btn-primary">
@@ -197,12 +229,24 @@ defmodule NeuZeitWeb.PeopleLive.Index do
 
       <div class={["grid gap-4", @editing && "lg:grid-cols-[2fr_1fr]"]}>
         <div class="min-w-0">
+          <.empty_state
+            :if={@tab == "teachers" and @teachers == []}
+            title={gettext("No teachers yet")}
+            message={gettext("Add the teachers who give sessions.")}
+            icon="hero-users"
+          >
+            <:actions>
+              <.link patch={~p"/people?tab=teachers&new=1"} class="btn btn-primary">
+                {gettext("New teacher")}
+              </.link>
+            </:actions>
+          </.empty_state>
+
           <.table
-            :if={@tab == "teachers"}
+            :if={@tab == "teachers" and @teachers != []}
             id="teachers"
             rows={@teachers}
             row_id={&"teacher-#{&1.id}"}
-            empty_message={gettext("No teachers yet.")}
           >
             <:col :let={teacher} label={gettext("Name")}>
               <span class="font-semibold">{teacher.name}</span>
@@ -215,24 +259,38 @@ defmodule NeuZeitWeb.PeopleLive.Index do
             </:col>
             <:action :let={teacher}>
               <.link patch={~p"/people?tab=teachers&edit=#{teacher.id}"} class="btn btn-ghost">
-                {gettext("Rename")}
+                {gettext("Edit")}
               </.link>
               <button
                 class="btn btn-ghost text-error"
                 phx-click="delete_prompt"
                 phx-value-id={teacher.id}
+                disabled={teacher_blocker(assigns, teacher) != nil}
+                title={teacher_blocker(assigns, teacher)}
               >
                 {gettext("Delete")}
               </button>
             </:action>
           </.table>
 
+          <.empty_state
+            :if={@tab == "cohorts" and @cohorts == []}
+            title={gettext("No groups yet")}
+            message={gettext("Add the groups that attend sessions.")}
+            icon="hero-users"
+          >
+            <:actions>
+              <.link patch={~p"/people?tab=cohorts&new=1"} class="btn btn-primary">
+                {gettext("New group")}
+              </.link>
+            </:actions>
+          </.empty_state>
+
           <.table
-            :if={@tab == "cohorts"}
+            :if={@tab == "cohorts" and @cohorts != []}
             id="cohorts"
             rows={@cohorts}
             row_id={&"cohort-#{&1.id}"}
-            empty_message={gettext("No groups yet.")}
           >
             <:col :let={cohort} label={gettext("Name")}>
               <span class="font-semibold">{cohort.name}</span>
@@ -246,12 +304,14 @@ defmodule NeuZeitWeb.PeopleLive.Index do
             </:col>
             <:action :let={cohort}>
               <.link patch={~p"/people?tab=cohorts&edit=#{cohort.id}"} class="btn btn-ghost">
-                {gettext("Rename")}
+                {gettext("Edit")}
               </.link>
               <button
                 class="btn btn-ghost text-error"
                 phx-click="delete_prompt"
                 phx-value-id={cohort.id}
+                disabled={cohort_blocker(assigns, cohort) != nil}
+                title={cohort_blocker(assigns, cohort)}
               >
                 {gettext("Delete")}
               </button>
@@ -300,7 +360,7 @@ defmodule NeuZeitWeb.PeopleLive.Index do
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.name)}
-        message={gettext("Records used by sessions cannot be deleted.")}
+        message={delete_message(@deleting)}
         confirm_label={gettext("Delete")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"
@@ -309,8 +369,14 @@ defmodule NeuZeitWeb.PeopleLive.Index do
     """
   end
 
+  defp delete_message(%Cohort{name: name}),
+    do: gettext("Deletes the group %{name}. This cannot be undone.", name: name)
+
+  defp delete_message(%Teacher{name: name}),
+    do: gettext("Deletes the teacher %{name}. This cannot be undone.", name: name)
+
   defp inspector_title(:cohort, %Cohort{id: nil}), do: gettext("New group")
-  defp inspector_title(:cohort, _record), do: gettext("Rename group")
+  defp inspector_title(:cohort, _record), do: gettext("Edit group")
   defp inspector_title(_teacher, %Teacher{id: nil}), do: gettext("New teacher")
-  defp inspector_title(_teacher, _record), do: gettext("Rename teacher")
+  defp inspector_title(_teacher, _record), do: gettext("Edit teacher")
 end

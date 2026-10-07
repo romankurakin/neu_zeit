@@ -31,6 +31,11 @@ defmodule NeuZeitWeb.RoomLive.Index do
     assign_form(socket, :building, %Building{}, Catalog.change_building(%Building{}))
   end
 
+  defp apply_action(socket, :edit_building, %{"id" => id}) do
+    building = Catalog.get_building!(id)
+    assign_form(socket, :building, building, Catalog.change_building(building))
+  end
+
   defp apply_action(socket, :new_room, _params) do
     assign_form(socket, :room, %Room{}, Catalog.change_room(%Room{}))
   end
@@ -75,7 +80,13 @@ defmodule NeuZeitWeb.RoomLive.Index do
   end
 
   def handle_event("save", %{"building" => params}, socket) do
-    persist(socket, Catalog.create_building(params))
+    result =
+      case socket.assigns.editing do
+        %Building{id: nil} -> Catalog.create_building(params)
+        building -> Catalog.update_building(building, params)
+      end
+
+    persist(socket, result)
   end
 
   def handle_event("save", %{"room" => params}, socket) do
@@ -88,6 +99,10 @@ defmodule NeuZeitWeb.RoomLive.Index do
     persist(socket, result)
   end
 
+  def handle_event("delete_prompt", %{"kind" => "building", "id" => id}, socket) do
+    {:noreply, assign(socket, :deleting, Catalog.get_building!(id))}
+  end
+
   def handle_event("delete_prompt", %{"id" => id}, socket) do
     {:noreply, assign(socket, :deleting, Catalog.get_room!(id))}
   end
@@ -96,12 +111,12 @@ defmodule NeuZeitWeb.RoomLive.Index do
     do: {:noreply, assign(socket, :deleting, nil)}
 
   def handle_event("delete_confirm", _params, socket) do
-    case delete_room(socket.assigns.deleting) do
-      {:ok, room} ->
+    case delete(socket.assigns.deleting) do
+      {:ok, record} ->
         {:noreply,
          socket
          |> assign(:deleting, nil)
-         |> put_flash(:info, gettext("Deleted %{name}.", name: room.name))
+         |> put_flash(:info, gettext("Deleted %{name}.", name: record.name))
          |> load()}
 
       {:error, reason} ->
@@ -109,8 +124,10 @@ defmodule NeuZeitWeb.RoomLive.Index do
     end
   end
 
-  # Show an error when a teaching type or placement still uses the room.
-  defp delete_room(room) do
+  # The list disables deletion of used records; this catches a concurrent change.
+  defp delete(%Building{} = building), do: Catalog.delete_building(building)
+
+  defp delete(%Room{} = room) do
     Catalog.delete_room(room)
   rescue
     Ecto.ConstraintError ->
@@ -136,6 +153,7 @@ defmodule NeuZeitWeb.RoomLive.Index do
     |> assign(:buildings, Catalog.list_buildings())
     |> assign(:rooms, Catalog.list_rooms())
     |> assign(:usage, Catalog.usage_counts().rooms)
+    |> assign(:building_usage, Catalog.building_usage())
   end
 
   # Flag names with non-numeric characters for building review. This does not verify the building.
@@ -143,6 +161,37 @@ defmodule NeuZeitWeb.RoomLive.Index do
 
   defp visible_rooms(rooms, "all"), do: rooms
   defp visible_rooms(rooms, building_id), do: Enum.filter(rooms, &(&1.building_id == building_id))
+
+  # Names the reference that prevents deletion, or nil when the record is free.
+  defp room_blocker(usage, room) do
+    components = get_in(usage, [room.id, :components]) || 0
+    placements = get_in(usage, [room.id, :placements]) || 0
+
+    cond do
+      components > 0 ->
+        ngettext(
+          "Allowed for %{count} teaching type",
+          "Allowed for %{count} teaching types",
+          components,
+          count: components
+        )
+
+      placements > 0 ->
+        ngettext("Used by %{count} placement", "Used by %{count} placements", placements,
+          count: placements
+        )
+
+      true ->
+        nil
+    end
+  end
+
+  defp building_blocker(usage, building) do
+    case Map.get(usage, building.id, 0) do
+      0 -> nil
+      count -> ngettext("Has %{count} room", "Has %{count} rooms", count, count: count)
+    end
+  end
 
   @impl true
   def render(assigns) do
@@ -156,7 +205,9 @@ defmodule NeuZeitWeb.RoomLive.Index do
       terms={@navigation_terms}
       current_term={@navigation_term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header
         title={gettext("Rooms")}
         subtitle={
@@ -185,79 +236,129 @@ defmodule NeuZeitWeb.RoomLive.Index do
       </div>
 
       <div class={["grid gap-4", @editing && "lg:grid-cols-[2fr_1fr]"]}>
-        <div class="min-w-0">
-          <.toolbar>
-            <form phx-change="filter_building" id="building-filter">
-              <select name="building_id" class="select select-bordered">
-                <option value="all" selected={@building_filter == "all"}>
-                  {gettext("All buildings")}
-                </option>
-                <option
-                  :for={building <- @buildings}
-                  value={building.id}
-                  selected={@building_filter == building.id}
-                >
-                  {building.name}
-                </option>
-              </select>
-            </form>
-            <span class="type-detail text-base-content">
-              {ngettext("%{count} room", "%{count} rooms", length(@visible), count: length(@visible))}
-            </span>
-          </.toolbar>
-
+        <div class="flex min-w-0 flex-col gap-6">
           <.empty_state
             :if={@buildings == []}
             title={gettext("No buildings yet")}
             message={gettext("Create a building first, then add its rooms.")}
             icon="hero-building-office-2"
-          />
-
-          <.table
-            :if={@buildings != []}
-            id="rooms"
-            rows={@visible}
-            row_id={&"room-#{&1.id}"}
-            empty_message={gettext("No rooms in this building yet.")}
           >
-            <:col :let={room} label={gettext("Room")}>
-              <span class="font-semibold">{room.name}</span>
-            </:col>
-            <:col :let={room} label={gettext("Building")}>{room.building.name}</:col>
-            <:col :let={room} label={gettext("Allowed for")}>
-              {ngettext(
-                "%{count} teaching type",
-                "%{count} teaching types",
-                get_in(@usage, [room.id, :components]) || 0,
-                count: get_in(@usage, [room.id, :components]) || 0
-              )}
-            </:col>
-            <:col :let={room} label={gettext("Placements")} numeric>
-              {get_in(@usage, [room.id, :placements]) || 0}
-            </:col>
-            <:col :let={room} label={gettext("Room designation")}>
-              <span :if={not conventional?(room)}>{gettext("Check building")}</span>
-              <span :if={conventional?(room)} class="type-detail text-base-content">
-                {gettext("Number only")}
+            <:actions>
+              <.link patch={~p"/rooms/buildings/new"} class="btn btn-primary">
+                {gettext("New building")}
+              </.link>
+            </:actions>
+          </.empty_state>
+
+          <.empty_state
+            :if={@buildings != [] and @rooms == []}
+            title={gettext("No rooms yet")}
+            message={gettext("Add the rooms that sessions can use.")}
+            icon="hero-building-office-2"
+          >
+            <:actions>
+              <.link patch={~p"/rooms/new"} class="btn btn-primary">{gettext("New room")}</.link>
+            </:actions>
+          </.empty_state>
+
+          <div :if={@rooms != []}>
+            <.toolbar>
+              <form phx-change="filter_building" id="building-filter">
+                <select name="building_id" class="select select-bordered">
+                  <option value="all" selected={@building_filter == "all"}>
+                    {gettext("All buildings")}
+                  </option>
+                  <option
+                    :for={building <- @buildings}
+                    value={building.id}
+                    selected={@building_filter == building.id}
+                  >
+                    {building.name}
+                  </option>
+                </select>
+              </form>
+              <span class="type-detail text-base-content">
+                {ngettext("%{count} room", "%{count} rooms", length(@visible),
+                  count: length(@visible)
+                )}
               </span>
-            </:col>
-            <:action :let={room}>
-              <.link patch={~p"/rooms/#{room}/edit"} class="btn btn-ghost">{gettext("Edit")}</.link>
-              <button
-                class="btn btn-ghost text-error"
-                phx-click="delete_prompt"
-                phx-value-id={room.id}
-              >
-                {gettext("Delete")}
-              </button>
-            </:action>
-          </.table>
+            </.toolbar>
+
+            <.table
+              id="rooms"
+              rows={@visible}
+              row_id={&"room-#{&1.id}"}
+              empty_message={gettext("No rooms in this building yet.")}
+            >
+              <:col :let={room} label={gettext("Room")}>
+                <span class="font-semibold">{room.name}</span>
+              </:col>
+              <:col :let={room} label={gettext("Building")}>{room.building.name}</:col>
+              <:col :let={room} label={gettext("Allowed for")}>
+                {ngettext(
+                  "%{count} teaching type",
+                  "%{count} teaching types",
+                  get_in(@usage, [room.id, :components]) || 0,
+                  count: get_in(@usage, [room.id, :components]) || 0
+                )}
+              </:col>
+              <:col :let={room} label={gettext("Placements")} numeric>
+                {get_in(@usage, [room.id, :placements]) || 0}
+              </:col>
+              <:col :let={room} label={gettext("Room designation")}>
+                <span :if={not conventional?(room)}>{gettext("Check building")}</span>
+                <span :if={conventional?(room)} class="type-detail text-base-content">
+                  {gettext("Number only")}
+                </span>
+              </:col>
+              <:action :let={room}>
+                <.link patch={~p"/rooms/#{room}/edit"} class="btn btn-ghost">{gettext("Edit")}</.link>
+                <button
+                  class="btn btn-ghost text-error"
+                  phx-click="delete_prompt"
+                  phx-value-id={room.id}
+                  disabled={room_blocker(@usage, room) != nil}
+                  title={room_blocker(@usage, room)}
+                >
+                  {gettext("Delete")}
+                </button>
+              </:action>
+            </.table>
+          </div>
+
+          <div :if={@buildings != []}>
+            <h2 class="mb-2 type-heading">{gettext("Buildings")}</h2>
+            <.table id="buildings" rows={@buildings} row_id={&"building-#{&1.id}"}>
+              <:col :let={building} label={gettext("Building")}>
+                <span class="font-semibold">{building.name}</span>
+              </:col>
+              <:col :let={building} label={gettext("Rooms")} numeric>
+                {Map.get(@building_usage, building.id, 0)}
+              </:col>
+              <:action :let={building}>
+                <.link patch={~p"/rooms/buildings/#{building}/edit"} class="btn btn-ghost">
+                  {gettext("Edit")}
+                </.link>
+                <button
+                  class="btn btn-ghost text-error"
+                  phx-click="delete_prompt"
+                  phx-value-kind="building"
+                  phx-value-id={building.id}
+                  disabled={building_blocker(@building_usage, building) != nil}
+                  title={building_blocker(@building_usage, building)}
+                >
+                  {gettext("Delete")}
+                </button>
+              </:action>
+            </.table>
+          </div>
         </div>
 
         <.details_panel
           :if={@editing}
           class="order-first lg:order-last"
           title={inspector_title(@kind, @editing)}
+          on_close={JS.patch(~p"/rooms")}
         >
           <.form
             :if={@kind == :building}
@@ -301,7 +402,7 @@ defmodule NeuZeitWeb.RoomLive.Index do
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.name)}
-        message={gettext("Rooms used by teaching types or scheduled sessions cannot be deleted.")}
+        message={delete_message(@deleting)}
         confirm_label={gettext("Delete")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"
@@ -310,8 +411,14 @@ defmodule NeuZeitWeb.RoomLive.Index do
     """
   end
 
+  defp delete_message(%Building{name: name}),
+    do: gettext("Deletes the building %{name}. This cannot be undone.", name: name)
+
+  defp delete_message(%Room{name: name}),
+    do: gettext("Deletes the room %{name}. This cannot be undone.", name: name)
+
   defp inspector_title(:building, %Building{id: nil}), do: gettext("New building")
-  defp inspector_title(:building, _record), do: gettext("Rename building")
+  defp inspector_title(:building, _record), do: gettext("Edit building")
   defp inspector_title(:room, %Room{id: nil}), do: gettext("New room")
   defp inspector_title(:room, _record), do: gettext("Edit room")
 end

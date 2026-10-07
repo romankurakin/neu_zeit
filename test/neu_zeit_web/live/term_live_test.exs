@@ -128,16 +128,53 @@ defmodule NeuZeitWeb.TermLiveTest do
              )
     end
 
-    test "reports every checklist item", %{conn: conn} do
+    test "lists rows needing attention first and folds the passed ones away", %{conn: conn} do
       term = create_term()
-      NeuZeit.Fixtures.session_fixture(term: term)
+      session = NeuZeit.Fixtures.session_fixture(term: term)
+      {:ok, live, html} = live(conn, ~p"/terms/#{term}")
+
+      # The generate card comes first and points at the checks.
+      assert :binary.match(html, "Generate timetable") < :binary.match(html, ~s(id="checks"))
+      assert has_element?(live, ~s{a[href="#checks"]}, "1 check needs attention.")
+
+      # Availability has not been entered, so that row asks for work.
+      assert has_element?(live, "#readiness", "Teacher availability")
+      refute has_element?(live, "#readiness", "Teacher names")
+
+      # Passed rows sit inside a collapsed details element.
+      assert has_element?(live, "#passed-checks summary", "5 checks passed")
+      assert has_element?(live, "#passed-checks #readiness-passed", "Teacher names")
+      assert has_element?(live, "#passed-checks #readiness-passed", "Allowed rooms")
+      assert has_element?(live, "#passed-checks #readiness-passed", "Weeks and durations")
+
+      # Ordinary data is not flagged, and plan rows wait for a plan.
+      for label <- [
+            "Possible duplicate sessions",
+            "Time profiles",
+            "Locked placements",
+            "Possible group overlaps",
+            "No plan selected"
+          ] do
+        refute has_element?(live, "#checks", label)
+      end
+
+      NeuZeit.Fixtures.teacher_availability_fixture(term: term, teacher: session.teacher)
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
 
-      assert has_element?(live, "#readiness")
-      # One row per readiness check.
-      assert has_element?(live, "#readiness", "Teacher names")
-      assert has_element?(live, "#readiness", "Allowed rooms")
-      assert has_element?(live, "#readiness", "Possible group overlaps")
+      assert has_element?(live, "p", "Ready to generate.")
+      refute has_element?(live, "#readiness")
+      assert has_element?(live, "#passed-checks summary", "6 checks passed")
+    end
+
+    test "plan rows appear once a draft is selected", %{conn: conn} do
+      term = create_term()
+      NeuZeit.Fixtures.session_fixture(term: term)
+      plan = NeuZeit.Fixtures.plan_fixture(term: term)
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}?plan_id=#{plan.id}")
+
+      assert has_element?(live, "#passed-checks", "Locked placements")
+      assert has_element?(live, "#readiness", "Session placement")
+      assert has_element?(live, "#readiness", "Sessions still to schedule: 1 of 1.")
     end
 
     test "names the offending records rather than only counting them", %{conn: conn} do
@@ -167,10 +204,30 @@ defmodule NeuZeitWeb.TermLiveTest do
           "cohort_ids" => [cohort.id]
         })
 
-      {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
+      {:ok, live, html} = live(conn, ~p"/terms/#{term}")
 
       assert has_element?(live, "#readiness", "Abbreviated names: Lch")
-      assert has_element?(live, "#readiness", "with a single room")
+      # A single allowed room is ordinary data.
+      refute html =~ "with a single room"
+      assert has_element?(live, "#passed-checks", "No room issues found.")
+    end
+
+    test "flags allowed rooms only when an in-person session has none", %{conn: conn} do
+      term = create_term()
+      # No rooms exist, so a component without restrictions has no room to use.
+      component = NeuZeit.Fixtures.component_fixture(rooms: [])
+      NeuZeit.Fixtures.session_fixture(term: term, component: component)
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
+
+      assert has_element?(live, "#readiness", "Allowed rooms")
+      assert has_element?(live, "#readiness", "In-person sessions need an available room.")
+      assert has_element?(live, "#readiness", "Review")
+
+      assert has_element?(
+               live,
+               ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/courses", "/terms/#{term.id}")}"]},
+               "Courses"
+             )
     end
 
     test "each row links to the screen that settles it", %{conn: conn} do
@@ -178,19 +235,14 @@ defmodule NeuZeitWeb.TermLiveTest do
       NeuZeit.Fixtures.session_fixture(term: term)
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
 
-      assert has_element?(
-               live,
-               ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/courses", "/terms/#{term.id}")}"]}
-             )
-
       assert has_element?(live, ~s{#readiness a[href="/terms/#{term.id}/availability"]})
-      # A profile belongs to a session, so the row opens the sessions.
-      assert has_element?(live, ~s{#readiness a[href="/terms/#{term.id}/sessions"]})
 
-      # The teacher names read as full names, so that row offers nothing to open.
+      # Rows that passed offer nothing to open.
+      refute has_element?(live, ~s{#passed-checks a})
+
       refute has_element?(
                live,
-               ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/people?tab=teachers", "/terms/#{term.id}")}"]}
+               ~s{#readiness a[href="#{NeuZeitWeb.Nav.with_return("/courses", "/terms/#{term.id}")}"]}
              )
     end
 
@@ -199,13 +251,31 @@ defmodule NeuZeitWeb.TermLiveTest do
       NeuZeit.Fixtures.session_fixture(term: term)
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
 
-      assert has_element?(live, "#readiness", "Teaching weeks: 15. Non-teaching dates: 0.")
+      assert has_element?(live, "#passed-checks", "Teaching weeks: 15. Non-teaching dates: 0.")
 
       {:ok, settings, _} = live(conn, ~p"/terms/#{term}/settings")
       settings |> element(~s{button[phx-value-date="2026-09-09"]}) |> render_click()
       {:ok, live, _} = live(conn, ~p"/terms/#{term}")
 
-      assert has_element?(live, "#readiness", "Teaching weeks: 15. Non-teaching dates: 1.")
+      assert has_element?(live, "#passed-checks", "Teaching weeks: 15. Non-teaching dates: 1.")
+    end
+
+    test "the header shows the term dates and opens the plan", %{conn: conn} do
+      term = create_term()
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
+
+      assert has_element?(live, ~s{header time[datetime="2026-09-07"]})
+      assert has_element?(live, ~s{header time[datetime="2026-12-20"]})
+      assert has_element?(live, ~s{header a[href="/terms/#{term.id}/plans"]}, "Plans")
+
+      plan = NeuZeit.Fixtures.plan_fixture(term: term)
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}")
+
+      assert has_element?(
+               live,
+               ~s{header a.btn-primary[href="/terms/#{term.id}/plans/#{plan.id}"]},
+               "Open plan"
+             )
     end
   end
 

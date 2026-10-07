@@ -51,8 +51,14 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     %{term: term, plan: plan, session: session, room: room, other_room: other_room}
   end
 
+  # The session travels in the combobox's hidden input, which the test client
+  # only accepts as hidden data.
   defp fill(live, attrs) do
-    live |> form("#exception-form", schedule_exception: attrs) |> render_submit()
+    {hidden, attrs} = Map.split(attrs, [:session_id])
+
+    live
+    |> form("#exception-form", schedule_exception: attrs)
+    |> render_submit(%{schedule_exception: hidden})
   end
 
   # The new-date, slot and room fields only appear once the kind calls for them:
@@ -65,10 +71,23 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     live
   end
 
-  test "an empty term says so", %{conn: conn, term: term} do
+  test "an empty term says so and offers a new change", %{conn: conn, term: term} do
     {:ok, live, _html} = live(conn, ~p"/terms/#{term}/exceptions")
     assert has_element?(live, "h1", "One-off changes")
     assert render(live) =~ "No one-off changes"
+    assert has_element?(live, "main header a", "New change")
+    live |> element("main .card-actions a", "New change") |> render_click()
+    assert_patch(live, ~p"/terms/#{term}/exceptions/new")
+    assert has_element?(live, "#exception-form button", "Save change")
+    assert has_element?(live, "#exception-form button", "Cancel")
+  end
+
+  test "session labels carry no block number", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/terms/#{ctx.term}/exceptions/new")
+    option = ~s{#schedule_exception_session_id-combobox li[data-value="#{ctx.session.id}"]}
+    assert has_element?(view, option, "Programming")
+    assert has_element?(view, option, "Anna Weber")
+    refute render(view) =~ "Block 1"
   end
 
   @tag locale: "ru"
@@ -80,25 +99,31 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
       )
 
     assert has_element?(view, "#exception-form", "Заменяющий преподаватель")
-    assert has_element?(view, "#exception-form button", "Заменить преподавателя")
+    assert has_element?(view, "aside h2", "Заменить преподавателя")
     refute render(view) =~ "Rename teacher"
   end
 
   test "records a substitute from the calendar and shows its teacher on just that date", ctx do
     teacher = NeuZeit.Fixtures.teacher_fixture(name: "Substitute teacher name")
     {:ok, calendar, _} = live(ctx.conn, ~p"/terms/#{ctx.term}/calendar?week=2")
-    calendar |> element("#calendar-day-2026-09-14 a", "Replace teacher") |> render_click()
-    {path, _} = assert_redirect(calendar)
-    {:ok, view, _} = live(ctx.conn, path)
-    refute has_element?(view, "select[name='schedule_exception[new_room_id]']")
-    refute has_element?(view, "input[name='schedule_exception[new_date]']")
-    fill(view, %{new_teacher_id: teacher.id, reason: "Teacher absent", created_by: "Admin"})
+
+    calendar
+    |> element(~s{#calendar-day-2026-09-14 button[data-session-id="#{ctx.session.id}"]})
+    |> render_click()
+
+    assert_patch(calendar)
+    calendar |> element("#occurrence-panel button", "Replace teacher") |> render_click()
+    assert has_element?(calendar, "#change-dialog #exception-form")
+    refute has_element?(calendar, "select[name='schedule_exception[new_room_id]']")
+    refute has_element?(calendar, "input[name='schedule_exception[new_date]']")
+    fill(calendar, %{new_teacher_id: teacher.id, reason: "Teacher absent", created_by: "Admin"})
     [exception] = Planning.list_schedule_exceptions(ctx.term.id)
     assert exception.kind == "substitute"
     assert exception.new_teacher_id == teacher.id
     assert {exception.new_date, exception.new_slot, exception.new_room_id} == {nil, nil, nil}
-    {return_path, _} = assert_redirect(view)
-    {:ok, calendar, _} = live(ctx.conn, return_path)
+    assert_patch(calendar)
+    refute has_element?(calendar, "#change-dialog")
+    assert has_element?(calendar, "#selected-change", "Teacher replaced")
     assert has_element?(calendar, "#calendar-day-2026-09-14", teacher.name)
     assert has_element?(calendar, "#calendar-day-2026-09-14", "Teacher replaced")
     refute has_element?(calendar, "#calendar-day-2026-09-14", "Anna Weber")
@@ -139,15 +164,19 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
       "to" => "2026-09-15"
     })
 
-    {path, _} = assert_redirect(calendar)
-    {:ok, view, _} = live(ctx.conn, path)
+    assert has_element?(calendar, "#change-dialog #exception-form")
 
     assert has_element?(
-             view,
+             calendar,
              "select[name='schedule_exception[new_teacher_id]'] option[selected][value='#{teacher.id}']"
            )
 
-    fill(view, %{reason: "Cover moved to Tuesday", created_by: "Admin"})
+    assert has_element?(
+             calendar,
+             ~s{input[name="schedule_exception[new_date]"][value="2026-09-15"]}
+           )
+
+    fill(calendar, %{reason: "Cover moved to Tuesday", created_by: "Admin"})
     updated = Planning.get_schedule_exception!(exception.id)
     assert updated.kind == "move"
     assert updated.new_date == ~D[2026-09-15]
@@ -221,7 +250,7 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
 
     {:ok, _} = Planning.publish_plan(draft.id)
     {:ok, view, _} = live(ctx.conn, ~p"/terms/#{ctx.term}/exceptions/new")
-    option = ~s{select[name="schedule_exception[session_id]"] option[value="#{session.id}"]}
+    option = ~s{#schedule_exception_session_id-combobox li[data-value="#{session.id}"]}
 
     assert has_element?(view, option, "Weeks 2")
     refute has_element?(view, option, "Every week")
@@ -258,7 +287,6 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     view
     |> form("#exception-form",
       schedule_exception: %{
-        session_id: ctx.session.id,
         kind: "move",
         occurrence_date: "2026-09-14",
         new_date: "2026-09-14",
@@ -266,7 +294,7 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
         new_delivery_mode: "online"
       }
     )
-    |> render_change()
+    |> render_change(%{schedule_exception: %{session_id: ctx.session.id}})
 
     refute has_element?(view, "select[name='schedule_exception[new_room_id]']")
 
@@ -393,6 +421,54 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
     assert reverted.reason == "Teacher ill"
   end
 
+  test "shows a change in the calendar with its panel open", %{conn: conn} = ctx do
+    {:ok, exception} =
+      Planning.create_schedule_exception(%{
+        session_id: ctx.session.id,
+        kind: "move",
+        occurrence_date: ~D[2026-09-14],
+        new_date: ~D[2026-09-15],
+        new_slot: 2,
+        new_room_id: ctx.other_room.id,
+        reason: "Room flooded",
+        created_by: "admin"
+      })
+
+    {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/exceptions")
+    assert has_element?(live, "th", "After the change")
+    live |> element("#exception-#{exception.id} a", "Show in calendar") |> render_click()
+
+    {path, _flash} = assert_redirect(live)
+    uri = URI.parse(path)
+    assert uri.path == "/terms/#{ctx.term.id}/calendar"
+    params = URI.decode_query(uri.query)
+    assert params["plan_id"] == ctx.plan.id
+    assert params["week"] == "2"
+    assert params["occurrence"] == "#{ctx.session.id}:2026-09-15"
+
+    {:ok, calendar, _html} = live(conn, path)
+    assert has_element?(calendar, "#selected-change", "Moved")
+    assert has_element?(calendar, "#selected-change", "Room flooded")
+    assert has_element?(calendar, "#occurrence-panel button", "Edit change")
+  end
+
+  test "a reverted change keeps no actions", %{conn: conn} = ctx do
+    {:ok, exception} =
+      Planning.create_schedule_exception(%{
+        session_id: ctx.session.id,
+        kind: "cancel",
+        occurrence_date: ~D[2026-09-14],
+        reason: "Teacher ill",
+        created_by: "admin"
+      })
+
+    {:ok, _} = Planning.update_schedule_exception(exception, %{status: "reverted"})
+    {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/exceptions")
+    assert has_element?(live, "#exception-#{exception.id}", "Change reverted")
+    refute has_element?(live, "#exception-#{exception.id} a", "Show in calendar")
+    refute has_element?(live, "#exception-#{exception.id} button", "Revert change")
+  end
+
   test "a cancellation removes the occurrence from the calendar", %{conn: conn} = ctx do
     {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/exceptions/new")
 
@@ -404,7 +480,7 @@ defmodule NeuZeitWeb.ExceptionLiveTest do
       created_by: "admin"
     })
 
-    {:ok, calendar, _html} = live(conn, ~p"/terms/#{ctx.term}/calendar")
+    {:ok, calendar, _html} = live(conn, ~p"/terms/#{ctx.term}/calendar?week=1")
 
     # Week 2's Monday is 2026-09-14, and it is the published plan, so the
     # exception applies there.

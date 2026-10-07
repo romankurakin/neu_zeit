@@ -132,7 +132,10 @@ defmodule NeuZeitWeb.CourseLive.Show do
       {:ok, _translation} ->
         {:noreply,
          socket
-         |> put_flash(:info, gettext("Saved the %{locale} title.", locale: locale))
+         |> put_flash(
+           :info,
+           gettext("Saved the %{language} title.", language: NeuZeitWeb.Locale.label(locale))
+         )
          |> assign(
            :translation_form,
            to_form(Catalog.change_course_translation(%CourseTranslation{}))
@@ -156,16 +159,31 @@ defmodule NeuZeitWeb.CourseLive.Show do
 
         {:noreply,
          socket
-         |> put_flash(:info, gettext("Removed the %{locale} title.", locale: locale))
+         |> put_flash(
+           :info,
+           gettext("Removed the %{language} title.", language: NeuZeitWeb.Locale.label(locale))
+         )
          |> load(course_id)}
     end
   end
 
+  # The page disables removal of used teaching types; this catches a concurrent change.
   defp delete_component(component) do
     Catalog.delete_course_component(component)
   rescue
     Ecto.ConstraintError ->
       {:error, {:conflict, gettext("Sessions still use this teaching type.")}}
+  end
+
+  # Names the reference that prevents removal, or nil when the teaching type is free.
+  defp blocker(usage, component) do
+    case Map.get(usage, component.id, 0) do
+      0 ->
+        nil
+
+      count ->
+        ngettext("Used by %{count} session", "Used by %{count} sessions", count, count: count)
+    end
   end
 
   defp missing_types(teaching_types, components) do
@@ -203,11 +221,23 @@ defmodule NeuZeitWeb.CourseLive.Show do
       terms={@navigation_terms}
       current_term={@navigation_term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header title={course_title(@course)} subtitle={@course.code}>
         <:actions>
           <.link navigate={~p"/courses"} class="btn btn-ghost">{gettext("All courses")}</.link>
-          <.link patch={~p"/courses/#{@course}/edit"} class="btn">{gettext("Edit course")}</.link>
+          <.link
+            navigate={
+              Nav.with_return(
+                ~p"/courses/#{@course}/edit",
+                Nav.with_return(~p"/courses/#{@course}", @return_to)
+              )
+            }
+            class="btn"
+          >
+            {gettext("Edit course")}
+          </.link>
         </:actions>
       </.page_header>
 
@@ -251,8 +281,10 @@ defmodule NeuZeitWeb.CourseLive.Show do
                     class="btn btn-ghost text-error"
                     phx-click="delete_component_prompt"
                     phx-value-id={component.id}
+                    disabled={blocker(@usage, component) != nil}
+                    title={blocker(@usage, component)}
                   >
-                    {gettext("Delete teaching type")}
+                    {gettext("Remove from course")}
                   </button>
                 </span>
               </div>
@@ -279,7 +311,7 @@ defmodule NeuZeitWeb.CourseLive.Show do
 
             <div class="flex flex-wrap items-start gap-4">
               <label class="form-control">
-                <span class="label-text mb-1 block type-detail">{gettext("Kind")}</span>
+                <span class="label-text mb-1 block type-detail">{gettext("Teaching type")}</span>
                 <select name="kind" class="select select-bordered">
                   <option :for={type <- missing_types(@teaching_types, @components)} value={type.id}>
                     {teaching_type_label(type)}
@@ -364,13 +396,18 @@ defmodule NeuZeitWeb.CourseLive.Show do
 
       <.alert_dialog
         :if={@deleting}
-        title={gettext("Delete this teaching type?")}
-        message={
-          gettext(
-            "Its allowed room list will also be deleted. Teaching types used by sessions cannot be deleted."
+        title={
+          gettext("Remove %{type} from %{course}?",
+            type: component_kind_label(@deleting),
+            course: course_title(@course)
           )
         }
-        confirm_label={gettext("Delete teaching type")}
+        message={
+          if blocker(@usage, @deleting),
+            do: gettext("Sessions using it must be removed from the teaching load first."),
+            else: gettext("Its allowed room list is removed too. This cannot be undone.")
+        }
+        confirm_label={gettext("Remove")}
         on_confirm="delete_component_confirm"
         on_cancel="delete_component_cancel"
       />

@@ -99,6 +99,13 @@ defmodule NeuZeitWeb.TermLive.Show do
 
   @impl true
   def render(assigns) do
+    rows = rows(assigns.report, assigns.plan)
+
+    assigns =
+      assigns
+      |> assign(:attention, Enum.reject(rows, &(&1.status == :ok)))
+      |> assign(:passed, Enum.filter(rows, &(&1.status == :ok)))
+
     ~H"""
     <Layouts.app
       flash={@flash}
@@ -107,17 +114,17 @@ defmodule NeuZeitWeb.TermLive.Show do
       terms={@terms}
       current_term={@term}
     >
-      <.page_header title={@term.name} subtitle={"#{@term.starts_on} - #{@term.ends_on}"}>
+      <.page_header title={@term.name} subtitle={term_dates(%{term: @term})}>
         <:actions>
           <.link navigate={~p"/terms/#{@term}/settings"} class="btn">{gettext("Term settings")}</.link>
           <.link
-            navigate={
-              if @latest_plan,
-                do: ~p"/terms/#{@term}/plans/#{@latest_plan}",
-                else: ~p"/terms/#{@term}/plans"
-            }
+            :if={@latest_plan}
+            navigate={~p"/terms/#{@term}/plans/#{@latest_plan}"}
             class="btn btn-primary"
-          >{if @latest_plan, do: gettext("Open timetable"), else: gettext("Plans")}</.link>
+          >{gettext("Open plan")}</.link>
+          <.link :if={!@latest_plan} navigate={~p"/terms/#{@term}/plans"} class="btn">{gettext(
+            "Plans"
+          )}</.link>
         </:actions>
       </.page_header>
 
@@ -135,28 +142,20 @@ defmodule NeuZeitWeb.TermLive.Show do
       </.empty_state>
       <.card
         :if={count_for(@report, :week_masks, [:detail, :total]) > 0}
+        title={gettext("Timetable")}
         class="mb-4"
-        title={gettext("Checks")}
       >
-        <p :if={@plan} class="type-detail">
-          {gettext("Plan")}:
-          <.link navigate={~p"/terms/#{@term}/plans/#{@plan}"} class="link">{@plan.name}</.link>
+        <p :if={@attention == []} class="mb-4">{gettext("Ready to generate.")}</p>
+        <p :if={@attention != []} class="mb-4">
+          <.link href="#checks" class="link">
+            {ngettext(
+              "%{count} check needs attention.",
+              "%{count} checks need attention.",
+              length(@attention),
+              count: length(@attention)
+            )}
+          </.link>
         </p>
-        <.check_results id="readiness">
-          <:item
-            :for={row <- @report}
-            status={row.status}
-            label={label_for(row.key)}
-            detail={detail_for(row)}
-            navigate={route_for(row, @term, @plan)}
-            action_label={action_label_for(row.key)}
-          >
-            {row.count}
-          </:item>
-        </.check_results>
-      </.card>
-
-      <.card title={gettext("Timetable")} class="mb-4">
         <.form
           for={%{}}
           id="generation-plan"
@@ -175,7 +174,7 @@ defmodule NeuZeitWeb.TermLive.Show do
             variant="primary"
             phx-click="generate"
             phx-disable-with={gettext("Generating timetable")}
-            disabled={@generation_blocked || count_for(@report, :week_masks, [:detail, :total]) == 0}
+            disabled={@generation_blocked}
           >
             {gettext("Generate timetable")}
           </.button>
@@ -189,6 +188,53 @@ defmodule NeuZeitWeb.TermLive.Show do
           )}
         </p>
       </.card>
+
+      <.card
+        :if={count_for(@report, :week_masks, [:detail, :total]) > 0}
+        id="checks"
+        class="mb-4"
+        title={gettext("Checks")}
+      >
+        <p :if={@plan} class="type-detail">
+          {gettext("Plan")}:
+          <.link navigate={~p"/terms/#{@term}/plans/#{@plan}"} class="link">{@plan.name}</.link>
+        </p>
+        <.check_results :if={@attention != []} id="readiness">
+          <:item
+            :for={row <- @attention}
+            status={row.status}
+            label={label_for(row.key)}
+            detail={detail_for(row)}
+            navigate={route_for(row, @term, @plan)}
+            action_label={action_label_for(row.key)}
+          >
+            {value_for(row)}
+          </:item>
+        </.check_results>
+        <details
+          :if={@passed != []}
+          id="passed-checks"
+          class="collapse collapse-arrow border border-base-300 bg-base-100"
+        >
+          <summary class="collapse-title font-semibold">
+            {ngettext("%{count} check passed", "%{count} checks passed", length(@passed),
+              count: length(@passed)
+            )}
+          </summary>
+          <div class="collapse-content">
+            <.check_results id="readiness-passed">
+              <:item
+                :for={row <- @passed}
+                status={row.status}
+                label={label_for(row.key)}
+                detail={detail_for(row)}
+              >
+                {value_for(row)}
+              </:item>
+            </.check_results>
+          </div>
+        </details>
+      </.card>
     </Layouts.app>
     """
   end
@@ -200,14 +246,41 @@ defmodule NeuZeitWeb.TermLive.Show do
     end
   end
 
+  defp term_dates(assigns) do
+    ~H"""
+    <.date value={@term.starts_on} /> - <.date value={@term.ends_on} />
+    """
+  end
+
+  # The overview omits rows that flag ordinary data, and plan rows without a plan.
+  @plan_rows [:locks, :unplaced, :hard_checks, :advisories]
+  @hidden_rows [:merge_candidates, :slot_profiles]
+
+  defp rows(report, plan) do
+    report
+    |> Enum.reject(&(&1.key in @hidden_rows))
+    |> Enum.reject(&(is_nil(plan) and &1.key in @plan_rows))
+    |> Enum.map(&overview_row/1)
+  end
+
+  # Only sessions without any room block the calculation. Narrow and broad room
+  # pools are ordinary data.
+  defp overview_row(%{key: :room_pools, detail: %{missing: [_ | _]}} = row),
+    do: %{row | status: :warning, count: length(row.detail.missing)}
+
+  defp overview_row(%{key: :room_pools} = row), do: %{row | status: :ok, count: 0}
+  defp overview_row(row), do: row
+
+  # Informational rows carry no number worth reading.
+  defp value_for(%{key: key}) when key in [:term_dates, :week_masks], do: nil
+  defp value_for(row), do: row.count
+
   defp label_for(:term_dates), do: gettext("Term dates and non-teaching dates")
   defp label_for(:placeholder_teachers), do: gettext("Teacher names")
   defp label_for(:teacher_availability), do: gettext("Teacher availability")
-  defp label_for(:merge_candidates), do: gettext("Possible duplicate sessions")
   defp label_for(:aggregate_cohorts), do: gettext("Group names")
   defp label_for(:week_masks), do: gettext("Weeks and durations")
   defp label_for(:room_pools), do: gettext("Allowed rooms")
-  defp label_for(:slot_profiles), do: gettext("Time profiles")
   defp label_for(:locks), do: gettext("Locked placements")
   defp label_for(:unplaced), do: gettext("Session placement")
   defp label_for(:hard_checks), do: gettext("Scheduling conflicts")
@@ -238,15 +311,6 @@ defmodule NeuZeitWeb.TermLive.Show do
         "Teachers without time restrictions: %{count} of %{total}. Check that this is correct.",
         count: count,
         total: detail.total
-      )
-
-  defp detail_for(%{key: :merge_candidates, count: 0}),
-    do: gettext("No possible duplicate sessions found.")
-
-  defp detail_for(%{key: :merge_candidates, detail: detail}),
-    do:
-      gettext("Same teaching type, teacher, weeks and duration: %{courses}",
-        courses: Enum.map_join(detail.groups, ", ", &course_title(&1.course))
       )
 
   defp detail_for(%{key: :aggregate_cohorts, count: 0}),
@@ -280,29 +344,7 @@ defmodule NeuZeitWeb.TermLive.Show do
         "In-person sessions need an available room. Add rooms or review the room restrictions."
       )
 
-  defp detail_for(%{key: :room_pools, count: 0}),
-    do: gettext("No room issues found.")
-
-  defp detail_for(%{key: :room_pools, detail: detail}),
-    do:
-      gettext("%{narrow} with a single room, %{broad} with more than five.",
-        narrow: length(detail.narrow),
-        broad: length(detail.broad)
-      )
-
-  defp detail_for(%{key: :slot_profiles, count: 0}),
-    do: gettext("Every session has a time profile.")
-
-  defp detail_for(%{key: :slot_profiles, count: count, detail: detail}),
-    do:
-      gettext("Sessions without a time profile: %{count} of %{total}.",
-        count: count,
-        total: detail.total
-      )
-
-  defp detail_for(%{key: key, status: :unknown})
-       when key in [:locks, :unplaced, :hard_checks, :advisories],
-       do: gettext("No plan selected.")
+  defp detail_for(%{key: :room_pools}), do: gettext("No room issues found.")
 
   defp detail_for(%{key: :locks, count: 0}), do: gettext("No placements are locked.")
 
@@ -362,18 +404,12 @@ defmodule NeuZeitWeb.TermLive.Show do
 
   defp route_for(:room_pools, term), do: Nav.with_return(~p"/courses", ~p"/terms/#{term}")
   defp route_for(:teacher_availability, term), do: ~p"/terms/#{term}/availability"
-  # A profile belongs to a session, so the work is on the session, not on the profile.
-  defp route_for(:slot_profiles, term), do: ~p"/terms/#{term}/sessions"
-  defp route_for(:merge_candidates, term), do: ~p"/terms/#{term}/sessions"
   defp route_for(:week_masks, term), do: ~p"/terms/#{term}/workload"
   defp route_for(_key, _term), do: nil
 
   # Each action carries the name of the page it opens.
   defp action_label_for(key) when key in [:placeholder_teachers, :aggregate_cohorts],
     do: gettext("Teachers and groups")
-
-  defp action_label_for(key) when key in [:slot_profiles, :merge_candidates],
-    do: gettext("Sessions")
 
   defp action_label_for(:room_pools), do: gettext("Courses")
   defp action_label_for(:teacher_availability), do: gettext("Availability")

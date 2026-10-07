@@ -29,7 +29,8 @@ defmodule NeuZeitWeb.TeachingTypeLiveTest do
     view |> element("a", "Manage teaching types") |> render_click()
     {path, _} = assert_redirect(view)
     {:ok, registry, _} = live(conn, path)
-    registry |> element("a", "Add teaching type") |> render_click()
+    registry |> element("a", "New teaching type") |> render_click()
+    assert has_element?(registry, "#teaching-type-form a", "Cancel")
 
     registry
     |> form("#teaching-type-form",
@@ -45,7 +46,7 @@ defmodule NeuZeitWeb.TeachingTypeLiveTest do
 
     type = Enum.find(Catalog.list_teaching_types(), &(label(&1, "en") == "Project defence"))
     assert has_element?(registry, "#teaching-type-#{type.id}", "Project defence")
-    assert has_element?(registry, "a[href='/courses/#{course.id}']", "Return")
+    assert has_element?(registry, "a[href='/courses/#{course.id}']", "Back to the course")
     {:ok, view, _} = live(conn, ~p"/courses/#{course}")
     assert has_element?(view, "option[value='#{type.id}']", "Project defence")
 
@@ -74,7 +75,7 @@ defmodule NeuZeitWeb.TeachingTypeLiveTest do
     end
   end
 
-  test "renames a used type and explains why it cannot be deleted", %{conn: conn} do
+  test "renames a used type and disables its deletion", %{conn: conn} do
     {:ok, type} = Catalog.create_teaching_type(%{names: %{"en" => "Studio"}})
     component = component_fixture(kind: type.id)
     {:ok, view, _} = live(conn, ~p"/teaching-types/#{type.id}/edit")
@@ -84,11 +85,28 @@ defmodule NeuZeitWeb.TeachingTypeLiveTest do
     |> render_submit()
 
     assert has_element?(view, "#teaching-type-#{type.id}", "Design studio")
-    view |> element("#teaching-type-#{type.id} button", "Delete") |> render_click()
-    view |> element("#confirm-modal button", "Delete") |> render_click()
-    assert render(view) =~ "used by courses"
+
+    assert has_element?(
+             view,
+             ~s{#teaching-type-#{type.id} button[disabled][title="Used by 1 course"]},
+             "Delete"
+           )
+
+    assert Catalog.get_teaching_type!(type.id)
     {:ok, course, _} = live(conn, ~p"/courses/#{component.course_id}")
     assert has_element?(course, "#component-#{component.id}", "Design studio")
+  end
+
+  test "an unused type is deleted after confirmation", %{conn: conn} do
+    {:ok, type} = Catalog.create_teaching_type(%{names: %{"en" => "Studio"}})
+    {:ok, view, _} = live(conn, ~p"/teaching-types")
+
+    view |> element("#teaching-type-#{type.id} button", "Delete") |> render_click()
+    assert has_element?(view, "#confirm-modal", "Deletes the teaching type Studio.")
+    view |> element("#confirm-modal button", "Delete") |> render_click()
+
+    refute has_element?(view, "#teaching-type-#{type.id}")
+    refute Enum.any?(Catalog.list_teaching_types(), &(&1.id == type.id))
   end
 
   test "names form reports empty and duplicate names without losing other translations", %{

@@ -13,6 +13,7 @@ defmodule NeuZeitWeb.UI.TransferList do
   attr :event, :string, default: "selection_changed"
   attr :available_label, :string, default: nil
   attr :selected_label, :string, default: nil
+  attr :searchable, :boolean, default: true, doc: "a search box above each list"
 
   def transfer_list(assigns) do
     ~H"""
@@ -27,7 +28,16 @@ defmodule NeuZeitWeb.UI.TransferList do
         class="card card-border border-base-300 bg-base-100"
       >
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-4">
-          <h3 class="type-heading">{label}</h3>
+          <h3 class="type-heading">{label} ({length(items)})</h3>
+          <label :if={@searchable} class="input input-sm w-full">
+            <.icon name="hero-magnifying-glass" class="size-4" />
+            <input
+              type="search"
+              data-filter={role}
+              placeholder={gettext("Search")}
+              aria-label={gettext("Search %{list}", list: label)}
+            />
+          </label>
         </div>
         <ul data-role={role} class="list min-h-24 p-2">
           <li
@@ -67,8 +77,21 @@ defmodule NeuZeitWeb.UI.TransferList do
       import Sortable from "sortablejs";
 
       export default defineHook({
+        /** @param {HTMLInputElement} box */
+        applyFilter(box) {
+          const needle = box.value.trim().toLowerCase();
+          const list = this.el.querySelector(`[data-role="${box.dataset.filter ?? ""}"]`);
+          if (!(list instanceof HTMLElement)) {
+            return;
+          }
+          for (const row of htmlElements(list, "[data-id]")) {
+            row.hidden = needle !== "" && !(row.textContent ?? "").toLowerCase().includes(needle);
+          }
+        },
+
         destroyed() {
           this.el.removeEventListener("click", this.onToggle);
+          this.el.removeEventListener("input", this.onFilter);
           for (const sorter of this.sorters) {
             sorter.destroy();
           }
@@ -76,7 +99,9 @@ defmodule NeuZeitWeb.UI.TransferList do
 
         mounted() {
           this.onToggle = this.onToggle.bind(this);
+          this.onFilter = this.onFilter.bind(this);
           this.el.addEventListener("click", this.onToggle);
+          this.el.addEventListener("input", this.onFilter);
           this.sorters = htmlElements(this.el, "[data-role]").map((list) =>
             Sortable.create(list, {
               animation: dragAnimation(),
@@ -92,6 +117,13 @@ defmodule NeuZeitWeb.UI.TransferList do
               preventOnFilter: false,
             }),
           );
+        },
+
+        /** @param {Event} event */
+        onFilter(event) {
+          if (event.target instanceof HTMLInputElement && "filter" in event.target.dataset) {
+            this.applyFilter(event.target);
+          }
         },
 
         /** @param {MouseEvent} event */
@@ -124,6 +156,15 @@ defmodule NeuZeitWeb.UI.TransferList do
 
         /** @type {Sortable[]} */
         sorters: [],
+
+        /** A patch rewrites the rows, so the typed filters are applied again. */
+        updated() {
+          for (const box of htmlElements(this.el, "[data-filter]")) {
+            if (box instanceof HTMLInputElement) {
+              this.applyFilter(box);
+            }
+          }
+        },
       });
     </script>
     """

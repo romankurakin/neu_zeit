@@ -24,6 +24,14 @@ defmodule NeuZeitWeb.SettingsLive.Index do
      )}
   end
 
+  # Discards unsaved edits and shows the stored settings again.
+  def handle_event("cancel", _params, socket) do
+    settings = Settings.get()
+
+    {:noreply,
+     socket |> assign(:settings, settings) |> assign(:form, to_form(Settings.change(settings)))}
+  end
+
   def handle_event("save", %{"institution" => attrs}, socket) do
     case Settings.save(attrs) do
       {:ok, _} ->
@@ -100,7 +108,7 @@ defmodule NeuZeitWeb.SettingsLive.Index do
                 field={@form[:default_locale]}
                 type="select"
                 label={gettext("Default language")}
-                options={Enum.map(@locales, &{Locale.label(&1), &1})}
+                options={Enum.map(enabled_locales(@form, @locales), &{Locale.label(&1), &1})}
               />
               <p class="type-detail">
                 {gettext(
@@ -110,9 +118,10 @@ defmodule NeuZeitWeb.SettingsLive.Index do
             </div>
           </.card>
         </div>
-        <.button variant="primary" class="self-start" phx-disable-with={gettext("Saving")}>{gettext(
-          "Save"
-        )}</.button>
+        <div class="flex gap-2">
+          <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
+          <.button type="button" variant="ghost" phx-click="cancel">{gettext("Cancel")}</.button>
+        </div>
       </.form>
       <.card title={gettext("Teaching types")} class="mt-6">
         <p class="mb-4">
@@ -124,5 +133,11 @@ defmodule NeuZeitWeb.SettingsLive.Index do
       </.card>
     </Layouts.app>
     """
+  end
+
+  # The default language must be one of the enabled ones, in the known order.
+  defp enabled_locales(form, locales) do
+    enabled = form[:supported_locales].value || []
+    Enum.filter(locales, &(&1 in enabled))
   end
 end

@@ -229,6 +229,24 @@ defmodule NeuZeit.PlanningTest do
     assert exception.new_room_id == room.id
   end
 
+  test "publishing can rename the plan in the same transaction" do
+    term = term_fixture()
+    plan = plan_fixture(term: term, name: "Draft 1")
+
+    assert {:error, changeset} = Planning.publish_plan(plan.id, name: "")
+    assert errors_on(changeset).name == ["can't be blank"]
+    assert Planning.get_plan!(plan.id).status == "draft"
+
+    assert {:error, changeset} =
+             Planning.publish_plan(plan.id, name: String.duplicate("a", 101))
+
+    assert %{name: [_]} = errors_on(changeset)
+
+    assert {:ok, published} = Planning.publish_plan(plan.id, name: "Autumn 2026")
+    assert published.status == "active"
+    assert published.name == "Autumn 2026"
+  end
+
   test "an added occurrence inherits online delivery and needs no room" do
     term = term_fixture()
     session = session_fixture(term: term, delivery_mode: :online)

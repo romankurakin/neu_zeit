@@ -1,15 +1,16 @@
 defmodule NeuZeitWeb.ExceptionLive.Index do
   @moduledoc """
-  Edits dated changes to a published timetable.
+  Lists and edits one-off changes to the active plan.
 
   Each change requires a reason and author. Reverting a change keeps its history.
-  Moves and additions cannot target non-teaching dates. A meeting can be moved
-  from a non-teaching date to a teaching date.
+  Moves and additions cannot target non-teaching dates. A dated session can be
+  moved from a non-teaching date to a teaching date.
   """
   use NeuZeitWeb, :live_view
 
   alias NeuZeit.{Catalog, Planning}
-  alias NeuZeit.Planning.ScheduleException
+  alias NeuZeit.Scheduling.TermDates
+  alias NeuZeitWeb.ExceptionLive.FormComponent
   alias NeuZeitWeb.Nav
 
   @impl true
@@ -36,170 +37,30 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
   end
 
   defp apply_action(socket, :new, params) do
-    exception = %ScheduleException{
-      term_id: socket.assigns.term.id,
-      kind: params["kind"] || "cancel",
-      session_id: params["session_id"],
-      occurrence_date: parse_date(params["date"]),
-      new_date: if(params["kind"] in ["move", "add"], do: parse_date(params["new_date"])),
-      new_slot: if(params["kind"] in ["move", "add"], do: parse_slot(params["new_slot"])),
-      new_room_id: if(params["kind"] in ["move", "add"], do: params["new_room_id"]),
-      new_teacher_id: if(params["kind"] != "cancel", do: params["new_teacher_id"])
-    }
-
     socket
-    |> assign(:editing, exception)
-    |> assign(
-      :form,
-      to_form(
-        Planning.change_schedule_exception(
-          exception,
-          normalize_payload(Map.take(params, ["kind", "new_delivery_mode"]))
-        )
-      )
-    )
+    |> assign(:editing, FormComponent.new_exception(socket.assigns.term.id, params))
+    |> assign(:form_params, params)
   end
 
   defp apply_action(socket, :edit, %{"id" => id} = params) do
-    exception = Planning.get_schedule_exception!(id, socket.assigns.term.id)
-
-    attrs =
-      Map.take(params, ["kind", "new_date", "new_slot", "new_room_id", "new_delivery_mode"])
-      |> Enum.reject(fn {_k, v} -> v in [nil, ""] end)
-      |> Map.new()
-
-    attrs = normalize_payload(attrs)
-
-    # Dragging an addition edits its date in the same record.
-    attrs =
-      if (attrs["kind"] || exception.kind) == "add" do
-        Map.merge(attrs, %{
-          "occurrence_date" =>
-            attrs["new_date"] || exception.new_date || exception.occurrence_date,
-          "new_date" => nil
-        })
-      else
-        attrs
-      end
-
     socket
-    |> assign(:editing, exception)
-    |> assign(:form, to_form(Planning.change_schedule_exception(exception, attrs)))
+    |> assign(:editing, Planning.get_schedule_exception!(id, socket.assigns.term.id))
+    |> assign(:form_params, params)
   end
 
   defp apply_action(socket, :index, _params),
-    do: socket |> assign(:editing, nil) |> assign(:form, nil)
+    do: socket |> assign(:editing, nil) |> assign(:form_params, %{})
 
-  defp normalize_payload(%{"kind" => "cancel"} = attrs),
-    do:
-      Map.merge(attrs, %{
-        "new_date" => nil,
-        "new_slot" => nil,
-        "new_room_id" => nil,
-        "new_teacher_id" => nil,
-        "new_delivery_mode" => nil
-      })
-
-  defp normalize_payload(%{"kind" => "substitute"} = attrs),
-    do:
-      Map.merge(attrs, %{
-        "new_date" => nil,
-        "new_slot" => nil,
-        "new_room_id" => nil,
-        "new_delivery_mode" => nil
-      })
-
-  defp normalize_payload(attrs), do: attrs
-
-  defp normalize_delivery_payload(attrs, assigns) do
-    session_id = attrs["session_id"] || assigns.editing.session_id
-    session = Enum.find(assigns.sessions, &(&1.id == session_id))
-    mode = attrs["new_delivery_mode"]
-    mode = if mode in [nil, ""], do: session && session.delivery_mode, else: mode
-
-    if attrs["kind"] in ["move", "add"] && mode in [:online, "online"],
-      do: Map.put(attrs, "new_room_id", nil),
-      else: attrs
-  end
-
-  defp effective_delivery_mode(form, sessions) do
-    case form[:new_delivery_mode].value do
-      mode when mode in [nil, ""] ->
-        case Enum.find(sessions, &(&1.id == form[:session_id].value)) do
-          nil -> :in_person
-          session -> session.delivery_mode
-        end
-
-      mode ->
-        mode
-    end
-  end
-
-  defp parse_slot(nil), do: nil
-
-  defp parse_slot(value) do
-    case Integer.parse(value) do
-      {n, ""} -> n
-      _ -> nil
-    end
-  end
-
-  defp parse_date(nil), do: nil
-
-  defp parse_date(value) do
-    case Date.from_iso8601(value) do
-      {:ok, date} -> date
-      _invalid -> nil
-    end
+  @impl true
+  def handle_info({FormComponent, :saved, _exception}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, gettext("Change saved."))
+     |> finish_edit()
+     |> load()}
   end
 
   @impl true
-  def handle_event("validate", %{"schedule_exception" => params}, socket) do
-    params = normalize_payload(params) |> normalize_delivery_payload(socket.assigns)
-    params = if params["kind"] == "add", do: Map.put(params, "new_date", nil), else: params
-    changeset = Planning.change_schedule_exception(socket.assigns.editing, params)
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
-  end
-
-  def handle_event("save", %{"schedule_exception" => params}, socket) do
-    attrs = Map.put(params, "term_id", socket.assigns.term.id)
-
-    attrs = normalize_payload(attrs) |> normalize_delivery_payload(socket.assigns)
-
-    attrs = if attrs["kind"] == "add", do: Map.put(attrs, "new_date", nil), else: attrs
-
-    result =
-      if socket.assigns.editing.id do
-        Planning.update_schedule_exception(
-          socket.assigns.editing,
-          Map.drop(attrs, ["term_id", "session_id"])
-        )
-      else
-        if Enum.any?(socket.assigns.sessions, &(&1.id == attrs["session_id"])),
-          do: Planning.create_schedule_exception(attrs),
-          else:
-            {:error,
-             Catalog.error_changeset(
-               %ScheduleException{},
-               :session_id,
-               "must belong to this term"
-             )}
-      end
-
-    case result do
-      {:ok, _exception} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Change saved."))
-         |> finish_edit()
-         |> load()}
-
-      {:error, reason} ->
-        # Show the reason when a date change is rejected.
-        {:noreply, Errors.put(socket, reason, as: :form)}
-    end
-  end
-
   def handle_event("revert_prompt", %{"id" => id}, socket),
     do:
       {:noreply,
@@ -230,45 +91,59 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
   end
 
   defp load(socket) do
-    placement_weeks =
-      case Enum.find(Planning.list_plans(socket.assigns.term.id), &(&1.status == "active")) do
+    active_plan = Enum.find(Planning.list_plans(socket.assigns.term.id), &(&1.status == "active"))
+
+    placements =
+      case active_plan do
         nil -> %{}
-        plan -> Map.new(Planning.get_plan!(plan.id).placements, &{&1.session_id, &1.week_mask})
+        plan -> Map.new(Planning.get_plan!(plan.id).placements, &{&1.session_id, &1})
       end
 
     socket
-    |> assign(:placement_weeks, placement_weeks)
+    |> assign(:active_plan, active_plan)
+    |> assign(:placements, placements)
+    |> assign(
+      :session_labels,
+      FormComponent.session_labels(
+        socket.assigns.sessions,
+        socket.assigns.term.weeks_count,
+        placements,
+        socket.assigns.grid
+      )
+    )
     |> assign(:exceptions, Planning.list_schedule_exceptions(socket.assigns.term.id))
   end
 
-  defp session_label(session, index, total, placement_weeks) do
-    weeks =
-      Map.get(
-        placement_weeks,
-        session.id,
-        if(session.automatic_weeks, do: [], else: session.week_mask)
-      )
+  # The date the calendar shows the change on.
+  defp shown_date(%{kind: kind, new_date: %Date{} = date}) when kind in ["move", "add"], do: date
+  defp shown_date(exception), do: exception.occurrence_date
 
-    [
-      course_title(session.course_component.course),
-      component_kind_label(session.course_component),
-      session.teacher.name,
-      Enum.map_join(session.cohorts, ", ", & &1.name),
-      if(weeks != [], do: weeks_label(weeks, total)),
-      ngettext("%{count} time slot", "%{count} time slots", session.duration_slots,
-        count: session.duration_slots
-      ),
-      gettext("Block %{n}", n: index)
-    ]
-    |> Enum.reject(&(&1 in [nil, ""]))
-    |> Enum.join(", ")
+  defp calendar_link(assigns, exception) do
+    date = shown_date(exception)
+    week = assigns.term |> TermDates.week(date) |> max(1) |> min(assigns.term.weeks_count)
+
+    params =
+      %{
+        "plan_id" => assigns.active_plan && assigns.active_plan.id,
+        "week" => week,
+        "occurrence" => "#{exception.session_id}:#{Date.to_iso8601(date)}"
+      }
+      |> Map.reject(fn {_key, value} -> is_nil(value) end)
+
+    ~p"/terms/#{assigns.term}/calendar?#{params}"
   end
+
+  # Cancel and the close button go back to where the form was opened from.
+  defp cancel_command(%{return_to: return_to}) when is_binary(return_to),
+    do: JS.navigate(return_to)
+
+  defp cancel_command(assigns), do: JS.patch(~p"/terms/#{assigns.term}/exceptions")
 
   defp change_action("cancel"), do: gettext("Cancel dated session")
   defp change_action("move"), do: gettext("Change date, time or format")
   defp change_action("substitute"), do: gettext("Replace teacher")
   defp change_action("add"), do: gettext("Add a dated session")
-  defp change_action(_kind), do: gettext("Record a change")
+  defp change_action(_kind), do: gettext("New change")
 
   defp kind_label("cancel"), do: gettext("Cancelled")
   defp kind_label("move"), do: gettext("Moved")
@@ -286,22 +161,33 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
       terms={@terms}
       current_term={@term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{Nav.return_label(@return_to)}</.link>
       <.page_header title={gettext("One-off changes")}>
         <:actions>
           <.link patch={~p"/terms/#{@term}/exceptions/new"} class="btn btn-primary">
-            <.icon name="hero-plus" class="size-4" /> {gettext("Record a change")}
+            <.icon name="hero-plus" class="size-4" /> {gettext("New change")}
           </.link>
         </:actions>
       </.page_header>
 
-      <div class={["grid gap-4", @editing && "lg:grid-cols-[2fr_1fr]"]}>
+      <div class={["grid items-start gap-4", @editing && "lg:grid-cols-[minmax(0,1fr)_24rem]"]}>
         <div class="min-w-0">
           <.empty_state
             :if={@exceptions == []}
             title={gettext("No one-off changes")}
+            message={
+              gettext(
+                "Cancel or move a dated session, add one or replace its teacher. Each change keeps its reason and author."
+              )
+            }
             icon="hero-calendar-days"
-          />
+          >
+            <:actions>
+              <.link patch={~p"/terms/#{@term}/exceptions/new"} class="btn btn-primary">
+                {gettext("New change")}
+              </.link>
+            </:actions>
+          </.empty_state>
 
           <.table
             :if={@exceptions != []}
@@ -313,16 +199,11 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
               {kind_label(row.kind)}
             </:col>
             <:col :let={row} label={gettext("Session")}>
-              {session_label(
-                row.session,
-                (Enum.find_index(@sessions, &(&1.id == row.session_id)) || 0) + 1,
-                @term.weeks_count,
-                @placement_weeks
-              )}
+              {@session_labels[row.session_id]}
             </:col>
-            <:col :let={row} label={gettext("Date")}>{row.occurrence_date}</:col>
-            <:col :let={row} label={gettext("Moved to")}>
-              <span :if={row.new_date}>{row.new_date}</span>
+            <:col :let={row} label={gettext("Date")}><.date value={row.occurrence_date} /></:col>
+            <:col :let={row} label={gettext("After the change")}>
+              <.date :if={row.new_date} value={row.new_date} />
               <span :if={row.new_slot}>{NeuZeitWeb.Scheduling.SessionCard.time_range(
                 @grid,
                 row.new_slot,
@@ -349,6 +230,11 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
             <:action :let={row}>
               <.link
                 :if={row.status == "active"}
+                navigate={calendar_link(assigns, row)}
+                class="btn btn-ghost"
+              >{gettext("Show in calendar")}</.link>
+              <.link
+                :if={row.status == "active"}
                 patch={~p"/terms/#{@term}/exceptions/#{row.id}/edit?return_to=#{@return_to || ""}"}
                 class="btn btn-ghost"
               >{gettext("Edit")}</.link>
@@ -370,122 +256,23 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
           title={
             if @editing.id,
               do: gettext("Edit change"),
-              else: change_action(to_string(@form[:kind].value))
+              else: change_action(@form_params["kind"] || "cancel")
           }
-          on_close={JS.patch(~p"/terms/#{@term}/exceptions")}
+          on_close={cancel_command(assigns)}
         >
-          <.form
-            for={@form}
-            id="exception-form"
-            phx-mounted={JS.focus_first(to: "#exception-form")}
-            phx-change="validate"
-            phx-submit="save"
-            class="flex flex-col gap-2"
-          >
-            <.input
-              field={@form[:session_id]}
-              disabled={@editing.id != nil}
-              type="select"
-              label={gettext("Session")}
-              prompt={gettext("Choose a session")}
-              options={
-                Enum.map(Enum.with_index(@sessions, 1), fn {s, index} ->
-                  {session_label(s, index, @term.weeks_count, @placement_weeks), s.id}
-                end)
-              }
-            />
-            <.input
-              field={@form[:kind]}
-              type="select"
-              label={gettext("Change")}
-              options={[
-                {gettext("Cancel dated session"), "cancel"},
-                {gettext("Change date, time or format"), "move"},
-                {gettext("Add a dated session"), "add"},
-                {gettext("Replace teacher"), "substitute"}
-              ]}
-            />
-            <.date_field
-              field={@form[:occurrence_date]}
-              label={gettext("Date")}
-              min={@term.starts_on}
-              max={@term.ends_on}
-            />
-
-            <div :if={to_string(@form[:kind].value) in ["move", "add"]} class="flex flex-col gap-2">
-              <.input
-                field={@form[:new_delivery_mode]}
-                type="select"
-                label={gettext("Delivery format")}
-                prompt={gettext("Use the series format")}
-                options={delivery_mode_options()}
-              />
-              <p :if={to_string(@form[:kind].value) == "move"} class="type-detail">
-                {gettext("To change only the format, keep the same date and time.")}
-              </p>
-              <.date_field
-                :if={to_string(@form[:kind].value) == "move"}
-                field={@form[:new_date]}
-                label={gettext("New date")}
-                min={@term.starts_on}
-                max={@term.ends_on}
-                disallowed={@term.excluded_dates || []}
-              />
-              <.input
-                field={@form[:new_slot]}
-                type="select"
-                label={
-                  if to_string(@form[:kind].value) == "move",
-                    do: gettext("New time"),
-                    else: gettext("Time")
-                }
-                prompt={gettext("Choose a time")}
-                options={slot_options(@grid)}
-              />
-              <.input
-                :if={effective_delivery_mode(@form, @sessions) not in [:online, "online"]}
-                field={@form[:new_room_id]}
-                type="select"
-                label={
-                  if to_string(@form[:kind].value) == "move",
-                    do: gettext("New room"),
-                    else: gettext("Room")
-                }
-                prompt={gettext("Choose a room")}
-                options={Enum.map(@rooms, &{"#{&1.name}, #{&1.building.name}", &1.id})}
-              />
-            </div>
-
-            <.input
-              :if={to_string(@form[:kind].value) in ["move", "add", "substitute"]}
-              field={@form[:new_teacher_id]}
-              type="select"
-              label={gettext("Substitute teacher")}
-              prompt={
-                if to_string(@form[:kind].value) == "substitute",
-                  do: gettext("Choose a teacher"),
-                  else: gettext("Keep the assigned teacher")
-              }
-              options={Enum.map(@teachers, &{&1.name, &1.id})}
-              required={to_string(@form[:kind].value) == "substitute"}
-            />
-            <.input field={@form[:reason]} type="text" label={gettext("Reason")} required />
-            <.input field={@form[:created_by]} type="text" label={gettext("Author")} required />
-
-            <p class="type-detail font-semibold">
-              {gettext("Applies only to this date. The semester template stays the same.")}
-            </p>
-            <div class="flex flex-wrap gap-2 pt-2">
-              <.button variant="primary" phx-disable-with={gettext("Saving")}>
-                {if @editing.id,
-                  do: gettext("Save"),
-                  else: change_action(to_string(@form[:kind].value))}
-              </.button>
-              <.link patch={~p"/terms/#{@term}/exceptions"} class="btn btn-ghost">
-                {gettext("Cancel")}
-              </.link>
-            </div>
-          </.form>
+          <.live_component
+            module={FormComponent}
+            id={"exception-form-#{@editing.id || "new"}"}
+            term={@term}
+            grid={@grid}
+            sessions={@sessions}
+            rooms={@rooms}
+            teachers={@teachers}
+            placements={@placements}
+            exception={@editing}
+            params={@form_params}
+            on_cancel={cancel_command(assigns)}
+          />
           <button
             :if={@editing.id && @editing.status == "active"}
             class="btn"
@@ -506,11 +293,5 @@ defmodule NeuZeitWeb.ExceptionLive.Index do
       />
     </Layouts.app>
     """
-  end
-
-  defp slot_options(grid) do
-    grid.slots
-    |> Enum.with_index(1)
-    |> Enum.map(fn {slot, index} -> {"#{index}, #{slot.start}", index} end)
   end
 end

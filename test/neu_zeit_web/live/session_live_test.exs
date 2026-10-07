@@ -58,12 +58,30 @@ defmodule NeuZeitWeb.SessionLiveTest do
   end
 
   test "lists the term's sessions", %{conn: conn} = ctx do
-    created = session(ctx)
+    created = session(ctx, %{"cohort_ids" => [ctx.cohort.id, ctx.other_cohort.id]})
     {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions")
 
     assert has_element?(live, "#sessions", "Programmierung I")
     assert has_element?(live, "#sessions", "Anna Weber")
-    assert has_element?(live, "#sessions-#{created.id}")
+    assert has_element?(live, "#sessions-#{created.id} .flex-wrap .badge", "IT-1")
+    assert has_element?(live, "th", "Time profile")
+    assert has_element?(live, "#session-filters option", "Any time profile")
+    assert has_element?(live, "#session-filters label", "No time profile")
+    assert has_element?(live, "header p", "Sessions are created from teaching load.")
+
+    assert has_element?(
+             live,
+             ~s{header a[href^="/terms/#{ctx.term.id}/workload/new?return_to="]},
+             "Add teaching load"
+           )
+  end
+
+  test "a term without sessions points to teaching load", %{conn: conn} = ctx do
+    {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/sessions")
+
+    assert has_element?(live, ".card-dash", "No sessions yet")
+    assert has_element?(live, ".card-dash a", "Add teaching load")
+    refute has_element?(live, "#sessions")
   end
 
   describe "filtering" do
@@ -107,8 +125,9 @@ defmodule NeuZeitWeb.SessionLiveTest do
 
       live |> form("#session-filters") |> render_change(%{"teacher_id" => ctx.other_teacher.id})
       refute has_element?(live, "#sessions-#{mine.id}")
+      assert has_element?(live, ".card-dash", "No matching sessions. Change the filters.")
 
-      live |> element("button", "Reset") |> render_click()
+      live |> element(".card-dash button", "Reset filters") |> render_click()
       assert has_element?(live, "#sessions-#{mine.id}")
     end
   end

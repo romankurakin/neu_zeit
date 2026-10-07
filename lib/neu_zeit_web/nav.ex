@@ -33,7 +33,8 @@ defmodule NeuZeitWeb.Nav do
           term_item(term, gettext("Term settings"), "/settings", "hero-cog-6-tooth"),
           term_item(term, gettext("Availability"), "/availability", "hero-clock"),
           term_item(term, gettext("Time profiles"), "/slot-profiles", "hero-table-cells"),
-          term_item(term, gettext("Teaching load"), "/workload", "hero-rectangle-stack")
+          term_item(term, gettext("Teaching load"), "/workload", "hero-rectangle-stack"),
+          term_item(term, gettext("Sessions"), "/sessions", "hero-list-bullet")
         ]
       },
       %{
@@ -66,6 +67,25 @@ defmodule NeuZeitWeb.Nav do
            !String.contains?(value, "\\"), do: value, else: nil
 
     Phoenix.Component.assign(socket, :return_to, safe)
+  end
+
+  @doc "Names the page a return link goes back to."
+  def return_label(nil), do: nil
+
+  def return_label(return_to) do
+    case String.split(URI.parse(return_to).path || "", "/", trim: true) do
+      ["terms", _id, "plans", _plan | _rest] -> gettext("Back to the plan")
+      ["terms", _id, "calendar" | _rest] -> gettext("Back to the calendar")
+      ["terms", _id, "workload" | _rest] -> gettext("Back to teaching load")
+      ["terms", _id, "sessions" | _rest] -> gettext("Back to sessions")
+      ["terms", _id, "settings" | _rest] -> gettext("Back to term settings")
+      ["terms", _id | _rest] -> gettext("Back to the overview")
+      ["terms"] -> gettext("Back to terms")
+      ["courses", _id | _rest] -> gettext("Back to the course")
+      ["courses"] -> gettext("Back to courses")
+      ["settings" | _rest] -> gettext("Back to institution settings")
+      _other -> gettext("Back")
+    end
   end
 
   def with_return(path, nil), do: path

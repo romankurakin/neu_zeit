@@ -70,6 +70,7 @@ defmodule NeuZeitWeb.TeachingTypeLive.Index do
   def handle_event("delete_confirm", _params, %{assigns: %{deleting: nil}} = socket),
     do: {:noreply, socket}
 
+  # The list disables deletion of used types; this catches a concurrent change.
   def handle_event("delete_confirm", _params, socket) do
     case Catalog.delete_teaching_type(socket.assigns.deleting) do
       {:ok, _record} ->
@@ -92,6 +93,17 @@ defmodule NeuZeitWeb.TeachingTypeLive.Index do
         usage: Catalog.teaching_type_usage()
       )
 
+  # Names the reference that prevents deletion, or nil when the type is free.
+  defp blocker(usage, type) do
+    case Map.get(usage, type.id, 0) do
+      0 ->
+        nil
+
+      count ->
+        ngettext("Used by %{count} course", "Used by %{count} courses", count, count: count)
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -102,12 +114,14 @@ defmodule NeuZeitWeb.TeachingTypeLive.Index do
       terms={@navigation_terms}
       current_term={@navigation_term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header title={gettext("Teaching types")}>
         <:actions>
-          <.link patch={Nav.with_return(~p"/teaching-types/new", @return_to)} class="btn btn-primary">{gettext(
-            "Add teaching type"
-          )}</.link>
+          <.link patch={Nav.with_return(~p"/teaching-types/new", @return_to)} class="btn btn-primary">
+            <.icon name="hero-plus" class="size-4" /> {gettext("New teaching type")}
+          </.link>
         </:actions>
       </.page_header>
       <p class="mb-4">
@@ -116,35 +130,62 @@ defmodule NeuZeitWeb.TeachingTypeLive.Index do
         )}
       </p>
       <div class={["grid gap-4", @editing && "lg:grid-cols-[2fr_1fr]"]}>
-        <.table
-          id="teaching-types"
-          rows={@types}
-          row_id={&"teaching-type-#{&1.id}"}
-          empty_message={gettext("No teaching types yet")}
-        >
-          <:col :let={type} label={gettext("Name")}>{teaching_type_label(type)}</:col>
-          <:col :let={type} label={gettext("Courses")} numeric>{Map.get(@usage, type.id, 0)}</:col>
-          <:action :let={type}>
-            <.link
-              patch={Nav.with_return(~p"/teaching-types/#{type.id}/edit", @return_to)}
-              class="btn btn-ghost"
-            >{gettext("Edit")}</.link>
-            <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={type.id}>{gettext(
-              "Delete"
-            )}</button>
-          </:action>
-        </.table>
+        <div class="min-w-0">
+          <.empty_state
+            :if={@types == []}
+            title={gettext("No teaching types yet")}
+            message={gettext("Add the teaching types your institution uses.")}
+            icon="hero-squares-2x2"
+          >
+            <:actions>
+              <.link
+                patch={Nav.with_return(~p"/teaching-types/new", @return_to)}
+                class="btn btn-primary"
+              >
+                {gettext("New teaching type")}
+              </.link>
+            </:actions>
+          </.empty_state>
+
+          <.table
+            :if={@types != []}
+            id="teaching-types"
+            rows={@types}
+            row_id={&"teaching-type-#{&1.id}"}
+          >
+            <:col :let={type} label={gettext("Name")}>{teaching_type_label(type)}</:col>
+            <:col :let={type} label={gettext("Courses")} numeric>{Map.get(@usage, type.id, 0)}</:col>
+            <:action :let={type}>
+              <.link
+                patch={Nav.with_return(~p"/teaching-types/#{type.id}/edit", @return_to)}
+                class="btn btn-ghost"
+              >
+                {gettext("Edit")}
+              </.link>
+              <button
+                class="btn btn-ghost text-error"
+                phx-click="delete_prompt"
+                phx-value-id={type.id}
+                disabled={blocker(@usage, type) != nil}
+                title={blocker(@usage, type)}
+              >
+                {gettext("Delete")}
+              </button>
+            </:action>
+          </.table>
+        </div>
         <.details_panel
           :if={@editing}
           class="order-first lg:order-last"
           title={
-            if @editing.id, do: gettext("Edit teaching type"), else: gettext("Add teaching type")
+            if @editing.id, do: gettext("Edit teaching type"), else: gettext("New teaching type")
           }
           on_close={JS.patch(Nav.with_return(~p"/teaching-types", @return_to))}
         >
           <.form
             for={@form}
             id="teaching-type-form"
+            phx-mounted={JS.focus_first(to: "#teaching-type-form")}
             phx-change="validate"
             phx-submit="save"
             class="flex flex-col gap-3"
@@ -153,14 +194,26 @@ defmodule NeuZeitWeb.TeachingTypeLive.Index do
             <p :if={@editing.id} class="type-detail">
               {gettext("Name changes apply to every course and timetable using this type.")}
             </p>
-            <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
+            <div class="flex gap-2 pt-2">
+              <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
+              <.link
+                patch={Nav.with_return(~p"/teaching-types", @return_to)}
+                class="btn btn-ghost"
+              >
+                {gettext("Cancel")}
+              </.link>
+            </div>
           </.form>
         </.details_panel>
       </div>
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: teaching_type_label(@deleting))}
-        message={gettext("Teaching types used by courses cannot be deleted.")}
+        message={
+          gettext("Deletes the teaching type %{name}. This cannot be undone.",
+            name: teaching_type_label(@deleting)
+          )
+        }
         confirm_label={gettext("Delete")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"

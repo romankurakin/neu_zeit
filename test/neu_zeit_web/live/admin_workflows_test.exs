@@ -177,18 +177,15 @@ defmodule NeuZeitWeb.AdminWorkflowsTest do
       "to" => "2026-09-02"
     })
 
-    {path, _} = assert_redirect(view)
-    assert URI.parse(path).path == "/terms/#{c.term.id}/exceptions/#{move.id}/edit"
-    {:ok, editor, _} = live(c.conn, path)
-
+    # The move opens the same change for correction in a dialog on the calendar.
     assert has_element?(
-             editor,
+             view,
              "input[name='schedule_exception[occurrence_date]'][value='2026-08-31']"
            )
 
-    assert has_element?(editor, "input[name='schedule_exception[new_date]'][value='2026-09-02']")
+    assert has_element?(view, "input[name='schedule_exception[new_date]'][value='2026-09-02']")
 
-    editor
+    view
     |> form("#exception-form",
       schedule_exception: %{reason: "Corrected date", created_by: "Admin"}
     )
@@ -223,7 +220,7 @@ defmodule NeuZeitWeb.AdminWorkflowsTest do
         created_by: "Admin"
       })
 
-    {:ok, view, _} = live(c.conn, ~p"/terms/#{c.term}/calendar?scope=#{room.id}")
+    {:ok, view, _} = live(c.conn, ~p"/terms/#{c.term}/calendar?scope=#{room.id}&week=1")
     assert has_element?(view, "#calendar-day-2026-09-02 [data-session-id='#{extra.id}']", "Added")
   end
 

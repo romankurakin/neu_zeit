@@ -52,6 +52,30 @@ defmodule NeuZeitWeb.SettingsLiveTest do
     assert {:error, _} = Settings.save(%{timezone: "Invalid/Zone"})
   end
 
+  test "the default language offers only enabled languages and cancel restores the stored form",
+       %{conn: conn} do
+    {:ok, _} = Settings.save(%{supported_locales: ["en", "ru"], default_locale: "en"})
+    {:ok, view, _} = live(conn, ~p"/settings")
+
+    assert has_element?(view, "select[name='institution[default_locale]'] option[value='ru']")
+    refute has_element?(view, "select[name='institution[default_locale]'] option[value='de']")
+
+    view
+    |> form("#institution-settings",
+      institution: %{name: "Draft name", supported_locales: ["en"]}
+    )
+    |> render_change()
+
+    refute has_element?(view, "select[name='institution[default_locale]'] option[value='ru']")
+    assert has_element?(view, "input[name='institution[name]'][value='Draft name']")
+
+    view |> element("#institution-settings button", "Cancel") |> render_click()
+
+    assert has_element?(view, "select[name='institution[default_locale]'] option[value='ru']")
+    refute has_element?(view, "input[name='institution[name]'][value='Draft name']")
+    assert Settings.get().supported_locales == ["en", "ru"]
+  end
+
   test "term grid editor starts collapsed, saves one term and protects it after workload entry",
        %{conn: conn} do
     term = term_fixture()

@@ -23,6 +23,8 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
      |> assign(:teachers, Catalog.list_teachers())
      |> assign(:usage, Catalog.usage_counts(term_id).teachers)
      |> assign(:selected, nil)
+     |> assign(:clearing, false)
+     |> assign(:saved, false)
      |> assign(:cells, [])}
   end
 
@@ -34,13 +36,20 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
      socket
      |> Nav.assign_return(params)
      |> assign(:selected, teacher)
+     |> assign(:clearing, false)
+     |> assign(:saved, false)
      |> assign(:cells, Catalog.list_teacher_availability(socket.assigns.term.id, teacher.id))}
   end
 
   def handle_params(params, _uri, socket),
     do:
       {:noreply,
-       socket |> Nav.assign_return(params) |> assign(:selected, nil) |> assign(:cells, [])}
+       socket
+       |> Nav.assign_return(params)
+       |> assign(:selected, nil)
+       |> assign(:clearing, false)
+       |> assign(:saved, false)
+       |> assign(:cells, [])}
 
   @impl true
   def handle_event("grid_changed", params, socket) do
@@ -49,7 +58,7 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
 
     case Catalog.replace_teacher_availability(socket.assigns.term.id, teacher.id, cells) do
       {:ok, saved} ->
-        {:noreply, assign(socket, :cells, saved)}
+        {:noreply, socket |> assign(:cells, saved) |> assign(:saved, true)}
 
       {:error, reason} ->
         # The assigns still hold the stored cells, so a refusal renders them again.
@@ -57,7 +66,13 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
     end
   end
 
-  def handle_event("clear", _params, socket) do
+  def handle_event("clear_prompt", _params, socket),
+    do: {:noreply, assign(socket, :clearing, true)}
+
+  def handle_event("clear_cancel", _params, socket),
+    do: {:noreply, assign(socket, :clearing, false)}
+
+  def handle_event("clear_confirm", _params, socket) do
     teacher = socket.assigns.selected
 
     case Catalog.replace_teacher_availability(socket.assigns.term.id, teacher.id, []) do
@@ -65,10 +80,11 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
         {:noreply,
          socket
          |> assign(:cells, [])
+         |> assign(:clearing, false)
          |> put_flash(:info, gettext("%{name} is now unrestricted.", name: teacher.name))}
 
       {:error, reason} ->
-        {:noreply, Errors.put(socket, reason)}
+        {:noreply, socket |> assign(:clearing, false) |> Errors.put(reason)}
     end
   end
 
@@ -84,9 +100,11 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
       terms={@terms}
       current_term={@term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header
-        title={gettext("Teacher availability")}
+        title={gettext("Availability")}
         subtitle={gettext("Select available times. An empty grid allows any time.")}
       />
 
@@ -112,6 +130,7 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
         <.empty_state
           :if={is_nil(@selected)}
           title={gettext("Choose a teacher")}
+          message={gettext("Pick a teacher in the list to set the times they can teach.")}
           icon="hero-clock"
         />
 
@@ -139,6 +158,7 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
                 else: gettext("Any time is allowed.")
             }
           />
+          <p :if={@saved} role="status" class="mt-1 type-detail text-success">{gettext("Saved")}</p>
 
           <div :if={restricted?(@cells)} class="alert alert-info mt-4">
             <.icon name="hero-information-circle" class="size-5" />
@@ -151,12 +171,21 @@ defmodule NeuZeitWeb.AvailabilityLive.Index do
             <.link navigate={~p"/terms/#{@term}/sessions?teacher_id=#{@selected.id}"} class="btn">{gettext(
               "Sessions"
             )}</.link>
-            <button :if={restricted?(@cells)} class="btn" phx-click="clear">
+            <button :if={restricted?(@cells)} class="btn" phx-click="clear_prompt">
               {gettext("Remove restriction")}
             </button>
           </:actions>
         </.details_panel>
       </div>
+
+      <.alert_dialog
+        :if={@clearing}
+        title={gettext("Remove the restriction for %{name}?", name: @selected.name)}
+        message={gettext("Any time will be allowed again.")}
+        confirm_label={gettext("Remove restriction")}
+        on_confirm="clear_confirm"
+        on_cancel="clear_cancel"
+      />
     </Layouts.app>
     """
   end

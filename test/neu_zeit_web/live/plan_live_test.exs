@@ -420,7 +420,6 @@ defmodule NeuZeitWeb.PlanLiveTest do
 
       assert has_element?(live, "#publish-gate")
       # General review does not confirm partial publication.
-      live |> element(~s{input[phx-value-key="advisories"]}) |> render_click()
       live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
 
       assert has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
@@ -428,12 +427,12 @@ defmodule NeuZeitWeb.PlanLiveTest do
       assert Planning.get_plan!(ctx.plan.id).status == "draft"
       live |> element("#publish-button") |> render_click()
 
-      for key <- ["advisories", "registers", "partial"] do
+      for key <- ["registers", "partial"] do
         live |> element(~s{input[phx-value-key="#{key}"]}) |> render_click()
       end
 
       refute has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
-      live |> element(~s{#publish-gate button}, "Publish") |> render_click()
+      live |> form("#publish-form") |> render_submit()
       assert Planning.get_plan!(ctx.plan.id).status == "active"
     end
 
@@ -443,11 +442,40 @@ defmodule NeuZeitWeb.PlanLiveTest do
 
       # With no sessions, placement checks pass. Manual confirmations are still required.
       assert has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
-
-      live |> element(~s{input[phx-value-key="advisories"]}) |> render_click()
-      assert has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
+      # Nothing to review, so no warnings confirmation is asked for.
+      refute has_element?(live, ~s{input[phx-value-key="advisories"]})
 
       live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
+      refute has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
+    end
+
+    test "warnings must be confirmed only when there are warnings", %{conn: conn} = ctx do
+      {:ok, base} = Catalog.create_cohort(%{"name" => "WI-9"})
+      {:ok, subgroup} = Catalog.create_cohort(%{"name" => "D1"})
+      [first_room, second_room] = ctx.rooms
+
+      first = session(ctx, "A", "Anna Weber", %{"cohort_ids" => [base.id]})
+      second = session(ctx, "B", "Erik Hoffmann", %{"cohort_ids" => [subgroup.id]})
+
+      for {s, r} <- [{first, first_room}, {second, second_room}] do
+        {:ok, _} =
+          Planning.create_placement(%{
+            "plan_id" => ctx.plan.id,
+            "session_id" => s.id,
+            "room_id" => r.id,
+            "day" => 2,
+            "slot" => 3
+          })
+      end
+
+      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/plans/#{ctx.plan}")
+      live |> element("#publish-button") |> render_click()
+
+      assert has_element?(live, "#publish-gate label", "I reviewed all warnings (1).")
+      live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
+      assert has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
+
+      live |> element(~s{input[phx-value-key="advisories"]}) |> render_click()
       refute has_element?(live, ~s{#publish-gate button[disabled]}, "Publish")
     end
 
@@ -458,12 +486,57 @@ defmodule NeuZeitWeb.PlanLiveTest do
 
       {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/plans/#{ctx.plan}")
       live |> element("#publish-button") |> render_click()
-      live |> element(~s{input[phx-value-key="advisories"]}) |> render_click()
-      live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
-      live |> element(~s{#publish-gate button}, "Publish") |> render_click()
 
+      # A name given by the administrator is kept.
+      assert has_element?(live, ~s{#publish-form input[name="plan[name]"][value="Entwurf 1"]})
+      live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
+      html = live |> form("#publish-form") |> render_submit()
+
+      assert html =~ "Published Entwurf 1. The previous active plan is archived."
       assert Planning.get_plan!(ctx.plan.id).status == "active"
+      assert Planning.get_plan!(ctx.plan.id).name == "Entwurf 1"
       assert Planning.get_plan!(previous.id).status == "archived"
+    end
+
+    test "a default draft name gives way to the term name and can be edited",
+         %{conn: conn} = ctx do
+      {:ok, plan} = Planning.create_plan(%{"term_id" => ctx.term.id, "name" => "Draft 2"})
+
+      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/plans/#{plan}")
+      live |> element("#publish-button") |> render_click()
+
+      assert has_element?(
+               live,
+               ~s{#publish-form input[name="plan[name]"][value="Wintersemester 2026/27"]}
+             )
+
+      live |> element(~s{input[phx-value-key="registers"]}) |> render_click()
+
+      # A blank name is refused and the dialog stays open.
+      live |> form("#publish-form", plan: %{name: ""}) |> render_submit()
+      assert has_element?(live, "#publish-form p.text-error", "Enter a value.")
+      assert Planning.get_plan!(plan.id).status == "draft"
+
+      html = live |> form("#publish-form", plan: %{name: "Final"}) |> render_submit()
+
+      assert html =~ "Published Final."
+      assert Planning.get_plan!(plan.id).name == "Final"
+      assert Planning.get_plan!(plan.id).status == "active"
+    end
+
+    test "publishing waits for a running calculation", %{conn: conn} = ctx do
+      {:ok, live, _html} = live(conn, ~p"/terms/#{ctx.term}/plans/#{ctx.plan}")
+      refute has_element?(live, "#publish-button[disabled]")
+
+      send(live.pid, {:solve_started, ctx.plan.id, DateTime.utc_now()})
+
+      assert has_element?(
+               live,
+               ~s{#publish-button[disabled][title="Wait for the calculation to finish."]}
+             )
+
+      send(live.pid, {:solve_finished, ctx.plan.id, {:ok, %{}}})
+      refute has_element?(live, "#publish-button[disabled]")
     end
 
     test "an active plan offers no publish button", %{conn: conn} = ctx do

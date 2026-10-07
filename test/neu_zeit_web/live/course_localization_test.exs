@@ -39,7 +39,7 @@ defmodule NeuZeitWeb.CourseLocalizationTest do
     end
 
     assert {:ok, _} = Planning.publish_plan(plan.id)
-    {:ok, _view, html} = live(conn, ~p"/terms/#{term}/calendar")
+    {:ok, _view, html} = live(conn, ~p"/terms/#{term}/calendar?week=1")
     assert html =~ "Алгоритмы"
     assert Catalog.get_course!(course.id).title == "Algorithmen"
   end

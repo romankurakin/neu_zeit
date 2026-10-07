@@ -27,18 +27,24 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
        %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+    refute has_element?(view, "#workload-teaching-types")
+    change(view, %{course_id: ctx.component.course_id})
 
-    view
-    |> form("#workload-form",
-      workload: %{
-        course_component_id: ctx.component.id,
-        teacher_id: ctx.teacher.id,
-        contact_hours: "4",
-        duration_slots: "1",
-        slot_profile_id: ""
-      }
-    )
-    |> render_submit()
+    assert has_element?(
+             view,
+             "#workload-teaching-types input[value='#{ctx.component.id}'][checked]"
+           )
+
+    assert has_element?(view, "#workload-teaching-types label", "Lecture")
+
+    submit(view, %{
+      course_id: ctx.component.course_id,
+      course_component_id: ctx.component.id,
+      teacher_id: ctx.teacher.id,
+      contact_hours: "4",
+      duration_slots: "1",
+      slot_profile_id: ""
+    })
 
     assert_patch(view, ~p"/terms/#{ctx.term}/workload")
     assert [row] = Catalog.list_workload(ctx.term.id)
@@ -58,18 +64,15 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
 
     assert has_element?(view, "#workload_delivery_mode option[value='online']", "Online")
 
-    view
-    |> form("#workload-form",
-      workload: %{
-        course_component_id: ctx.component.id,
-        teacher_id: ctx.teacher.id,
-        delivery_mode: "online",
-        contact_hours: "4",
-        duration_slots: "1",
-        slot_profile_id: ""
-      }
-    )
-    |> render_submit()
+    submit(view, %{
+      course_id: ctx.component.course_id,
+      course_component_id: ctx.component.id,
+      teacher_id: ctx.teacher.id,
+      delivery_mode: "online",
+      contact_hours: "4",
+      duration_slots: "1",
+      slot_profile_id: ""
+    })
 
     assert_patch(view, ~p"/terms/#{ctx.term}/workload")
     assert [row] = Catalog.list_workload(ctx.term.id)
@@ -81,24 +84,194 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
   test "missing groups keep the form and show an error", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
 
-    view
-    |> form("#workload-form",
-      workload: %{
-        course_component_id: ctx.component.id,
-        teacher_id: ctx.teacher.id,
-        contact_hours: "4",
-        duration_slots: "1"
-      }
-    )
-    |> render_submit()
+    submit(view, %{
+      course_id: ctx.component.course_id,
+      course_component_id: ctx.component.id,
+      teacher_id: ctx.teacher.id,
+      contact_hours: "4",
+      duration_slots: "1"
+    })
 
     assert has_element?(view, "#workload-form fieldset p.text-error")
     assert Catalog.count_sessions(ctx.term.id) == 0
   end
 
+  test "a course without teaching types links to the course page", %{conn: conn} = ctx do
+    empty = course_fixture(title: "Empty course")
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
+    change(view, %{course_id: empty.id})
+
+    assert has_element?(
+             view,
+             "#workload-teaching-types-help",
+             "This course has no teaching types yet."
+           )
+
+    assert has_element?(
+             view,
+             ~s(#workload-teaching-types-help a[href="/courses/#{empty.id}?return_to=#{URI.encode_www_form("/terms/#{ctx.term.id}/workload/new")}"]),
+             "Add one on the course page."
+           )
+
+    refute has_element?(view, "#workload-teaching-types")
+  end
+
+  test "save and add another keeps the shared fields and clears the groups",
+       %{conn: conn} = ctx do
+    profile = slot_profile_fixture(term: ctx.term)
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload/new")
+    render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
+
+    submit(
+      view,
+      Map.merge(form_attrs(ctx, "4"), %{delivery_mode: "online", slot_profile_id: profile.id}),
+      %{"after_save" => "add_another"}
+    )
+
+    assert [row] = Catalog.list_workload(ctx.term.id)
+    assert_patch(view, ~p"/terms/#{ctx.term}/workload/new?from=#{row.id}&next=1")
+    assert render(view) =~ "Teaching load saved."
+    assert has_element?(view, "#workload_course_id[value='#{ctx.component.course_id}']")
+
+    assert has_element?(
+             view,
+             "#workload-teaching-types input[value='#{ctx.component.id}'][checked]"
+           )
+
+    assert has_element?(view, "#workload_teacher_id[value='#{ctx.teacher.id}']")
+    assert has_element?(view, "#workload_delivery_mode option[value='online'][selected]")
+    assert has_element?(view, "#workload_contact_hours[value='4']")
+    assert has_element?(view, "#workload_slot_profile_id option[value='#{profile.id}'][selected]")
+    refute has_element?(view, ~s(#workload-cohorts [data-role="selected"] [data-id]))
+
+    submit(view)
+    assert has_element?(view, "#workload-form fieldset p.text-error")
+    assert length(Catalog.list_workload(ctx.term.id)) == 1
+  end
+
+  test "duplicate opens a new form with the row's groups and weeks", %{conn: conn} = ctx do
+    {:ok, :saved} = Catalog.save_workload(ctx.term.id, nil, %{ctx.attrs | week_mask: [2]})
+    [row] = Catalog.list_workload(ctx.term.id)
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload")
+    view |> element("#workload-#{row.id} a", "Duplicate") |> render_click()
+    assert_patch(view, ~p"/terms/#{ctx.term}/workload/new?from=#{row.id}")
+    assert has_element?(view, "#workload-form")
+
+    assert has_element?(
+             view,
+             "#workload-teaching-types input[value='#{ctx.component.id}'][checked]"
+           )
+
+    assert has_element?(view, "#workload_teacher_id[value='#{ctx.teacher.id}']")
+    assert has_element?(view, "#workload_contact_hours[value='4']")
+
+    assert has_element?(
+             view,
+             ~s(#workload-cohorts [data-role="selected"] [data-id="#{ctx.cohort.id}"])
+           )
+
+    assert has_element?(view, "#workload-preview-pattern", "Even weeks: 2 sessions")
+
+    submit(view)
+    assert has_element?(view, "#workload-form", "This teaching load already exists.")
+    submit(view, %{teacher_id: teacher_fixture().id})
+    assert_patch(view, ~p"/terms/#{ctx.term}/workload")
+    assert [_, _] = Catalog.list_workload(ctx.term.id)
+  end
+
+  test "imports teaching load rows from a CSV file", %{conn: conn} = ctx do
+    other = cohort_fixture()
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload")
+    view |> element("button", "Import CSV") |> render_click()
+
+    assert has_element?(
+             view,
+             "#workload-import code",
+             "course, teaching type, teacher, groups, hours, duration, format"
+           )
+
+    content =
+      "course;teaching type;teacher;groups;hours;duration;format\n" <>
+        "Algorithms;lecture;#{ctx.teacher.name};#{ctx.cohort.name};4;2;\n" <>
+        "\"Algorithms\";Lecture;#{ctx.teacher.name};#{ctx.cohort.name}|#{other.name};6;2;online\n"
+
+    upload =
+      file_input(view, "#workload-import-form", :csv, [
+        %{name: "load.csv", content: content, type: "text/csv"}
+      ])
+
+    render_upload(upload, "load.csv")
+    assert has_element?(view, "#workload-import-line-2", "Ready")
+    assert has_element?(view, "#workload-import-line-3", "Ready")
+
+    assert has_element?(
+             view,
+             "#workload-import-form button[type=submit]:not([disabled])",
+             "Import 2 rows"
+           )
+
+    view |> form("#workload-import-form") |> render_submit()
+    assert render(view) =~ "Imported 2 teaching load rows."
+    refute has_element?(view, "#workload-import")
+    assert [first, second] = Catalog.list_workload(ctx.term.id)
+    assert Decimal.equal?(first.requirement.contact_hours, 4)
+    assert first.requirement.cohort_ids == [ctx.cohort.id]
+    assert Decimal.equal?(second.requirement.contact_hours, 6)
+    assert second.requirement.delivery_mode == :online
+    assert Enum.sort(second.requirement.cohort_ids) == Enum.sort([ctx.cohort.id, other.id])
+    assert has_element?(view, "#workload-#{second.id}", "Online")
+  end
+
+  test "a CSV with unknown names shows the line and keeps the import disabled",
+       %{conn: conn} = ctx do
+    {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}/workload")
+    view |> element("button", "Import CSV") |> render_click()
+
+    content =
+      "course,teaching type,teacher,groups,hours,duration\n" <>
+        "Algorithms,Lecture,Nobody,#{ctx.cohort.name},4,3\n"
+
+    upload =
+      file_input(view, "#workload-import-form", :csv, [
+        %{name: "load.csv", content: content, type: "text/csv"}
+      ])
+
+    render_upload(upload, "load.csv")
+    assert has_element?(view, "#workload-import-line-2", ~s(Line 2: teacher "Nobody" not found.))
+
+    assert has_element?(
+             view,
+             "#workload-import-line-2",
+             "Line 2: duration 3 is not a session duration of this term."
+           )
+
+    assert has_element?(
+             view,
+             "#workload-import-form button[type=submit][disabled]",
+             "Import 1 row"
+           )
+
+    view |> form("#workload-import-form") |> render_submit()
+    assert Catalog.list_workload(ctx.term.id) == []
+
+    upload =
+      file_input(view, "#workload-import-form", :csv, [
+        %{name: "bad.csv", content: "course,teacher\nA,B\n", type: "text/csv"}
+      ])
+
+    render_upload(upload, "bad.csv")
+
+    assert has_element?(
+             view,
+             "#workload-import-error",
+             "The first line is missing columns: teaching type, groups, hours, duration."
+           )
+  end
+
   test "empty workload cannot start a calculation", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/terms/#{ctx.term}")
-    assert has_element?(view, "button[phx-click=generate][disabled]")
+    refute has_element?(view, "button[phx-click=generate]")
+    assert has_element?(view, "a", "Add teaching load")
     render_hook(view, "generate", %{})
     assert Planning.list_plans(ctx.term.id) == []
   end
@@ -212,7 +385,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
 
-    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+    change(view, form_attrs(ctx, "45"))
 
     assert has_element?(
              view,
@@ -245,7 +418,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     term = term_fixture(ends_on: ~D[2026-12-13])
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+    change(view, form_attrs(ctx, "45"))
     view |> form("#workload-form", workload: %{rounding_mode: "down"}) |> render_change()
 
     assert has_element?(view, "#workload-preview-total", "22 sessions, 44 academic hours")
@@ -271,7 +444,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     term = term_fixture()
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "16")) |> render_change()
+    change(view, form_attrs(ctx, "16"))
 
     assert has_element?(view, "select#workload_remainder_parity")
     refute has_element?(view, "select#workload_rounding_mode")
@@ -290,7 +463,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     term = term_fixture(ends_on: ~D[2026-12-13])
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+    change(view, form_attrs(ctx, "45"))
     view |> form("#workload-form", workload: %{duration_slots: "2"}) |> render_change()
     assert has_element?(view, "#workload-preview-total", "12 sessions, 48 academic hours")
     render_hook(view, "week_mask_changed", %{"preset" => "odd"})
@@ -306,7 +479,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     conn = Plug.Test.init_test_session(conn, %{"locale" => "ru"})
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "45")) |> render_change()
+    change(view, form_attrs(ctx, "45"))
 
     assert has_element?(view, "#workload_duration_slots option[value='1']", "90 мин, 2 акад. ч")
     assert has_element?(view, "#workload-preview-total", "23 занятия, 46 акад. ч")
@@ -320,7 +493,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     term = term_fixture(ends_on: ~D[2026-12-13])
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "45.999")) |> render_change()
+    change(view, form_attrs(ctx, "45.999"))
 
     assert has_element?(view, "#workload-preview-total", "23 sessions, 46 academic hours")
     assert has_element?(view, "#workload-hours-difference", "Required hours stay at 45.999")
@@ -364,7 +537,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
       render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
 
       for {hours, total} <- Enum.zip(["2", "4", "10", "42"], unquote(totals)) do
-        view |> form("#workload-form", workload: form_attrs(ctx, hours)) |> render_change()
+        change(view, form_attrs(ctx, hours))
         assert has_element?(view, "#workload-preview-total", total)
 
         if hours == "10",
@@ -382,7 +555,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
 
       {:ok, view, _} = live(conn, ~p"/terms/#{small}/workload/new")
       render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-      view |> form("#workload-form", workload: form_attrs(ctx, "5")) |> render_change()
+      change(view, form_attrs(ctx, "5"))
       assert has_element?(view, "#workload-capacity-error", unquote(capacity_error))
 
       assert has_element?(
@@ -408,7 +581,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     term = term_fixture(ends_on: ~D[2026-12-13])
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "10")) |> render_change()
+    change(view, form_attrs(ctx, "10"))
 
     assert has_element?(view, "#workload-preview-pattern", "Weeks 2, 5, 8, 11, 14: 1 session")
     view |> form("#workload-form") |> render_submit()
@@ -429,7 +602,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
 
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "5")) |> render_change()
+    change(view, form_attrs(ctx, "5"))
 
     assert has_element?(
              view,
@@ -462,7 +635,7 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     term = term_fixture(academic_hour_minutes: 30)
     {:ok, view, _} = live(conn, ~p"/terms/#{term}/workload/new")
     render_hook(view, "selection_changed", %{"selected" => [ctx.cohort.id]})
-    view |> form("#workload-form", workload: form_attrs(ctx, "7")) |> render_change()
+    change(view, form_attrs(ctx, "7"))
 
     assert has_element?(
              view,
@@ -536,8 +709,16 @@ defmodule NeuZeitWeb.WorkloadLiveTest do
     assert has_element?(view, "#workload-#{row.id}", pattern)
   end
 
+  defp change(view, attrs),
+    do: view |> form("#workload-form") |> render_change(%{"workload" => attrs})
+
+  # Combobox values travel in hidden inputs, so they are passed as event values.
+  defp submit(view, attrs \\ %{}, extra \\ %{}),
+    do: view |> form("#workload-form") |> render_submit(Map.merge(%{"workload" => attrs}, extra))
+
   defp form_attrs(ctx, hours) do
     %{
+      course_id: ctx.component.course_id,
       course_component_id: ctx.component.id,
       teacher_id: ctx.teacher.id,
       contact_hours: hours,

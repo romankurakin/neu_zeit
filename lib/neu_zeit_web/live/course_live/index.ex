@@ -54,11 +54,12 @@ defmodule NeuZeitWeb.CourseLive.Index do
 
     case result do
       {:ok, course} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Saved %{name}.", name: course_title(course)))
-         |> push_patch(to: ~p"/courses")
-         |> load()}
+        socket = put_flash(socket, :info, gettext("Saved %{name}.", name: course_title(course)))
+
+        # An edit opened from the course page returns there.
+        if course_page?(socket.assigns.return_to),
+          do: {:noreply, push_navigate(socket, to: socket.assigns.return_to)},
+          else: {:noreply, socket |> push_patch(to: ~p"/courses") |> load()}
 
       {:error, reason} ->
         {:noreply, Errors.put(socket, reason, as: :form)}
@@ -87,6 +88,10 @@ defmodule NeuZeitWeb.CourseLive.Index do
     end
   end
 
+  defp course_page?(return_to),
+    do: is_binary(return_to) and Regex.match?(~r{\A/courses/[^/?]+}, return_to)
+
+  # The list disables deletion of used courses; this catches a concurrent change.
   # Components cascade with the course, but a component still used by a session
   # is protected, which protects the course too.
   defp delete(course) do
@@ -108,6 +113,17 @@ defmodule NeuZeitWeb.CourseLive.Index do
   defp session_count(course, usage),
     do: Enum.reduce(course.components, 0, &(&2 + Map.get(usage, &1.id, 0)))
 
+  # Names the reference that prevents deletion, or nil when the course is free.
+  defp blocker(course, usage) do
+    case session_count(course, usage) do
+      0 ->
+        nil
+
+      count ->
+        ngettext("Used by %{count} session", "Used by %{count} sessions", count, count: count)
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -118,7 +134,9 @@ defmodule NeuZeitWeb.CourseLive.Index do
       terms={@navigation_terms}
       current_term={@navigation_term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header title={gettext("Courses")}>
         <:actions>
           <.link patch={~p"/courses/new"} class="btn btn-primary">
@@ -134,7 +152,11 @@ defmodule NeuZeitWeb.CourseLive.Index do
             title={gettext("No courses yet")}
             message={gettext("Add a course and choose allowed rooms for each teaching type.")}
             icon="hero-academic-cap"
-          />
+          >
+            <:actions>
+              <.link patch={~p"/courses/new"} class="btn btn-primary">{gettext("New course")}</.link>
+            </:actions>
+          </.empty_state>
 
           <.table :if={@courses != []} id="courses" rows={@courses} row_id={&"course-#{&1.id}"}>
             <:col :let={course} label={gettext("Title")}>
@@ -151,9 +173,13 @@ defmodule NeuZeitWeb.CourseLive.Index do
                 <span :for={component <- course.components} class="badge badge-ghost badge-md">
                   {component_kind_label(component)}
                 </span>
-                <span :if={course.components == []} class="type-detail text-warning">
-                  {gettext("none")}
-                </span>
+                <.link
+                  :if={course.components == []}
+                  navigate={Nav.with_return(~p"/courses/#{course}", @return_to)}
+                  class="link link-hover type-detail"
+                >
+                  {gettext("Add a teaching type")}
+                </.link>
               </span>
             </:col>
             <:col :let={course} label={gettext("Sessions")} numeric>
@@ -167,6 +193,8 @@ defmodule NeuZeitWeb.CourseLive.Index do
                 class="btn btn-ghost text-error"
                 phx-click="delete_prompt"
                 phx-value-id={course.id}
+                disabled={blocker(course, @usage) != nil}
+                title={blocker(course, @usage)}
               >
                 {gettext("Delete")}
               </button>
@@ -178,6 +206,9 @@ defmodule NeuZeitWeb.CourseLive.Index do
           :if={@editing}
           class="order-first lg:order-last"
           title={if @editing.id, do: gettext("Edit course"), else: gettext("New course")}
+          on_close={
+            if course_page?(@return_to), do: JS.navigate(@return_to), else: JS.patch(~p"/courses")
+          }
         >
           <.form
             for={@form}
@@ -190,7 +221,16 @@ defmodule NeuZeitWeb.CourseLive.Index do
             <.input field={@form[:code]} type="text" label={gettext("Code (optional)")} />
             <div class="flex gap-2 pt-2">
               <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
-              <.link patch={~p"/courses"} class="btn btn-ghost">{gettext("Cancel")}</.link>
+              <.link
+                :if={course_page?(@return_to)}
+                navigate={@return_to}
+                class="btn btn-ghost"
+              >
+                {gettext("Cancel")}
+              </.link>
+              <.link :if={!course_page?(@return_to)} patch={~p"/courses"} class="btn btn-ghost">
+                {gettext("Cancel")}
+              </.link>
             </div>
           </.form>
         </.details_panel>
@@ -200,7 +240,9 @@ defmodule NeuZeitWeb.CourseLive.Index do
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.title)}
         message={
-          gettext("Teaching types will also be deleted. Courses used by sessions cannot be deleted.")
+          gettext("Deletes the course %{name} and its teaching types. This cannot be undone.",
+            name: @deleting.title
+          )
         }
         confirm_label={gettext("Delete")}
         on_confirm="delete_confirm"

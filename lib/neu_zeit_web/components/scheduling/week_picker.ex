@@ -1,6 +1,7 @@
 defmodule NeuZeitWeb.Scheduling.WeekPicker do
   @moduledoc "Navigation through a teaching term."
   use NeuZeitWeb, :ui_component
+  import NeuZeitWeb.UI.Dates
 
   @doc """
   Selects a teaching week, with shortcuts for the first, last, busiest and holiday weeks.
@@ -10,10 +11,15 @@ defmodule NeuZeitWeb.Scheduling.WeekPicker do
   attr :busiest, :integer, default: nil
   attr :holiday, :integer, default: nil
   attr :event, :string, default: "select_week"
+  attr :term, :map, default: nil, doc: "shows the dates of the current week"
 
   def week_picker(assigns) do
     ~H"""
     <div class="flex flex-wrap items-center gap-2">
+      <span :if={@term} class="order-last basis-full type-detail sm:order-none sm:basis-auto">
+        <.date value={NeuZeit.Scheduling.TermDates.date(@term, @current, 1)} format="day_month" /> -
+        <.date value={NeuZeit.Scheduling.TermDates.date(@term, @current, 7)} format="day_month" />
+      </span>
       <div class="join">
         <button
           type="button"

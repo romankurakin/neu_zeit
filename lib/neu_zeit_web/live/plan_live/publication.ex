@@ -5,6 +5,7 @@ defmodule NeuZeitWeb.PlanLive.Publication do
   attr :gate, :list, required: true
   attr :acknowledged, :map, required: true
   attr :advisory_count, :integer, required: true
+  attr :form, Phoenix.HTML.Form, required: true, doc: "holds the name to publish under"
 
   def confirmation(assigns) do
     ~H"""
@@ -19,6 +20,15 @@ defmodule NeuZeitWeb.PlanLive.Publication do
         )
       }
     >
+      <.form
+        for={@form}
+        id="publish-form"
+        phx-change="publish_validate"
+        phx-submit="publish_confirm"
+      >
+        <.input field={@form[:name]} label={gettext("Name")} required maxlength="100" />
+      </.form>
+
       <.check_results id="publication-checks">
         <:item :for={row <- gate_rows(@gate)} status={row.status} label={row.label}>
           {row.detail}
@@ -51,10 +61,10 @@ defmodule NeuZeitWeb.PlanLive.Publication do
           {gettext("Cancel")}
         </button>
         <button
-          type="button"
+          type="submit"
+          form="publish-form"
           class="btn btn-primary"
-          phx-click="publish_confirm"
-          disabled={not publishable?(@gate, @acknowledged)}
+          disabled={not publishable?(@gate, @acknowledged, @advisory_count)}
         >
           {gettext("Publish plan")}
         </button>
@@ -77,28 +87,26 @@ defmodule NeuZeitWeb.PlanLive.Publication do
   defp gate_detail(_key, 0), do: "0"
   defp gate_detail(_key, count), do: to_string(count)
 
-  defp acknowledgements(count, gate) do
-    base = [
-      {"advisories", gettext("I reviewed all warnings (%{count}).", count: count)},
-      {"registers", gettext("I checked teacher names and group membership.")}
-    ]
+  # Each confirmation appears only when there is something to confirm.
+  defp acknowledgements(advisory_count, gate) do
+    unplaced = unplaced_count(gate)
 
-    count = unplaced_count(gate)
-
-    if count > 0 do
-      base ++
-        [
+    Enum.reject(
+      [
+        advisory_count > 0 &&
+          {"advisories", gettext("I reviewed all warnings (%{count}).", count: advisory_count)},
+        {"registers", gettext("I checked teacher names and group membership.")},
+        unplaced > 0 &&
           {"partial",
            ngettext(
              "I want to publish with %{count} session still unplaced.",
              "I want to publish with %{count} sessions still unplaced.",
-             count,
-             count: count
+             unplaced,
+             count: unplaced
            )}
-        ]
-    else
-      base
-    end
+      ],
+      &(&1 == false)
+    )
   end
 
   defp unplaced_count(gate) do
@@ -108,15 +116,34 @@ defmodule NeuZeitWeb.PlanLive.Publication do
     end
   end
 
-  def publishable?(gate, acknowledged) do
-    blocking =
-      Enum.any?(gate, fn row ->
-        row.key == :hard_checks and row.status != :ok
-      end)
+  @doc """
+  Whether every publication condition is met: no conflicts, and every shown
+  confirmation ticked.
+  """
+  def publishable?(gate, acknowledged, advisory_count) do
+    blocking = Enum.any?(gate, &(&1.key == :hard_checks and &1.status != :ok))
 
-    confirmed = Enum.all?(["advisories", "registers"], &Map.get(acknowledged, &1))
+    confirmed =
+      acknowledgements(advisory_count, gate)
+      |> Enum.all?(fn {key, _label} -> Map.get(acknowledged, key) == true end)
 
-    partial_confirmed = unplaced_count(gate) == 0 || Map.get(acknowledged, "partial") == true
-    not blocking and confirmed and partial_confirmed
+    not blocking and confirmed
+  end
+
+  @doc """
+  The name offered when publishing. A default draft name, such as "Draft 2",
+  gives way to the term name.
+  """
+  def default_name(plan, term) do
+    if default_draft_name?(plan.name), do: term.name, else: plan.name
+  end
+
+  defp default_draft_name?(name) do
+    pattern =
+      gettext("Draft %{n}", n: "\u0000")
+      |> String.split("\u0000")
+      |> Enum.map_join("\\d+", &Regex.escape/1)
+
+    Regex.match?(~r/\A#{pattern}\z/u, name)
   end
 end

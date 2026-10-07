@@ -55,6 +55,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
      |> assign(:publishing, false)
      |> assign(:acknowledged, %{})
      |> assign(:gate, [])
+     |> assign(:publish_form, nil)
      |> load_board()}
   end
 
@@ -261,11 +262,18 @@ defmodule NeuZeitWeb.PlanLive.Show do
         {:noreply, Errors.put(socket, {:conflict, gettext("Create a draft to edit this plan.")})}
 
   def handle_event("publish_open", _params, socket) do
+    name = Publication.default_name(socket.assigns.plan, socket.assigns.term)
+
     {:noreply,
      socket
      |> assign(:publishing, true)
      |> assign(:acknowledged, %{})
+     |> assign(:publish_form, publish_form(socket, %{"name" => name}))
      |> assign(:gate, Readiness.report(socket.assigns.term.id, socket.assigns.plan_id))}
+  end
+
+  def handle_event("publish_validate", %{"plan" => params}, socket) do
+    {:noreply, assign(socket, :publish_form, publish_form(socket, params, action: :validate))}
   end
 
   def handle_event("publish_cancel", _params, socket),
@@ -275,25 +283,40 @@ defmodule NeuZeitWeb.PlanLive.Show do
     {:noreply, update(socket, :acknowledged, &Map.update(&1, key, true, fn v -> not v end))}
   end
 
-  def handle_event("publish_confirm", _params, socket) do
+  def handle_event("publish_confirm", params, socket) do
     gate = Readiness.report(socket.assigns.term.id, socket.assigns.plan_id)
+    advisory_count = length(socket.assigns.board.advisories)
+    name = get_in(params, ["plan", "name"]) || publish_name(socket.assigns.publish_form)
 
     result =
-      if socket.assigns.publishing && Publication.publishable?(gate, socket.assigns.acknowledged) do
+      if socket.assigns.publishing &&
+           Publication.publishable?(gate, socket.assigns.acknowledged, advisory_count) do
         Planning.publish_plan(socket.assigns.plan_id,
-          allow_partial: Map.get(socket.assigns.acknowledged, "partial") == true
+          allow_partial: Map.get(socket.assigns.acknowledged, "partial") == true,
+          name: name
         )
       else
         {:error, {:conflict, gettext("Review and confirm the publication checks first.")}}
       end
 
     case result do
-      {:ok, _plan} ->
+      {:ok, plan} ->
         {:noreply,
          socket
          |> assign(:publishing, false)
-         |> put_flash(:info, gettext("Published. The term's previous active plan is archived."))
+         |> put_flash(
+           :info,
+           gettext("Published %{name}. The previous active plan is archived.", name: plan.name)
+         )
          |> load_board()}
+
+      # A rejected name keeps the dialog open so it can be corrected.
+      {:error, %Ecto.Changeset{errors: errors} = changeset} ->
+        if Keyword.has_key?(errors, :name) do
+          {:noreply, Errors.put(socket, changeset, as: :publish_form)}
+        else
+          {:noreply, socket |> assign(:publishing, false) |> Errors.put(changeset)}
+        end
 
       {:error, reason} ->
         {:noreply, socket |> assign(:publishing, false) |> Errors.put(reason)}
@@ -326,6 +349,15 @@ defmodule NeuZeitWeb.PlanLive.Show do
          )}
     end
   end
+
+  defp publish_form(socket, params, opts \\ []) do
+    socket.assigns.plan
+    |> Planning.change_plan(params)
+    |> to_form(opts)
+  end
+
+  defp publish_name(nil), do: nil
+  defp publish_name(form), do: form[:name].value
 
   @impl true
   def handle_info(:tick, socket) do
@@ -643,7 +675,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
             :if={@plan.status == "draft"}
             navigate={~p"/terms/#{@term}?plan_id=#{@plan.id}"}
             class="btn"
-          >{gettext("Preparation")}</.link>
+          >{gettext("Overview")}</.link>
           <button
             :if={@plan.status == "draft"}
             class="btn btn-neutral"
@@ -657,6 +689,8 @@ defmodule NeuZeitWeb.PlanLive.Show do
             id="publish-button"
             class="btn btn-neutral"
             phx-click="publish_open"
+            disabled={@solving_since != nil}
+            title={@solving_since && gettext("Wait for the calculation to finish.")}
           >
             <.icon name="hero-paper-airplane" class="size-4" /> {gettext("Publish plan")}
           </button>
@@ -664,13 +698,13 @@ defmodule NeuZeitWeb.PlanLive.Show do
         </:actions>
       </.page_header>
 
-      <div :if={@plan.status != "draft"} class="alert mb-4">
+      <div :if={@plan.status != "draft"} class="alert alert-vertical mb-4 sm:alert-horizontal">
         <span>{gettext(
           "To change one date, open the calendar. To change the weekly timetable, create a draft."
         )}</span>
         <button class="btn btn-neutral" phx-click="clone_draft">{gettext("Copy to draft")}</button>
         <.link navigate={~p"/terms/#{@term}/calendar?plan_id=#{@plan.id}"} class="btn btn-neutral">{gettext(
-          "Calendar by date"
+          "Calendar"
         )}</.link>
       </div>
       <RunStatus.run_status
@@ -744,6 +778,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
         gate={@gate}
         acknowledged={@acknowledged}
         advisory_count={length(@board.advisories)}
+        form={@publish_form}
       />
     </Layouts.app>
     """

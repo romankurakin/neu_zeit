@@ -49,7 +49,21 @@ defmodule NeuZeit.Catalog do
   def update_building(%Building{} = building, attrs),
     do: building |> Building.changeset(attrs) |> Repo.update()
 
-  def delete_building(%Building{} = building), do: Repo.delete(building)
+  def delete_building(%Building{} = building) do
+    building
+    |> Ecto.Changeset.change()
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+      name: :rooms_building_id_fkey,
+      message: "This building has rooms. Delete or move its rooms first."
+    )
+    |> Repo.delete()
+  end
+
+  @doc "Counts the rooms of each building. An absent ID has no rooms."
+  def building_usage do
+    Repo.all(from r in Room, group_by: r.building_id, select: {r.building_id, count(r.id)})
+    |> Map.new()
+  end
 
   def change_building(%Building{} = building, attrs \\ %{}),
     do: Building.changeset(building, attrs)
@@ -233,6 +247,17 @@ defmodule NeuZeit.Catalog do
   end
 
   def change_teacher(%Teacher{} = teacher, attrs \\ %{}), do: Teacher.changeset(teacher, attrs)
+
+  @doc "Counts the one-off changes naming each teacher as a substitute. An absent ID has none."
+  def teacher_exception_usage do
+    Repo.all(
+      from e in NeuZeit.Planning.ScheduleException,
+        where: not is_nil(e.new_teacher_id),
+        group_by: e.new_teacher_id,
+        select: {e.new_teacher_id, count(e.id)}
+    )
+    |> Map.new()
+  end
 
   def list_cohorts, do: Repo.all(from c in Cohort, order_by: c.name)
 

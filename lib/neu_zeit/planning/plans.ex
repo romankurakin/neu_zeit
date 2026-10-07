@@ -166,9 +166,26 @@ defmodule NeuZeit.Planning.Plans do
       published_at = plan.published_at || now
 
       plan
+      |> rename_on_publish(Keyword.get(opts, :name))
       |> Plan.changeset(%{status: "active", published_at: published_at})
       |> Repo.update!()
     end)
+  end
+
+  # The `:name` option renames the plan in the same transaction as publishing,
+  # so a rejected name leaves the plan a draft.
+  defp rename_on_publish(plan, nil), do: plan
+
+  defp rename_on_publish(plan, name) do
+    changeset =
+      plan
+      |> Plan.update_changeset(%{name: name})
+      |> Ecto.Changeset.validate_length(:name, min: 1, max: 100)
+
+    case Repo.update(changeset) do
+      {:ok, plan} -> plan
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
 
   def validate_publishable!(%Plan{} = plan, opts \\ []) do

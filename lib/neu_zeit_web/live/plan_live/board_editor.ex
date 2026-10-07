@@ -54,6 +54,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
       <.toolbar>
         <.week_picker
           weeks_count={@term.weeks_count}
+          term={@term}
           current={@week}
           busiest={@busiest}
           event="select_week"

@@ -104,7 +104,26 @@ defmodule NeuZeitWeb.TermLive.Index do
     end
   end
 
-  defp load_terms(socket), do: assign(socket, :terms, Catalog.list_terms())
+  defp load_terms(socket) do
+    terms = Catalog.list_terms()
+    assign(socket, terms: terms, usage: Map.new(terms, &{&1.id, term_usage(&1)}))
+  end
+
+  # A term with sessions or plans cannot be deleted; the button says which.
+  defp term_usage(term) do
+    sessions = Catalog.count_sessions(term.id)
+    plans = length(NeuZeit.Planning.list_plans(term.id))
+
+    [
+      sessions > 0 && ngettext("Has %{count} session", "Has %{count} sessions", sessions),
+      plans > 0 && ngettext("Has %{count} plan", "Has %{count} plans", plans)
+    ]
+    |> Enum.filter(& &1)
+    |> case do
+      [] -> nil
+      blockers -> Enum.join(blockers, ". ")
+    end
+  end
 
   @impl true
   def render(assigns) do
@@ -155,6 +174,8 @@ defmodule NeuZeitWeb.TermLive.Index do
                 class="btn btn-ghost text-error"
                 phx-click="delete_prompt"
                 phx-value-id={term.id}
+                disabled={@usage[term.id] != nil}
+                title={@usage[term.id]}
               >
                 {gettext("Delete")}
               </button>
@@ -193,9 +214,7 @@ defmodule NeuZeitWeb.TermLive.Index do
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: @deleting.name)}
-        message={
-          gettext("Deletion cannot be undone. Only terms without sessions or plans can be deleted.")
-        }
+        message={gettext("Deletes the term %{name}. This cannot be undone.", name: @deleting.name)}
         confirm_label={gettext("Delete term")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"

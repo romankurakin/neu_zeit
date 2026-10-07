@@ -157,11 +157,33 @@ defmodule NeuZeitWeb.TermConfigTest do
       {:ok, _session} = session_fixture(term, teacher, slot_profile_id: profile.id)
 
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}/slot-profiles")
-      live |> element(~s{button[phx-value-id="#{profile.id}"]}) |> render_click()
-      html = live |> element("#confirm-modal button", "Delete profile") |> render_click()
 
-      assert html =~ "still assigned to a session"
+      assert has_element?(
+               live,
+               ~s{#profile-#{profile.id} button[disabled][title="Used by 1 session"]},
+               "Delete"
+             )
+
+      assert has_element?(live, "#profile-#{profile.id} a", "Edit")
+      assert has_element?(live, "th", "Time profile")
       assert Catalog.get_slot_profile!(profile.id)
+    end
+
+    test "an unused profile is deleted after confirmation", %{conn: conn, term: term} do
+      profile = profile(term, "SPARE", [%{"day" => 1, "slot" => 1}])
+
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}/slot-profiles")
+      live |> element(~s{button[phx-value-id="#{profile.id}"]}) |> render_click()
+      assert has_element?(live, "#confirm-modal", "Deletes the time profile SPARE.")
+      live |> element("#confirm-modal button", "Delete") |> render_click()
+
+      assert Catalog.list_slot_profiles(term.id) == []
+    end
+
+    test "an empty list offers a new profile", %{conn: conn, term: term} do
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}/slot-profiles")
+      assert has_element?(live, ".card-dash", "No time profiles yet")
+      assert has_element?(live, ".card-dash a", "New profile")
     end
   end
 
@@ -172,10 +194,16 @@ defmodule NeuZeitWeb.TermConfigTest do
     end
 
     test "an empty allow-list reads as unrestricted", %{conn: conn, term: term, teacher: teacher} do
-      {:ok, _live, html} = live(conn, ~p"/terms/#{term}/availability/#{teacher}")
+      {:ok, live, html} = live(conn, ~p"/terms/#{term}/availability/#{teacher}")
 
       assert html =~ "Any time is allowed."
+      assert has_element?(live, "h1", "Availability")
       assert Catalog.list_teacher_availability(term.id, teacher.id) == []
+    end
+
+    test "without a selected teacher the page says what to do", %{conn: conn, term: term} do
+      {:ok, live, _html} = live(conn, ~p"/terms/#{term}/availability")
+      assert has_element?(live, ".card-dash", "Pick a teacher in the list")
     end
 
     test "painting cells stores the allow-list", %{conn: conn, term: term, teacher: teacher} do
@@ -191,6 +219,7 @@ defmodule NeuZeitWeb.TermConfigTest do
         |> Enum.map(&{&1.day, &1.slot})
 
       assert cells == [{6, 1}, {6, 2}]
+      assert has_element?(live, ~s{[role="status"]}, "Saved")
     end
 
     test "clearing restores unrestricted availability", %{
@@ -202,9 +231,20 @@ defmodule NeuZeitWeb.TermConfigTest do
         Catalog.replace_teacher_availability(term.id, teacher.id, [%{"day" => 6, "slot" => 1}])
 
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}/availability/#{teacher}")
-      live |> element("button", "Remove restriction") |> render_click()
+      live |> element("aside button", "Remove restriction") |> render_click()
+
+      assert has_element?(
+               live,
+               "#confirm-modal h2",
+               "Remove the restriction for Marat Zhaksylykov?"
+             )
+
+      assert Catalog.list_teacher_availability(term.id, teacher.id) != []
+
+      live |> element("#confirm-modal button", "Remove restriction") |> render_click()
 
       assert Catalog.list_teacher_availability(term.id, teacher.id) == []
+      refute has_element?(live, "#confirm-modal")
     end
 
     test "a change that would strand a session is refused and shown", %{

@@ -42,8 +42,15 @@ defmodule NeuZeitWeb.BuildingController do
     end
   end
 
+  # The context refuses a building with rooms through its changeset; the API reports a conflict.
   defp delete_building(building) do
-    Catalog.delete_building(building)
+    case Catalog.delete_building(building) do
+      {:error, %Ecto.Changeset{}} ->
+        {:error, {:conflict, "Resource is referenced by other records"}}
+
+      result ->
+        result
+    end
   rescue
     Ecto.ConstraintError -> {:error, {:conflict, "Resource is referenced by other records"}}
   end

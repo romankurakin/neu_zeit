@@ -135,6 +135,7 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
     end
   end
 
+  # The list disables deletion of used profiles; this catches a concurrent change.
   defp delete(profile) do
     Catalog.delete_slot_profile(profile)
   rescue
@@ -165,6 +166,17 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
     |> assign(:usage, Catalog.usage_counts(socket.assigns.term.id).slot_profiles)
   end
 
+  # Names the reference that prevents deletion, or nil when the profile is free.
+  defp blocker(usage, profile) do
+    case Map.get(usage, profile.id, 0) do
+      0 ->
+        nil
+
+      count ->
+        ngettext("Used by %{count} session", "Used by %{count} sessions", count, count: count)
+    end
+  end
+
   # The longest session a profile can still hold: the largest duration for which
   # some start leaves enough room in the day.
   defp longest_fit(profile, grid) do
@@ -185,7 +197,9 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
       terms={@terms}
       current_term={@term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
       <.page_header
         title={gettext("Time profiles")}
         subtitle={gettext("Sessions with this profile can start only at the selected times.")}
@@ -212,9 +226,16 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
         <div class="min-w-0">
           <.empty_state
             :if={@profiles == []}
-            title={gettext("No profiles yet")}
+            title={gettext("No time profiles yet")}
+            message={gettext("A time profile limits the start times of its sessions.")}
             icon="hero-table-cells"
-          />
+          >
+            <:actions>
+              <.link patch={~p"/terms/#{@term}/slot-profiles/new"} class="btn btn-primary">
+                {gettext("New profile")}
+              </.link>
+            </:actions>
+          </.empty_state>
 
           <.table
             :if={@profiles != []}
@@ -222,7 +243,7 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
             rows={@profiles}
             row_id={&"profile-#{&1.id}"}
           >
-            <:col :let={profile} label={gettext("Profile")}>
+            <:col :let={profile} label={gettext("Time profile")}>
               <.link
                 patch={~p"/terms/#{@term}/slot-profiles/#{profile}/edit"}
                 class="link link-hover font-semibold"
@@ -240,10 +261,18 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
               {Map.get(@usage, profile.id, 0)}
             </:col>
             <:action :let={profile}>
+              <.link
+                patch={~p"/terms/#{@term}/slot-profiles/#{profile}/edit"}
+                class="btn btn-ghost"
+              >
+                {gettext("Edit")}
+              </.link>
               <button
                 class="btn btn-ghost text-error"
                 phx-click="delete_prompt"
                 phx-value-id={profile.id}
+                disabled={blocker(@usage, profile) != nil}
+                title={blocker(@usage, profile)}
               >
                 {gettext("Delete")}
               </button>
@@ -272,6 +301,9 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
               <.button variant="primary" phx-disable-with={gettext("Saving")}>
                 {gettext("Save")}
               </.button>
+              <.link patch={~p"/terms/#{@term}/slot-profiles"} class="btn btn-ghost">
+                {gettext("Cancel")}
+              </.link>
             </div>
           </.form>
 
@@ -309,8 +341,12 @@ defmodule NeuZeitWeb.SlotProfileLive.Index do
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete %{name}?", name: slot_profile_label(@deleting))}
-        message={gettext("A profile used by a session cannot be deleted.")}
-        confirm_label={gettext("Delete profile")}
+        message={
+          gettext("Deletes the time profile %{name}. This cannot be undone.",
+            name: slot_profile_label(@deleting)
+          )
+        }
+        confirm_label={gettext("Delete")}
         on_confirm="delete_confirm"
         on_cancel="delete_cancel"
       />

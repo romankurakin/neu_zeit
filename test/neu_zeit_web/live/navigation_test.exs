@@ -72,4 +72,24 @@ defmodule NeuZeitWeb.NavigationTest do
       assert has_element?(view, "#main-navigation a[href='/terms/#{term.id}/workload']")
     end
   end
+
+  test "the sidebar lists sessions after teaching load", %{conn: conn} do
+    term = term("Current")
+    {:ok, view, _html} = live(conn, "/terms/#{term.id}/sessions")
+
+    assert has_element?(
+             view,
+             "#main-navigation a[href='/terms/#{term.id}/sessions'][aria-current=page]",
+             "Sessions"
+           )
+
+    labels =
+      NeuZeitWeb.Nav.sections(term)
+      |> Enum.find(&(&1.title == "Term"))
+      |> Map.fetch!(:items)
+      |> Enum.map(& &1.label)
+
+    assert Enum.drop_while(labels, &(&1 != "Teaching load")) |> Enum.take(2) ==
+             ["Teaching load", "Sessions"]
+  end
 end

@@ -4,6 +4,9 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
   alias NeuZeit.Catalog
   alias NeuZeit.Catalog.{Workload, Workloads}
   alias NeuZeitWeb.Nav
+  alias NeuZeitWeb.WorkloadLive.ImportComponent
+
+  @copied_fields ~w(course_component_id teacher_id delivery_mode contact_hours duration_slots slot_profile_id)a
 
   @impl true
   def mount(%{"term_id" => term_id}, _session, socket) do
@@ -17,12 +20,13 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
      |> assign(:teachers, Catalog.list_teachers())
      |> assign(:cohorts, Catalog.list_cohorts())
      |> assign(:profiles, Catalog.list_slot_profiles(term_id))
-     |> assign(:components, Catalog.list_course_components())
+     |> assign(:courses, Catalog.list_courses())
      |> assign(:duration_options, Workloads.duration_options(term))
      |> assign(:rows, Workloads.list(term_id))
      |> assign(:form, nil)
      |> assign(:editing, nil)
-     |> assign(:deleting, nil)}
+     |> assign(:deleting, nil)
+     |> assign(:importing, false)}
   end
 
   @impl true
@@ -32,7 +36,8 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
 
     case socket.assigns.live_action do
       :new ->
-        {:noreply, open_form(socket, nil, Workload.new(socket.assigns.term))}
+        workload = prefill(Workload.new(socket.assigns.term), rows, params)
+        {:noreply, open_form(socket, nil, workload)}
 
       :edit ->
         case Enum.find(rows, fn row ->
@@ -58,15 +63,89 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
     end
   end
 
+  # ?from=ID prefills the new form from that row (Duplicate). With next=1, after
+  # "Save and add another", only the shared fields are kept: groups and weeks start over.
+  defp prefill(workload, rows, %{"from" => id} = params) do
+    case Enum.find(rows, &(&1.id == id)) do
+      nil ->
+        workload
+
+      %{requirement: source} ->
+        copied = Map.merge(workload, Map.take(source, @copied_fields))
+
+        if params["next"],
+          do: copied,
+          else:
+            Map.merge(
+              copied,
+              Map.take(source, ~w(cohort_ids week_mask rounding_mode remainder_parity)a)
+            )
+    end
+  end
+
+  defp prefill(workload, _rows, _params), do: workload
+
   defp open_form(socket, row, workload) do
+    course_id = course_id_of(socket, workload.course_component_id)
+
     socket
     |> assign(:editing, row)
     |> assign(:workload, workload)
     |> assign(:automatic_weeks, workload.automatic_weeks)
     |> assign(:week_mask, workload.week_mask)
     |> assign(:cohort_ids, workload.cohort_ids)
+    |> assign_course(course_id)
     |> update_form(%{})
   end
+
+  defp course_id_of(_socket, nil), do: nil
+
+  defp course_id_of(socket, component_id) do
+    Enum.find_value(socket.assigns.courses, fn course ->
+      Enum.any?(course.components, &(&1.id == component_id)) && course.id
+    end)
+  end
+
+  # The course is a form-level choice, not a workload field. It only narrows the teaching types.
+  defp assign_course(socket, course_id) do
+    course = Enum.find(socket.assigns.courses, &(&1.id == course_id))
+
+    socket
+    |> assign(:course_id, course && course.id)
+    |> assign(:course_components, (course && course.components) || [])
+    |> assign(
+      :course_field,
+      to_form(%{"course_id" => course && course.id}, as: :workload)[:course_id]
+    )
+  end
+
+  # A changed course drops the old teaching type. A single teaching type is chosen at once.
+  defp apply_course(socket, params) do
+    course_id = presence(params["course_id"])
+
+    if course_id == socket.assigns.course_id do
+      {socket, params}
+    else
+      socket = assign_course(socket, course_id)
+
+      # Several types leave the choice open, so the field stays untouched until a chip is clicked.
+      params =
+        case socket.assigns.course_components do
+          [component] ->
+            Map.put(params, "course_component_id", component.id)
+
+          _several ->
+            params
+            |> Map.put("course_component_id", "")
+            |> Map.put("_unused_course_component_id", "")
+        end
+
+      {socket, params}
+    end
+  end
+
+  defp presence(""), do: nil
+  defp presence(value), do: value
 
   defp update_form(socket, params, action \\ nil) do
     changeset =
@@ -92,8 +171,10 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
   defp all_weeks(socket), do: Enum.to_list(1..socket.assigns.term.weeks_count)
 
   @impl true
-  def handle_event("validate", %{"workload" => params}, socket),
-    do: {:noreply, update_form(socket, params, :validate)}
+  def handle_event("validate", %{"workload" => params}, socket) do
+    {socket, params} = apply_course(socket, params)
+    {:noreply, update_form(socket, params, :validate)}
+  end
 
   def handle_event("week_mask_changed", %{"preset" => preset}, socket) do
     weeks = all_weeks(socket)
@@ -127,21 +208,31 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
       {:noreply,
        socket |> assign(:cohort_ids, ids) |> update_form(socket.assigns.form.params, :validate)}
 
-  def handle_event("save", %{"workload" => params}, socket) do
+  def handle_event("save", %{"workload" => params} = event, socket) do
     attrs = workload_attrs(socket, params)
     socket = update_form(socket, params)
+    term = socket.assigns.term
 
-    case Workloads.save(socket.assigns.term.id, socket.assigns.editing, attrs) do
-      {:ok, :saved} ->
+    case Workloads.save_requirement(term.id, socket.assigns.editing, attrs) do
+      {:ok, requirement} ->
+        next =
+          if event["after_save"] == "add_another",
+            do: ~p"/terms/#{term}/workload/new?from=#{requirement.id}&next=1",
+            else: ~p"/terms/#{term}/workload"
+
         {:noreply,
-         socket
-         |> put_flash(:info, gettext("Teaching load saved."))
-         |> push_patch(to: ~p"/terms/#{socket.assigns.term}/workload")}
+         socket |> put_flash(:info, gettext("Teaching load saved.")) |> push_patch(to: next)}
 
       {:error, reason} ->
         {:noreply, Errors.put(socket, reason, as: :form)}
     end
   end
+
+  def handle_event("import_open", _params, socket),
+    do: {:noreply, assign(socket, :importing, true)}
+
+  def handle_event("import_close", _params, socket),
+    do: {:noreply, assign(socket, :importing, false)}
 
   def handle_event("delete_prompt", %{"id" => id}, socket) do
     row = Enum.find(socket.assigns.rows, &(&1.id == id))
@@ -168,6 +259,22 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
   end
 
   @impl true
+  def handle_info({ImportComponent, :imported, count}, socket) do
+    {:noreply,
+     socket
+     |> assign(:importing, false)
+     |> assign(:rows, Workloads.list(socket.assigns.term.id))
+     |> put_flash(
+       :info,
+       ngettext(
+         "Imported %{count} teaching load row.",
+         "Imported %{count} teaching load rows.",
+         count
+       )
+     )}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app
@@ -177,10 +284,13 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
       terms={@terms}
       current_term={@term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{Nav.return_label(@return_to)}</.link>
       <.page_header title={gettext("Teaching load")}>
         <:actions>
-          <.link patch={~p"/terms/#{@term}/workload/new"} class="btn">{gettext("Add teaching load")}</.link>
+          <button type="button" class="btn" phx-click="import_open">{gettext("Import CSV")}</button>
+          <.link patch={~p"/terms/#{@term}/workload/new"} class="btn btn-primary">{gettext(
+            "Add teaching load"
+          )}</.link>
         </:actions>
       </.page_header>
 
@@ -242,15 +352,18 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
             <:col :let={row} label={gettext("Time profile")} class="whitespace-nowrap">
               {if row.requirement.slot_profile,
                 do: slot_profile_label(row.requirement.slot_profile),
-                else: gettext("No restriction")}
+                else: gettext("No time profile")}
             </:col>
             <:action :let={row}>
-              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={row.id}>{gettext(
-                "Delete"
-              )}</button>
+              <.link patch={~p"/terms/#{@term}/workload/new?from=#{row.id}"} class="btn btn-ghost">{gettext(
+                "Duplicate"
+              )}</.link>
               <.link patch={~p"/terms/#{@term}/workload/#{row.id}/edit"} class="btn btn-ghost">{gettext(
                 "Edit"
               )}</.link>
+              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={row.id}>{gettext(
+                "Delete"
+              )}</button>
             </:action>
           </.table>
         </div>
@@ -267,29 +380,52 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
             phx-submit="save"
             class="flex flex-col gap-4"
           >
-            <div :if={@components == []} id="workload-teaching-types-help" role="status">
-              <p>
-                {gettext(
-                  "No teaching types are assigned to courses. Open a course, add a teaching type, then return to teaching load."
-                )}
-              </p>
-              <.link navigate={~p"/courses"} class="link">{gettext("All courses")}</.link>
-            </div>
-            <.input
-              field={@form[:course_component_id]}
-              type="select"
-              label={gettext("Teaching type")}
-              prompt={gettext("Choose a teaching type")}
-              options={
-                Enum.map(
-                  @components,
-                  &{"#{course_title(&1.course)} / #{component_kind_label(&1)}", &1.id}
-                )
-              }
+            <.combobox
+              field={@course_field}
+              label={gettext("Course")}
+              prompt={gettext("Choose a course")}
+              options={Enum.map(@courses, &{course_title(&1), &1.id})}
             />
-            <.input
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">{gettext("Teaching type")}</legend>
+              <p :if={!@course_id}>{gettext("Choose a course first.")}</p>
+              <p :if={@course_id && @course_components == []} id="workload-teaching-types-help">
+                {gettext("This course has no teaching types yet.")}
+                <.link
+                  navigate={
+                    Nav.with_return(~p"/courses/#{@course_id}", ~p"/terms/#{@term}/workload/new")
+                  }
+                  class="link"
+                >{gettext("Add one on the course page.")}</.link>
+              </p>
+              <%!-- The empty value keeps the field untouched until a chip is chosen. --%>
+              <input type="hidden" name={@form[:course_component_id].name} value="" />
+              <div
+                :if={@course_components != []}
+                id="workload-teaching-types"
+                class="join flex-wrap"
+                role="radiogroup"
+                aria-label={gettext("Teaching type")}
+              >
+                <label
+                  :for={component <- @course_components}
+                  class="btn join-item has-checked:btn-active has-focus-visible:outline-2"
+                >
+                  <input
+                    type="radio"
+                    id={"workload_course_component_id_#{component.id}"}
+                    name={@form[:course_component_id].name}
+                    value={component.id}
+                    checked={to_string(@form[:course_component_id].value) == component.id}
+                    class="sr-only"
+                  />
+                  {component_kind_label(component)}
+                </label>
+              </div>
+              <.error :for={message <- field_errors(@form[:course_component_id])}>{message}</.error>
+            </fieldset>
+            <.combobox
               field={@form[:teacher_id]}
-              type="select"
               label={gettext("Teacher")}
               prompt={gettext("Choose a teacher")}
               options={Enum.map(@teachers, &{&1.name, &1.id})}
@@ -382,7 +518,7 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
               field={@form[:slot_profile_id]}
               type="select"
               label={gettext("Time profile")}
-              prompt={gettext("No restriction")}
+              prompt={gettext("No time profile")}
               options={Enum.map(@profiles, &{slot_profile_label(&1), &1.id})}
             />
             <details
@@ -420,10 +556,23 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
                 {Errors.translate_validation({message, opts})}
               </p>
             </fieldset>
-            <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
+            <div class="flex flex-wrap gap-2">
+              <.button variant="primary" phx-disable-with={gettext("Saving")}>{gettext("Save")}</.button>
+              <.button name="after_save" value="add_another" phx-disable-with={gettext("Saving")}>
+                {gettext("Save and add another")}
+              </.button>
+              <.link patch={~p"/terms/#{@term}/workload"} class="btn btn-ghost">{gettext("Cancel")}</.link>
+            </div>
           </.form>
         </.details_panel>
       </div>
+      <.live_component
+        :if={@importing}
+        module={ImportComponent}
+        id="workload-import-dialog"
+        term={@term}
+        duration_options={@duration_options}
+      />
       <.alert_dialog
         :if={@deleting}
         title={gettext("Delete teaching load?")}
@@ -434,6 +583,12 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
       />
     </Layouts.app>
     """
+  end
+
+  defp field_errors(field) do
+    if Phoenix.Component.used_input?(field),
+      do: Enum.map(field.errors, &Errors.translate_validation/1),
+      else: []
   end
 
   defp cohort_items(cohorts, selected, selected?) do

@@ -31,6 +31,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
      |> assign(:plans, Planning.list_plans(term_id))
      |> assign(:profiles, Catalog.list_slot_profiles(term_id))
      |> assign(:count, 0)
+     |> assign(:total, 0)
      |> assign(:pages, 1)
      |> stream(:sessions, [])}
   end
@@ -107,6 +108,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
 
     socket
     |> assign(:count, count)
+    |> assign(:total, Catalog.count_sessions(socket.assigns.term.id))
     |> assign(:page, page)
     |> assign(:pages, pages)
     |> stream(:sessions, sessions, reset: true)
@@ -134,6 +136,9 @@ defmodule NeuZeitWeb.SessionLive.Index do
     ~p"/terms/#{assigns.term}/sessions?#{params}"
   end
 
+  defp workload_new_path(term),
+    do: Nav.with_return(~p"/terms/#{term}/workload/new", ~p"/terms/#{term}/sessions")
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -144,10 +149,17 @@ defmodule NeuZeitWeb.SessionLive.Index do
       terms={@terms}
       current_term={@term}
     >
-      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">{gettext("Return to timetable")}</.link>
-      <.page_header title={gettext("Sessions")}>
+      <.link :if={@return_to} navigate={@return_to} class="btn mb-4">
+        {Nav.return_label(@return_to)}
+      </.link>
+      <.page_header
+        title={gettext("Sessions")}
+        subtitle={
+          gettext("Sessions are created from teaching load. Change hours, teacher and groups there.")
+        }
+      >
         <:actions>
-          <.link navigate={~p"/terms/#{@term}/workload/new"} class="btn btn-primary">
+          <.link navigate={workload_new_path(@term)} class="btn btn-primary">
             <.icon name="hero-plus" class="size-4" /> {gettext("Add teaching load")}
           </.link>
         </:actions>
@@ -192,7 +204,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
                 name="slot_profile_id"
                 class="select select-bordered"
               >
-                <option value="all">{gettext("Any profile")}</option>
+                <option value="all">{gettext("Any time profile")}</option>
                 <option
                   :for={profile <- @profiles}
                   value={profile.id}
@@ -218,7 +230,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
                   value="true"
                   checked={@filters["without_profile"] == "true"}
                   class="checkbox checkbox-sm"
-                /> {gettext("No profile")}
+                /> {gettext("No time profile")}
               </label>
             </form>
             <:actions>
@@ -244,13 +256,36 @@ defmodule NeuZeitWeb.SessionLive.Index do
               class="btn"
             >{gettext("Next")}</.link>
           </nav>
+          <.empty_state
+            :if={@total == 0}
+            title={gettext("No sessions yet")}
+            message={gettext("Add teaching load to create the sessions of this term.")}
+            icon="hero-list-bullet"
+          >
+            <:actions>
+              <.link navigate={workload_new_path(@term)} class="btn btn-primary">
+                {gettext("Add teaching load")}
+              </.link>
+            </:actions>
+          </.empty_state>
+
+          <.empty_state
+            :if={@total > 0 and @count == 0}
+            title={gettext("No matching sessions. Change the filters.")}
+            icon="hero-funnel"
+          >
+            <:actions>
+              <button class="btn" phx-click="reset_filters">{gettext("Reset filters")}</button>
+            </:actions>
+          </.empty_state>
+
           <.table
+            :if={@count > 0}
             id="sessions"
             rows={@streams.sessions}
             stream
             row_id={fn {dom_id, _session} -> dom_id end}
             row_item={fn {_dom_id, session} -> session end}
-            empty_message={gettext("No matching sessions. Change the filters.")}
           >
             <:col :let={session} label={gettext("Course")}>
               <span class="font-semibold">{course_title(session.course_component.course)}</span>
@@ -278,7 +313,7 @@ defmodule NeuZeitWeb.SessionLive.Index do
               />
             </:col>
             <:col :let={session} label={gettext("Time slots")} numeric>{session.duration_slots}</:col>
-            <:col :let={session} label={gettext("Profile")}>
+            <:col :let={session} label={gettext("Time profile")}>
               <span :if={session.slot_profile} class="badge badge-ghost badge-md">
                 {slot_profile_label(session.slot_profile)}
               </span>

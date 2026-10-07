@@ -73,11 +73,36 @@ defmodule NeuZeitWeb.RegistriesTest do
         })
 
       {:ok, live, _html} = live(conn, ~p"/rooms")
-      live |> element(~s{button[phx-value-id="#{lab.id}"]}) |> render_click()
-      html = live |> element("#confirm-modal button", "Delete") |> render_click()
 
-      assert html =~ "is used by a teaching type or a scheduled session"
+      assert has_element?(
+               live,
+               ~s{#room-#{lab.id} button[disabled][title="Allowed for 1 teaching type"]},
+               "Delete"
+             )
+
       assert Catalog.get_room!(lab.id)
+    end
+
+    test "an unused room is deleted after confirmation", %{conn: conn} do
+      main = building()
+      spare = room(main, "101")
+
+      {:ok, live, _html} = live(conn, ~p"/rooms")
+      live |> element(~s{#room-#{spare.id} button}, "Delete") |> render_click()
+      assert has_element?(live, "#confirm-modal", "Deletes the room 101. This cannot be undone.")
+      live |> element("#confirm-modal button", "Delete") |> render_click()
+
+      refute has_element?(live, "#room-#{spare.id}")
+      assert Catalog.list_rooms() == []
+    end
+
+    test "empty registries offer the next action", %{conn: conn} do
+      {:ok, live, _html} = live(conn, ~p"/rooms")
+      assert has_element?(live, ".card-dash a", "New building")
+
+      building()
+      {:ok, live, _html} = live(conn, ~p"/rooms")
+      assert has_element?(live, ".card-dash a", "New room")
     end
 
     test "filtering narrows the list to one building", %{conn: conn} do
@@ -94,6 +119,42 @@ defmodule NeuZeitWeb.RegistriesTest do
 
       assert has_element?(live, "#room-#{a.id}")
       refute has_element?(live, "#room-#{b.id}")
+    end
+  end
+
+  describe "buildings" do
+    test "a building can be renamed from the rooms page", %{conn: conn} do
+      main = building("Hauptgebaude")
+
+      {:ok, live, _html} = live(conn, ~p"/rooms")
+      live |> element("#building-#{main.id} a", "Edit") |> render_click()
+      assert_patch(live, ~p"/rooms/buildings/#{main}/edit")
+      assert has_element?(live, "aside h2", "Edit building")
+
+      live |> form("#building-form", building: %{name: "Hauptgebäude"}) |> render_submit()
+
+      assert Catalog.get_building!(main.id).name == "Hauptgebäude"
+      assert has_element?(live, "#building-#{main.id}", "Hauptgebäude")
+    end
+
+    test "a building with rooms cannot be deleted, an empty one can", %{conn: conn} do
+      main = building()
+      room(main, "101")
+      empty = building("Ingenieurgebäude")
+
+      {:ok, live, _html} = live(conn, ~p"/rooms")
+
+      assert has_element?(
+               live,
+               ~s{#building-#{main.id} button[disabled][title="Has 1 room"]},
+               "Delete"
+             )
+
+      live |> element("#building-#{empty.id} button", "Delete") |> render_click()
+      live |> element("#confirm-modal button", "Delete") |> render_click()
+
+      refute has_element?(live, "#building-#{empty.id}")
+      assert Enum.map(Catalog.list_buildings(), & &1.id) == [main.id]
     end
   end
 
@@ -117,6 +178,92 @@ defmodule NeuZeitWeb.RegistriesTest do
 
       {:ok, detail, _html} = live(conn, ~p"/courses/#{course}")
       assert has_element?(detail, "h1", "Mathematics")
+    end
+
+    test "editing from the course page returns there after save", %{conn: conn} do
+      course = course()
+
+      {:ok, detail, _html} = live(conn, ~p"/courses/#{course}")
+      detail |> element("a", "Edit course") |> render_click()
+      {path, _flash} = assert_redirect(detail)
+
+      {:ok, edit, _html} = live(conn, path)
+      assert has_element?(edit, "a", "Back to the course")
+      edit |> form("#course-form", course: %{title: "Programmierung 1"}) |> render_submit()
+      assert_redirect(edit, ~p"/courses/#{course}")
+      assert Catalog.get_course!(course.id).title == "Programmierung 1"
+    end
+
+    test "a course without teaching types links to its page", %{conn: conn} do
+      course = course()
+
+      {:ok, live, _html} = live(conn, ~p"/courses")
+
+      assert has_element?(
+               live,
+               ~s{#course-#{course.id} a[href="/courses/#{course.id}"]},
+               "Add a teaching type"
+             )
+    end
+
+    test "a course with sessions cannot be deleted, an unused one can", %{conn: conn} do
+      main = building()
+      room = room(main, "101")
+      used = course("INF110")
+      spare = course("INF120")
+      {:ok, teacher} = Catalog.create_teacher(%{"name" => "Anna Weber"})
+      {:ok, cohort} = Catalog.create_cohort(%{"name" => "WI-1"})
+
+      {:ok, component} =
+        Catalog.create_course_component(%{
+          "course_id" => used.id,
+          "kind" => "lecture",
+          "allowed_room_ids" => [room.id]
+        })
+
+      {:ok, _session} =
+        NeuZeit.Fixtures.create_session(%{
+          "term_id" => term().id,
+          "course_component_id" => component.id,
+          "teacher_id" => teacher.id,
+          "week_mask" => [1],
+          "duration_slots" => 1,
+          "cohort_ids" => [cohort.id]
+        })
+
+      {:ok, live, _html} = live(conn, ~p"/courses")
+
+      assert has_element?(
+               live,
+               ~s{#course-#{used.id} button[disabled][title="Used by 1 session"]},
+               "Delete"
+             )
+
+      live |> element("#course-#{spare.id} button", "Delete") |> render_click()
+      live |> element("#confirm-modal button", "Delete") |> render_click()
+      assert Enum.map(Catalog.list_courses(), & &1.id) == [used.id]
+
+      {:ok, detail, _html} = live(conn, ~p"/courses/#{used}")
+
+      assert has_element?(
+               detail,
+               ~s{#component-#{component.id} button[disabled][title="Used by 1 session"]},
+               "Remove from course"
+             )
+    end
+
+    test "removing a teaching type from a course asks for confirmation", %{conn: conn} do
+      course = course()
+
+      {:ok, component} =
+        Catalog.create_course_component(%{"course_id" => course.id, "kind" => "lab"})
+
+      {:ok, live, _html} = live(conn, ~p"/courses/#{course}")
+      live |> element("#component-#{component.id} button", "Remove from course") |> render_click()
+      assert has_element?(live, "#confirm-modal h2", "Remove Lab from Programmierung I?")
+      live |> element("#confirm-modal button", "Remove") |> render_click()
+
+      assert Catalog.get_course!(course.id).components == []
     end
 
     test "dragging a room into the pool updates the component", %{conn: conn} do
@@ -201,12 +348,14 @@ defmodule NeuZeitWeb.RegistriesTest do
       course = course()
       {:ok, live, _html} = live(conn, ~p"/courses/#{course}")
 
-      live
-      |> form("#translation-form",
-        course_translation: %{locale: "ru", title: "Программирование I"}
-      )
-      |> render_submit()
+      html =
+        live
+        |> form("#translation-form",
+          course_translation: %{locale: "ru", title: "Программирование I"}
+        )
+        |> render_submit()
 
+      assert html =~ "Saved the Русский title."
       assert Catalog.get_course_translation(course.id, "ru").title == "Программирование I"
 
       live
@@ -287,14 +436,49 @@ defmodule NeuZeitWeb.RegistriesTest do
       {:ok, live, _html} = live(conn, ~p"/people?tab=teachers")
 
       live |> element(~s{button[phx-value-id="#{spare.id}"]}) |> render_click()
+
+      assert has_element?(
+               live,
+               "#confirm-modal",
+               "Deletes the teacher Spare Person. This cannot be undone."
+             )
+
       live |> element("#confirm-modal button", "Delete") |> render_click()
       assert Enum.all?(Catalog.list_teachers(), &(&1.id != spare.id))
 
-      live |> element(~s{button[phx-value-id="#{busy.id}"]}) |> render_click()
-      html = live |> element("#confirm-modal button", "Delete") |> render_click()
+      assert has_element?(
+               live,
+               ~s{#teacher-#{busy.id} button[disabled][title="Used by 1 session"]},
+               "Delete"
+             )
 
-      assert html =~ "still teaches"
       assert Catalog.get_teacher!(busy.id)
+
+      {:ok, live, _html} = live(conn, ~p"/people?tab=cohorts")
+
+      assert has_element?(
+               live,
+               ~s{#cohort-#{cohort.id} button[disabled][title="Used by 1 session"]},
+               "Delete"
+             )
+    end
+
+    test "empty tabs offer the next action", %{conn: conn} do
+      {:ok, live, _html} = live(conn, ~p"/people?tab=teachers")
+      assert has_element?(live, ".card-dash a", "New teacher")
+
+      {:ok, live, _html} = live(conn, ~p"/people?tab=cohorts")
+      assert has_element?(live, ".card-dash a", "New group")
+    end
+
+    test "rows open the edit form", %{conn: conn} do
+      {:ok, teacher} = Catalog.create_teacher(%{"name" => "Anna Weber"})
+
+      {:ok, live, _html} = live(conn, ~p"/people?tab=teachers")
+      live |> element("#teacher-#{teacher.id} a", "Edit") |> render_click()
+
+      assert has_element?(live, "aside h2", "Edit teacher")
+      assert has_element?(live, "#teacher-form a", "Cancel")
     end
 
     test "an aggregate cohort can be renamed into a real section", %{conn: conn} do
