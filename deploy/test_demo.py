@@ -1,5 +1,6 @@
 import copy
 import os
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -12,6 +13,14 @@ ENV = {"REVISION": REVISION, "DATABASE_PASSWORD": "b" * 64,
        "SECRET_KEY_BASE": "c" * 64, "REPOSITORY_URL": "https://github.com/example/demo.git",
        "DEMO_SSH_KEY_IDS": "123"}
 VPC = {"id": "vpc-id", "name": demo.NAME, "region": "fra1"}
+# Each test replaces demo.do with a fake; keep the real command wrapper for its own test.
+DOCTL = demo.do
+
+
+def api_error(code, message):
+    # The text doctl reports for a failed API request.
+    return RuntimeError('DELETE https://api.digitalocean.com/v2/resource: ' + str(code) +
+                        ' (request "4f0c-409") ' + message)
 
 
 def host(number, role):
@@ -63,6 +72,13 @@ class DeploymentTest(unittest.TestCase):
 
     def deploy(self):
         demo.deploy(IP, self.reserved, self.droplets)
+
+    def settle(self, check, seconds, **kwargs):
+        # Poll like wait_until, without sleeping.
+        for _ in range(5):
+            if check():
+                return
+        self.fail("Condition did not settle")
 
     def test_replaces_application_without_recreating_database_even_with_old_reset_flag(self):
         with patch.dict(os.environ, {"RECREATE": "true"}), \
@@ -186,16 +202,81 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
     def test_release_retries_while_provider_finishes_unassignment(self):
-        answers = [RuntimeError("422 unprocessable"), [{"ip": IP}], None, []]
-
-        def wait(check, seconds, **kwargs):
-            self.assertFalse(check())
-            self.assertTrue(check())
-
+        demo.time.monotonic.return_value = 0
+        answers = [api_error(422, "The reserved IP is assigned"), None, []]
         with patch.object(demo, "do", side_effect=answers) as api, \
-             patch.object(demo, "wait_until", side_effect=wait):
+             patch.object(demo, "wait_until", side_effect=self.settle):
             demo.release_ip(IP)
-        self.assertEqual(api.call_count, 4)
+        self.assertEqual(api.call_count, 3)
+
+    def test_vpc_deletion_waits_for_deleted_servers_to_leave(self):
+        demo.time.monotonic.return_value = 0
+        original = self.do
+        conflicts = [api_error(409, "Can not delete VPC with members")] * 2
+
+        def api(*args):
+            if args[:2] == ("vpcs", "delete") and conflicts:
+                self.calls.append(args)
+                raise conflicts.pop()
+            return original(*args)
+
+        with patch.object(demo, "do", side_effect=api), \
+             patch.object(demo, "wait_until", side_effect=self.settle):
+            demo.undeploy(IP, self.reserved, self.droplets)
+        self.assertEqual(self.calls.count(("vpcs", "delete", "vpc-id", "--force")), 3)
+        self.assertIn("DEMO_RESERVED_IP", demo.report.call_args.args[0])
+
+    def test_removal_gives_up_with_the_provider_reason(self):
+        demo.time.monotonic.side_effect = [0, 0, 301]
+        with patch.object(demo, "do", side_effect=api_error(409, "Can not delete VPC with members")) as api:
+            with self.assertRaisesRegex(RuntimeError, "Can not delete VPC with members.*after 300 seconds"):
+                demo.remove("vpcs", "delete", "vpc-id")
+        self.assertEqual(api.call_count, 2)
+
+    def test_removal_does_not_retry_unexpected_failures(self):
+        with patch.object(demo, "do", side_effect=api_error(403, "Forbidden")) as api:
+            with self.assertRaisesRegex(RuntimeError, "Forbidden"):
+                demo.remove("vpcs", "delete", "vpc-id")
+        self.assertEqual(api.call_count, 1)
+
+    def test_status_ignores_identifiers_that_look_like_codes(self):
+        error = RuntimeError('DELETE https://api.digitalocean.com/v2/vpcs/409-404: 422 (request "404") Busy')
+        self.assertEqual(demo.status(error), 422)
+        self.assertIsNone(demo.status(RuntimeError("409 without request details")))
+
+    def test_doctl_errors_are_reported_without_json_wrapping(self):
+        stderr = ('{"errors":[{"detail":"DELETE https://api.digitalocean.com/v2/vpcs/vpc-id: 409 '
+                  '(request \\"r-1\\") Can not delete VPC with members"}]}')
+        failed = subprocess.CompletedProcess([], 1, stdout="", stderr=stderr)
+        with patch.object(demo.subprocess, "run", return_value=failed):
+            with self.assertRaises(RuntimeError) as raised:
+                DOCTL("vpcs", "delete", "vpc-id", "--force")
+        self.assertEqual(str(raised.exception),
+                         'DELETE https://api.digitalocean.com/v2/vpcs/vpc-id: 409 (request "r-1") '
+                         'Can not delete VPC with members')
+        self.assertEqual(demo.status(raised.exception), 409)
+
+    def test_undeploy_failure_lists_completed_removals_and_rerun(self):
+        original = self.do
+
+        def api(*args):
+            if args[:2] == ("vpcs", "delete"):
+                raise api_error(500, "Server Error")
+            return original(*args)
+
+        with patch.object(demo, "do", side_effect=api), \
+             patch.object(demo, "wait_until", side_effect=self.settle):
+            with self.assertRaises(RuntimeError) as raised:
+                demo.undeploy(IP, self.reserved, self.droplets)
+        message = str(raised.exception)
+        self.assertIn("Server Error", message)
+        self.assertIn("Already removed: 2 server(s), reserved IP " + IP + ", database firewall.", message)
+        self.assertIn("Re-run Undeploy demonstration host", message)
+
+    def test_missing_reserved_ip_explains_how_to_deploy_again(self):
+        with self.assertRaisesRegex(RuntimeError, "set the DEMO_RESERVED_IP repository variable"):
+            demo.deploy(IP, None, self.droplets)
+        self.assertEqual(self.calls, [])
 
     def test_unassignment_failure_keeps_servers(self):
         original = self.do
@@ -211,15 +292,18 @@ class DeploymentTest(unittest.TestCase):
         self.assertFalse(any("delete" in call for call in self.calls))
 
     def test_release_tolerates_a_stale_listing_after_deletion(self):
-        answers = [None, [{"ip": IP}], RuntimeError("404 not found"), []]
-
-        def wait(check, seconds, **kwargs):
-            self.assertFalse(check())
-            self.assertTrue(check())
-
-        with patch.object(demo, "do", side_effect=answers), \
-             patch.object(demo, "wait_until", side_effect=wait):
+        answers = [None, [{"ip": IP}], []]
+        with patch.object(demo, "do", side_effect=answers) as api, \
+             patch.object(demo, "wait_until", side_effect=self.settle):
             demo.release_ip(IP)
+        self.assertEqual(api.call_count, 3)
+
+    def test_release_accepts_an_address_that_is_already_gone(self):
+        answers = [api_error(404, "The resource you requested could not be found."), []]
+        with patch.object(demo, "do", side_effect=answers) as api, \
+             patch.object(demo, "wait_until", side_effect=self.settle):
+            demo.release_ip(IP)
+        self.assertEqual(api.call_count, 2)
 
 
 if __name__ == "__main__":

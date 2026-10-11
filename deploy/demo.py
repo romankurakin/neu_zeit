@@ -24,8 +24,39 @@ def do(*args):
                             capture_output=True, text=True)
     if result.returncode:
         # Do not print command arguments: a future command may contain secrets.
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "DigitalOcean command failed")
+        output = result.stderr.strip() or result.stdout.strip()
+        try:
+            # With JSON output doctl wraps API failures as {"errors": [{"detail": ...}]}.
+            output = "; ".join(e["detail"] for e in json.loads(output)["errors"])
+        except (ValueError, KeyError, TypeError):
+            pass
+        raise RuntimeError(output or "DigitalOcean command failed")
     return json.loads(result.stdout) if result.stdout.strip() else None
+
+
+def status(error):
+    # doctl keeps the API client's "METHOD URL: STATUS (request ID) message" text.
+    match = re.search(r": (\d{3}) \(request", str(error))
+    return int(match.group(1)) if match else None
+
+
+def remove(*args, seconds=300):
+    # DigitalOcean accepts a change before every listing and dependency reflects it:
+    # deleted servers stay VPC members and unassigned addresses stay assigned for a while.
+    deadline = None
+    while True:
+        try:
+            do(*args, "--force")
+            return
+        except RuntimeError as error:
+            if status(error) == 404:
+                return
+            if status(error) not in (409, 422):
+                raise
+            deadline = deadline or time.monotonic() + seconds
+            if time.monotonic() > deadline:
+                raise RuntimeError(str(error) + " (still refused after " + str(seconds) + " seconds)") from error
+        time.sleep(10)
 
 
 def one(items, description):
@@ -49,7 +80,7 @@ def report(message):
             summary.write(message + "\n")
 
 
-def wait_until(check, seconds=1800, description="deployment readiness"):
+def wait_until(check, seconds, *, description):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         if check():
@@ -74,23 +105,10 @@ def assign(ip, droplet_id):
 
 
 def release_ip(ip):
-    def release():
-        try:
-            do("compute", "reserved-ip", "delete", ip, "--force")
-        except RuntimeError as error:
-            # Provider listings can lag behind a completed deletion or unassignment.
-            if not any(code in str(error) for code in ("404", "422")):
-                raise
-
-    release()
-
-    def released():
-        if not any(r["ip"] == ip for r in do("compute", "reserved-ip", "list")):
-            return True
-        release()
-        return False
-
-    wait_until(released, 300, description="reserved IP release")
+    remove("compute", "reserved-ip", "delete", ip)
+    # The listing can keep showing an address after its deletion was accepted.
+    wait_until(lambda: not any(r["ip"] == ip for r in do("compute", "reserved-ip", "list")), 300,
+               description="reserved IP release")
 
 
 def create_host(name, role, region, vpc, size, values):
@@ -125,12 +143,14 @@ def delete_application(droplet):
     for snapshot in do("compute", "snapshot", "list"):
         if str(snapshot["resource_id"]) == str(droplet["id"]):
             do("compute", "tag", "apply", NAME, "--resource", "do:image:" + str(snapshot["id"]))
-    do("compute", "droplet", "delete", droplet["id"], "--force")
+    remove("compute", "droplet", "delete", droplet["id"])
 
 
 def deploy(ip, reserved, droplets):
     if not reserved:
-        raise RuntimeError("Reserve an IPv4 and set DEMO_RESERVED_IP before deployment")
+        raise RuntimeError("Reserved IP " + ip + " is not in this DigitalOcean account; undeploy releases it. "
+                           "Reserve an IPv4 in the target region and set the DEMO_RESERVED_IP "
+                           "repository variable to it.")
     legacy = [d for d in droplets if d["name"] == NAME]
     if legacy:
         raise RuntimeError("The existing single-server installation must be migrated first. "
@@ -194,11 +214,13 @@ def deploy(ip, reserved, droplets):
                             os.environ.get("SIZE", "s-1vcpu-2gb"), values)
     switched = False
     try:
-        wait_until(lambda: ready("http://" + address(candidate, "public") + "/__deployment", revision))
+        wait_until(lambda: ready("http://" + address(candidate, "public") + "/__deployment", revision), 1800,
+                   description="the new application host to pass health checks")
         # Keep the old application until the candidate has completed migrations and passed health checks.
         switched = True
         assign(ip, candidate["id"])
-        wait_until(lambda: ready("https://" + values["HOST"] + "/__deployment", revision), 300)
+        wait_until(lambda: ready("https://" + values["HOST"] + "/__deployment", revision), 300,
+                   description="HTTPS on the reserved IP")
     except Exception:
         if switched:
             if old:
@@ -219,38 +241,55 @@ def undeploy(ip, reserved, droplets):
     owner = (reserved.get("droplet") or {}).get("id") if reserved else None
     if owner and owner not in ids:
         raise RuntimeError("Reserved IP belongs to another project; refusing to delete resources")
-    if owner:
-        action = first(do("compute", "reserved-ip-action", "unassign", ip))
-        result = first(do("compute", "action", "wait", action["id"]))
-        if result["status"] != "completed":
-            raise RuntimeError("Reserved IP unassignment failed; project servers were retained")
-    # Discover retained images before deleting the hosts they belong to.
-    snapshots = [s for s in do("compute", "snapshot", "list")
-                 if str(s["resource_id"]) in {str(i) for i in ids} or NAME in s.get("tags", [])]
-    for snapshot in snapshots:
-        do("compute", "snapshot", "delete", snapshot["id"], "--force")
-    for droplet in owned:
-        do("compute", "droplet", "delete", droplet["id"], "--force")
-    wait_until(lambda: not any(d["id"] in ids for d in do("compute", "droplet", "list")), 300)
-    if reserved:
-        release_ip(ip)
-    for firewall in do("compute", "firewall", "list"):
-        if firewall["name"] == DB_TAG:
-            do("compute", "firewall", "delete", firewall["id"], "--force")
-    for vpc in do("vpcs", "list"):
-        if vpc["name"] == NAME:
-            do("vpcs", "delete", vpc["id"], "--force")
-    snapshot_ids = {str(s["id"]) for s in snapshots}
-    wait_until(lambda: not any(str(s["id"]) in snapshot_ids for s in do("compute", "snapshot", "list")), 120)
+    removed = []
+    try:
+        if owner:
+            action = first(do("compute", "reserved-ip-action", "unassign", ip))
+            result = first(do("compute", "action", "wait", action["id"]))
+            if result["status"] != "completed":
+                raise RuntimeError("Reserved IP unassignment failed; project servers were retained")
+        # Discover retained images before deleting the hosts they belong to.
+        snapshots = [s for s in do("compute", "snapshot", "list")
+                     if str(s["resource_id"]) in {str(i) for i in ids} or NAME in s.get("tags", [])]
+        for snapshot in snapshots:
+            remove("compute", "snapshot", "delete", snapshot["id"])
+        for droplet in owned:
+            remove("compute", "droplet", "delete", droplet["id"])
+        wait_until(lambda: not any(d["id"] in ids for d in do("compute", "droplet", "list")), 300,
+                   description="server deletion")
+        if owned:
+            removed.append(str(len(owned)) + " server(s)")
+        if reserved:
+            release_ip(ip)
+            removed.append("reserved IP " + ip)
+        for firewall in do("compute", "firewall", "list"):
+            if firewall["name"] == DB_TAG:
+                remove("compute", "firewall", "delete", firewall["id"])
+                removed.append("database firewall")
+        for vpc in do("vpcs", "list"):
+            if vpc["name"] == NAME:
+                remove("vpcs", "delete", vpc["id"])
+                removed.append("project VPC")
+        snapshot_ids = {str(s["id"]) for s in snapshots}
+        wait_until(lambda: not any(str(s["id"]) in snapshot_ids for s in do("compute", "snapshot", "list")), 120,
+                   description="snapshot deletion")
+    except RuntimeError as error:
+        raise RuntimeError("Undeploy stopped: " + str(error) + "\n"
+                           "Already removed: " + (", ".join(removed) or "nothing") + ".\n"
+                           "Re-run Undeploy demonstration host to remove the rest; "
+                           "it skips what is already gone.") from error
     # These workflows create no automatic cloud backups, separate volumes or managed databases.
-    report("Project servers, databases, backups, snapshots and reserved IP removed. "
-           "Future project charges stop; accrued usage remains payable.")
+    report("Project servers, databases, backups, snapshots, network and reserved IP removed. "
+           "Future project charges stop; accrued usage remains payable. "
+           "Before the next deployment, reserve a new IPv4 and set the DEMO_RESERVED_IP repository variable to it.")
 
 
 def main():
     mode = sys.argv[1] if len(sys.argv) == 2 else ""
     if mode not in ("deploy", "undeploy"):
         raise RuntimeError("Expected deploy or undeploy")
+    if not os.environ.get("DEMO_RESERVED_IP"):
+        raise RuntimeError("Set the DEMO_RESERVED_IP repository variable")
     ip = str(ipaddress.IPv4Address(os.environ["DEMO_RESERVED_IP"]))
     reserved = one([r for r in do("compute", "reserved-ip", "list") if r["ip"] == ip], "reserved IPs")
     droplets = do("compute", "droplet", "list")
@@ -261,5 +300,9 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, KeyError, ValueError) as error:
-        print(str(error), file=sys.stderr)
+        message = str(error)
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            # An annotation shows the reason on the run page, not only inside the step log.
+            message = "::error::" + message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(message, flush=True)
         sys.exit(1)
