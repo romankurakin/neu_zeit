@@ -67,7 +67,7 @@ config :volt, :lint,
     "style" => :deny,
     # DOM elements and events cannot be readonly types.
     "typescript/prefer-readonly-parameter-types" => :allow,
-    # Conflicts with eslint/no-ternary.
+    # Ternaries hurt readability, so eslint/no-ternary forbids them.
     "unicorn/prefer-ternary" => :allow
   },
   overrides: [
