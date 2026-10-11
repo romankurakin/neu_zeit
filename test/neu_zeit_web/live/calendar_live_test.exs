@@ -210,11 +210,12 @@ defmodule NeuZeitWeb.CalendarLiveTest do
 
     test "is the week with today's date when the term is running", %{conn: conn} do
       today = today_at_institution()
+      monday = Date.beginning_of_week(today)
       term = term_with_plan(Date.add(today, -21), Date.add(today, 42))
       expected = NeuZeit.Scheduling.TermDates.week(term, today)
 
       {:ok, live, _html} = live(conn, ~p"/terms/#{term}/calendar")
-      assert has_element?(live, "#calendar-day-#{Date.to_iso8601(today)}")
+      assert has_element?(live, "#calendar-day-#{Date.to_iso8601(monday)}")
       assert render(live) =~ "Week #{expected} of #{term.weeks_count}"
 
       # An explicit week still wins.
