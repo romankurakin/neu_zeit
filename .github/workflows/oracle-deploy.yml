@@ -1,0 +1,33 @@
+name: Deploy Oracle demo
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Branch, tag or commit to deploy
+        default: main
+permissions:
+  contents: read
+concurrency:
+  group: oracle-demonstration-host
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/oracle-auth
+        with:
+          config: ${{ secrets.OCI_CONFIG }}
+          private-key: ${{ secrets.OCI_API_KEY }}
+      - name: Resolve and deploy the requested revision
+        env:
+          REVISION: ${{ inputs.revision }}
+          OCI_COMPARTMENT_ID: ${{ vars.OCI_COMPARTMENT_ID }}
+        run: |
+          [[ "$REVISION" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || exit 1
+          git fetch --no-tags --depth 1 origin "$REVISION"
+          bash deploy/oracle/demo.sh deploy --revision "$(git rev-parse FETCH_HEAD)"
+      - name: Remove runner credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/neu-zeit-oci"

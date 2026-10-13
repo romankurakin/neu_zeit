@@ -1,0 +1,16 @@
+name: neu_zeit_proxy
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /opt/neu-zeit/proxy:/etc/caddy:ro,Z
+      - caddy_data:/data
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+volumes:
+  caddy_data:

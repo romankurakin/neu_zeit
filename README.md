@@ -48,23 +48,9 @@ docker compose -f compose.prod.yaml run --rm migrate && \
   docker compose -f compose.prod.yaml up -d application
 ```
 
-## Demonstration host
+## Oracle demonstration host
 
-**Deploy demonstration host** creates two kinds of server in a project VPC. The database server is persistent. Application servers contain no database service or database volume. The configured administrator SSH keys are installed on both server roles; deployment itself uses cloud-init and does not need SSH access.
-
-Deploy builds a new application server with cloud-init and connects it to the existing PostgreSQL server over its private address. PostgreSQL listens only on that private interface; a cloud firewall allows connections only from tagged application servers. The database host is created only for a new installation. If application servers exist but the database host is missing, deployment stops rather than creating an empty replacement.
-
-The candidate runs migrations and passes its container health check before the permanent IP moves. Deploy verifies HTTPS at the new server before deleting old application servers. If candidate startup fails, the old application remains. If HTTPS verification fails after a switch, the IP returns to the old application when one exists. Database migrations are not rolled back automatically and must remain compatible with the old application during the handover.
-
-Set the Actions variable `DEMO_RESERVED_IP` to a reserved IPv4 and `DEMO_SSH_KEY_IDS` to the comma-separated IDs of your public SSH keys registered in DigitalOcean. Deployment checks that those keys exist before creating resources. Keys are installed when a server is created; changing this variable does not update an existing database server. Install additional keys on that server through an existing SSH connection. Set the secrets `DIGITALOCEAN_ACCESS_TOKEN`, `DEMO_DATABASE_PASSWORD` (64 random hexadecimal characters) and `DEMO_SECRET_KEY_BASE` (at least 64 characters). Keep both application secrets stable between deployments. Changing the password secret does not change the existing PostgreSQL password. The API token needs access to project droplets, tags, VPCs, firewalls, reserved IPs, actions, snapshots and read access to SSH keys. SSH uses port 22 on both servers, with key authentication; password login is disabled. PostgreSQL port 5432 remains available only to the application servers on the private network.
-
-The default sizes are 1 vCPU / 512 MB for the database and 1 vCPU / 2 GB for the application and its builds. PostgreSQL uses 64 MB of shared buffers, up to 30 connections, 2 MB of work memory per operation and 32 MB of maintenance work memory. These Basic plans cost $4 and $12 per month respectively at current list prices, before taxes and extra usage. Replacement temporarily runs an additional application server. Production runs one solver job at a time, using at most the available CPU count (up to eight workers). `SOLVER_WORKERS` and `SOLVER_MAX_CONCURRENCY` can override these limits. The database server keeps daily PostgreSQL dumps on its own disk. They survive application replacements but not database-server loss. Off-server disaster-recovery backups are not configured by these workflows.
-
-An existing single-server installation is never automatically replaced or attached to a new empty database. Deployment stops before making changes. Export its database, restore it on the dedicated database server, verify the restored records and configure the stable secrets before moving the application. Keep the original server until that migration is verified. This one-time migration requires access to the existing database; subsequent deployments do not require SSH.
-
-**Undeploy demonstration host** is the separate destructive action. It removes the project's servers, databases, retained snapshots, reserved IP, firewall and VPC. Other projects are not touched. These workflows create no separate volumes or managed databases. Successful cleanup stops future charges for its resources; accrued usage is still payable. To install again, reserve an IPv4 and update `DEMO_RESERVED_IP`.
-
-[DigitalOcean documents](https://docs.digitalocean.com/products/droplets/how-to/destroy/) that automatic backups can remain after server deletion until their retention period ends. Manually retained snapshots require explicit deletion; Undeploy removes project snapshots before deleting their servers.
+[Oracle setup and commands](deploy/oracle/README.md). Resource Manager creates Always Free infrastructure; Run Command deploys Docker Compose releases without SSH. Repeat deployments preserve PostgreSQL. Undeploy deletes the Oracle demo and its backups.
 
 ## Guides
 

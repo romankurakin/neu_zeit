@@ -1,0 +1,38 @@
+name: Oracle authentication
+description: Configure the OCI SDK from repository secrets
+inputs:
+  config:
+    required: true
+    description: OCI configuration with a DEFAULT profile
+  private-key:
+    required: true
+    description: OCI API signing private key
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        OCI_CONFIG_CONTENT: ${{ inputs.config }}
+        OCI_KEY_CONTENT: ${{ inputs.private-key }}
+      run: |
+        python3 - << 'PY'
+        import configparser
+        import os
+        from pathlib import Path
+
+        os.umask(0o077)
+        directory = Path(os.environ["RUNNER_TEMP"]) / "neu-zeit-oci"
+        directory.mkdir(exist_ok=True)
+        key = directory / "key.pem"
+        key.write_text(os.environ["OCI_KEY_CONTENT"])
+        config = configparser.ConfigParser()
+        config.read_string(os.environ["OCI_CONFIG_CONTENT"])
+        config["DEFAULT"]["key_file"] = str(key)
+        with (directory / "config").open("w") as output:
+            config.write(output)
+        with open(os.environ["GITHUB_ENV"], "a") as output:
+            output.write("OCI_CONFIG_FILE=" + str(directory / "config") + "\n")
+            output.write("ORACLE_PYTHON=" + str(directory / "venv/bin/python") + "\n")
+        PY
+        python3 -m venv "$RUNNER_TEMP/neu-zeit-oci/venv"
+        "$RUNNER_TEMP/neu-zeit-oci/venv/bin/pip" install -r deploy/oracle/requirements.txt
