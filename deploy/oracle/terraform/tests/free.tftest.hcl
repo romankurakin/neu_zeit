@@ -14,8 +14,7 @@ variables {
   tenancy_ocid          = "ocid1.tenancy.oc1..test"
   parent_compartment_id = "ocid1.tenancy.oc1..test"
   availability_domain   = "test:EU-AMSTERDAM-1-AD-1"
-  application_image_id  = "ocid1.image.oc1.eu-amsterdam-1.arm"
-  database_image_id     = "ocid1.image.oc1.eu-amsterdam-1.amd"
+  image_id              = "ocid1.image.oc1.eu-amsterdam-1.amd"
   namespace             = "test"
   deployment_id         = "test"
 }
@@ -31,12 +30,8 @@ run "free_resources_and_private_ssh" {
     error_message = "Bootstrap metadata must fit OCI's 32,000-byte limit."
   }
   assert {
-    condition     = oci_core_instance.host["application"].shape_config[0].ocpus == 2 && oci_core_instance.host["application"].shape_config[0].memory_in_gbs == 12
-    error_message = "Application must fit the Always Free A1 allowance."
-  }
-  assert {
-    condition     = oci_core_instance.host["database"].shape == "VM.Standard.E2.1.Micro"
-    error_message = "Database must use an Always Free Micro."
+    condition     = alltrue([for host in oci_core_instance.host : host.shape == "VM.Standard.E2.1.Micro"])
+    error_message = "Both hosts must use Always Free Micro instances."
   }
   assert {
     condition     = alltrue([for host in oci_core_instance.host : tonumber(host.source_details[0].boot_volume_size_in_gbs) == 50 && !host.preserve_boot_volume && !contains(keys(host.metadata), "ssh_authorized_keys")])

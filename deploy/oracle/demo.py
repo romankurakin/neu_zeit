@@ -101,12 +101,10 @@ def check_capacity(instances, volumes, stored_bytes, *, new_installation):
     """Conservative allocations, including stopped instances and detached disks."""
     a1 = [i for i in instances if i["shape"] == "VM.Standard.A1.Flex"]
     micro = [i for i in instances if i["shape"] == "VM.Standard.E2.1.Micro"]
-    extra_cpu, extra_ram, extra_micro, extra_disk = (
-        (2, 12, 1, 100) if new_installation else (0, 0, 0, 0)
-    )
+    extra_micro, extra_disk = (2, 100) if new_installation else (0, 0)
     if (
-        sum(i["ocpus"] for i in a1) + extra_cpu > 2
-        or sum(i["memory"] for i in a1) + extra_ram > 12
+        sum(i["ocpus"] for i in a1) > 2
+        or sum(i["memory"] for i in a1) > 12
         or len(micro) + extra_micro > 2
         or sum(volumes) + extra_disk > 200
     ):
@@ -134,21 +132,14 @@ def validate_initial_plan(plan):
         after = change["change"].get("after") or {}
         kind = change["type"]
         if kind == "oci_core_instance":
-            if after.get("shape") not in (
-                "VM.Standard.A1.Flex",
-                "VM.Standard.E2.1.Micro",
-            ):
-                raise RuntimeError("Plan contains a paid compute shape")
+            if after.get("shape") != "VM.Standard.E2.1.Micro":
+                raise RuntimeError("Plan must use Always Free Micro instances")
             source = after.get("source_details", [{}])[0]
             if (
                 str(source.get("boot_volume_size_in_gbs")) != "50"
                 or str(source.get("boot_volume_vpus_per_gb")) != "10"
             ):
                 raise RuntimeError("Plan exceeds the fixed free disk configuration")
-            if after["shape"] == "VM.Standard.A1.Flex":
-                shape = after["shape_config"][0]
-                if shape.get("ocpus") != 2 or shape.get("memory_in_gbs") != 12:
-                    raise RuntimeError("Plan exceeds the fixed free A1 configuration")
         allowed = {
             "oci_identity_compartment",
             "oci_identity_dynamic_group",
@@ -174,9 +165,9 @@ def validate_initial_plan(plan):
     ]
     if len(instances) != 2 or sorted(
         c["change"]["after"]["shape"] for c in instances
-    ) != ["VM.Standard.A1.Flex", "VM.Standard.E2.1.Micro"]:
+    ) != ["VM.Standard.E2.1.Micro", "VM.Standard.E2.1.Micro"]:
         raise RuntimeError(
-            "Plan must contain exactly one A1 application and one Micro database host"
+            "Plan must contain exactly one application and one database Micro host"
         )
 
 
@@ -370,12 +361,12 @@ class Cloud:
                     availability_domain=candidate.name,
                 )
             }
-            if {"VM.Standard.A1.Flex", "VM.Standard.E2.1.Micro"} <= shapes:
+            if "VM.Standard.E2.1.Micro" in shapes:
                 domain = candidate.name
                 break
         if not domain:
             raise RuntimeError(
-                "No availability domain supports both Always Free shapes; no paid fallback"
+                "No availability domain supports Always Free Micro; no paid fallback"
             )
         variables = {
             "tenancy_ocid": self.tenancy,
@@ -385,31 +376,25 @@ class Cloud:
             "namespace": self.namespace,
             "deployment_id": uuid.uuid4().hex[:12],
         }
-        for role, shape in [
-            ("application", "VM.Standard.A1.Flex"),
-            ("database", "VM.Standard.E2.1.Micro"),
-        ]:
-            images = self.listing(
-                self.compute.list_images,
-                self.parent,
-                operating_system="Oracle Linux",
-                operating_system_version="9",
-                shape=shape,
-                sort_by="TIMECREATED",
-                sort_order="DESC",
-            )
-            images = [
-                i
-                for i in images
-                if i.lifecycle_state == "AVAILABLE"
-                and i.compartment_id is None
-                and i.display_name.startswith("Oracle-Linux-9")
-            ]
-            if not images:
-                raise RuntimeError(
-                    "No Oracle Linux 9 platform image available for " + shape
-                )
-            variables[role + "_image_id"] = images[0].id
+        images = self.listing(
+            self.compute.list_images,
+            self.parent,
+            operating_system="Oracle Linux",
+            operating_system_version="9",
+            shape="VM.Standard.E2.1.Micro",
+            sort_by="TIMECREATED",
+            sort_order="DESC",
+        )
+        images = [
+            i
+            for i in images
+            if i.lifecycle_state == "AVAILABLE"
+            and i.compartment_id is None
+            and i.display_name.startswith("Oracle-Linux-9")
+        ]
+        if not images:
+            raise RuntimeError("No Oracle Linux 9 platform image available for Micro")
+        variables["image_id"] = images[0].id
         versions = self.orm.list_terraform_versions(
             compartment_id=self.parent
         ).data.items

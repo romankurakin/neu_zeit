@@ -31,23 +31,22 @@ def initial_plan():
     return {
         "resource_changes": [
             {
-                "address": "oci_core_instance.host[" + shape + "]",
+                "address": "oci_core_instance.host[" + role + "]",
                 "type": "oci_core_instance",
                 "change": {
                     "actions": ["create"],
                     "after": {
-                        "shape": shape,
+                        "shape": "VM.Standard.E2.1.Micro",
                         "source_details": [
                             {
                                 "boot_volume_size_in_gbs": 50,
                                 "boot_volume_vpus_per_gb": 10,
                             }
                         ],
-                        "shape_config": [{"ocpus": 2, "memory_in_gbs": 12}],
                     },
                 },
             }
-            for shape in ("VM.Standard.A1.Flex", "VM.Standard.E2.1.Micro")
+            for role in ("application", "database")
         ]
     }
 
@@ -60,7 +59,7 @@ class FreeTierTests(unittest.TestCase):
     def test_existing_stopped_allocations_prevent_paid_overflow(self):
         with self.assertRaisesRegex(RuntimeError, "Always Free"):
             demo.check_capacity(
-                [{"shape": "VM.Standard.A1.Flex", "ocpus": 1, "memory": 6}],
+                [{"shape": "VM.Standard.E2.1.Micro", "ocpus": 0.125, "memory": 1}],
                 [],
                 0,
                 new_installation=True,
@@ -74,7 +73,7 @@ class FreeTierTests(unittest.TestCase):
     def test_repeat_deploy_does_not_reserve_another_two_servers(self):
         demo.check_capacity(
             [
-                {"shape": "VM.Standard.A1.Flex", "ocpus": 2, "memory": 12},
+                {"shape": "VM.Standard.E2.1.Micro", "ocpus": 0.125, "memory": 1},
                 {"shape": "VM.Standard.E2.1.Micro", "ocpus": 0.125, "memory": 1},
             ],
             [50, 50],
@@ -105,14 +104,14 @@ class FreeTierTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "outside"):
             demo.validate_initial_plan(plan)
 
-    def test_paid_shape_disk_performance_and_extra_ram_are_rejected(self):
+    def test_other_shapes_and_paid_disk_performance_are_rejected(self):
         for field, value in [
             ("shape", "VM.Standard.E4.Flex"),
+            ("shape", "VM.Standard.A1.Flex"),
             (
                 "source_details",
                 [{"boot_volume_size_in_gbs": 50, "boot_volume_vpus_per_gb": 20}],
             ),
-            ("shape_config", [{"ocpus": 2, "memory_in_gbs": 24}]),
         ]:
             plan = initial_plan()
             plan["resource_changes"][0]["change"]["after"][field] = value

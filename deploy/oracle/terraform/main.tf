@@ -17,8 +17,7 @@ variable "region" { type = string }
 variable "tenancy_ocid" { type = string }
 variable "parent_compartment_id" { type = string }
 variable "availability_domain" { type = string }
-variable "application_image_id" { type = string }
-variable "database_image_id" { type = string }
+variable "image_id" { type = string }
 variable "namespace" { type = string }
 variable "deployment_id" { type = string }
 
@@ -227,18 +226,11 @@ resource "oci_core_instance" "host" {
   compartment_id       = oci_identity_compartment.demo.id
   availability_domain  = var.availability_domain
   display_name         = "${local.name}-${each.key}"
-  shape                = each.key == "application" ? "VM.Standard.A1.Flex" : "VM.Standard.E2.1.Micro"
+  shape                = "VM.Standard.E2.1.Micro"
   preserve_boot_volume = false
-  dynamic "shape_config" {
-    for_each = each.key == "application" ? [1] : []
-    content {
-      ocpus         = 2
-      memory_in_gbs = 12
-    }
-  }
   source_details {
     source_type             = "image"
-    source_id               = each.key == "application" ? var.application_image_id : var.database_image_id
+    source_id               = var.image_id
     boot_volume_size_in_gbs = 50
     boot_volume_vpus_per_gb = 10
   }
