@@ -9,6 +9,10 @@ grubby --update-kernel=ALL --args=crashkernel=0
 if [[ $(< /sys/kernel/kexec_crash_size) != 0 ]]; then
   printf 0 > /sys/kernel/kexec_crash_size
 fi
+# The default timer loads every repository in the background, including OCI's
+# large catalog. Refresh only the repositories used by the installs below.
+systemctl disable --now dnf-makecache.timer
+systemctl stop dnf-makecache.service
 
 # SSH accepts only Bastion sessions; the cloud network permits port 22 from its private endpoint.
 install -d -m 755 /etc/ssh/sshd_config.d
