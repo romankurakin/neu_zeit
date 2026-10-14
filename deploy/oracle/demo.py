@@ -540,7 +540,12 @@ class Cloud:
                             "#!/bin/bash\nset -euo pipefail\n"
                             "for _attempt in {1..360}; do\n"
                             "  if test -x /usr/local/sbin/neu-zeit; then break; fi\n  sleep 5\ndone\n"
-                            "sudo /usr/local/sbin/neu-zeit "
+                            + (
+                                "sudo /usr/local/sbin/neu-zeit init\n"
+                                if role == "application" and arguments[0] == "deploy"
+                                else ""
+                            )
+                            + "sudo /usr/local/sbin/neu-zeit "
                             + " ".join(arguments)
                             + "\n"
                         )
@@ -644,9 +649,9 @@ class Cloud:
             self.initialize_secrets(output)
             self.command(output, "database", ["init"])
             self.update_tags(stack.id, {"database-ready": "true"})
-        self.command(output, "database", ["check"])
+        # Backup already checks the database. Batch application initialization with
+        # deployment because the agent polls for each new command every few minutes.
         self.command(output, "database", ["backup"])
-        self.command(output, "application", ["init"])
         # Retain only one source archive; built rollback images remain on the application server.
         for obj in self.list_objects(output["artifacts"]):
             if obj.name.startswith("releases/"):
