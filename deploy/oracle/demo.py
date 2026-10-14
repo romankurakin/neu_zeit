@@ -538,7 +538,7 @@ class Cloud:
                     source=models.InstanceAgentCommandSourceViaTextDetails(
                         text=(
                             "#!/bin/bash\nset -euo pipefail\n"
-                            "for _attempt in {1..180}; do\n"
+                            "for _attempt in {1..360}; do\n"
                             "  if test -x /usr/local/sbin/neu-zeit; then break; fi\n  sleep 5\ndone\n"
                             "sudo /usr/local/sbin/neu-zeit "
                             + " ".join(arguments)
