@@ -12,6 +12,7 @@ provider "oci" { region = var.region }
 variable "region" { type = string }
 variable "tenancy_ocid" { type = string }
 variable "public_key" { type = string }
+variable "operator_email" { type = string }
 
 # Persistent deployment access; contains no application data or billable resources.
 resource "oci_identity_compartment" "deployments" {
@@ -25,6 +26,7 @@ resource "oci_identity_user" "github" {
   compartment_id = var.tenancy_ocid
   name           = "neu-zeit-github"
   description    = "GitHub Actions deployment identity"
+  email          = var.operator_email
 }
 
 resource "oci_identity_user_capabilities_management" "github" {
@@ -59,6 +61,7 @@ resource "oci_identity_policy" "github" {
   statements = [
     "Allow group id ${oci_identity_group.github.id} to manage all-resources in compartment id ${oci_identity_compartment.deployments.id}",
     "Allow group id ${oci_identity_group.github.id} to manage dynamic-groups in tenancy",
+    "Allow group id ${oci_identity_group.github.id} to inspect tenancies in tenancy",
     "Allow group id ${oci_identity_group.github.id} to inspect compartments in tenancy",
     "Allow group id ${oci_identity_group.github.id} to inspect instance-family in tenancy",
     "Allow group id ${oci_identity_group.github.id} to inspect volume-family in tenancy",
