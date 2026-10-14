@@ -665,7 +665,18 @@ class Cloud:
 
     def close_session(self, session_id):
         try:
-            self.bastion.delete_session(session_id)
+            state = self.bastion.get_session(session_id).data.lifecycle_state
+            if state == "DELETED":
+                return
+            if state != "DELETING":
+                try:
+                    self.bastion.delete_session(session_id)
+                except self.oci.exceptions.ServiceError as error:
+                    # Expiry can start deleting the session between our read and delete.
+                    if error.status != 409 or self.bastion.get_session(
+                        session_id
+                    ).data.lifecycle_state not in {"DELETING", "DELETED"}:
+                        raise
 
             def deleted():
                 try:

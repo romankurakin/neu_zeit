@@ -360,6 +360,33 @@ class JobTests(unittest.TestCase):
         self.assertTrue(self.cloud.pending)
 
 
+class ConsoleCleanupTests(unittest.TestCase):
+    def setUp(self):
+        self.cloud = object.__new__(demo.Cloud)
+        self.cloud.bastion = Mock()
+        self.cloud.oci = NS(exceptions=NS(ServiceError=JobTests.ServiceError))
+
+    def test_expired_session_needs_no_second_delete(self):
+        self.cloud.bastion.get_session.return_value.data.lifecycle_state = "DELETED"
+        self.cloud.close_session("session")
+        self.cloud.bastion.delete_session.assert_not_called()
+
+    def test_expiry_racing_with_delete_is_awaited(self):
+        self.cloud.bastion.get_session.side_effect = [
+            NS(data=NS(lifecycle_state=state))
+            for state in ["ACTIVE", "DELETING", "DELETED"]
+        ]
+        self.cloud.bastion.delete_session.side_effect = JobTests.ServiceError(409)
+        self.cloud.close_session("session")
+        self.cloud.bastion.delete_session.assert_called_once_with("session")
+
+    def test_other_delete_conflicts_are_not_hidden(self):
+        self.cloud.bastion.get_session.return_value.data.lifecycle_state = "ACTIVE"
+        self.cloud.bastion.delete_session.side_effect = JobTests.ServiceError(409)
+        with self.assertRaises(JobTests.ServiceError):
+            self.cloud.close_session("session")
+
+
 class ConsoleTests(unittest.TestCase):
     def setUp(self):
         self.cloud = object.__new__(demo.Cloud)
