@@ -327,9 +327,9 @@ class Cloud:
                     if v.lifecycle_state != "TERMINATED"
                 )
             for bucket in self.listing(
-                self.storage.list_buckets, self.namespace, compartment
+                self.storage.list_buckets, self.namespace, compartment, fields=["tags"]
             ):
-                if owner and bucket.freeform_tags.get(OWNER) == owner:
+                if owner and (bucket.freeform_tags or {}).get(OWNER) == owner:
                     continue
                 stored += sum(o.size for o in self.list_objects(bucket.name))
         # A partially applied stack already consumes some of the allowance.
@@ -538,7 +538,7 @@ class Cloud:
                     source=models.InstanceAgentCommandSourceViaTextDetails(
                         text=(
                             "#!/bin/bash\nset -euo pipefail\n"
-                            "for _attempt in {1..180}; do\n"
+                            "for _attempt in {1..360}; do\n"
                             "  if test -x /usr/local/sbin/neu-zeit; then break; fi\n  sleep 5\ndone\n"
                             "sudo /usr/local/sbin/neu-zeit "
                             + " ".join(arguments)

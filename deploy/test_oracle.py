@@ -148,6 +148,34 @@ class ControllerTests(unittest.TestCase):
         self.cloud.provision(self.stack)
         self.cloud.job.assert_not_called()
 
+    def test_repeat_capacity_check_requests_bucket_tags_and_counts_unowned_data(self):
+        self.cloud.tenancy = "tenancy"
+        self.cloud.identity = Mock()
+        self.cloud.identity.list_availability_domains.return_value.data = []
+        self.cloud.compute = Mock()
+        self.cloud.block = Mock()
+        self.cloud.state = Mock(return_value={"resources": []})
+
+        def listing(method, *args, **kwargs):
+            if method == self.cloud.storage.list_buckets:
+                # OCI omits tags unless explicitly requested, even for owned buckets.
+                tags = (
+                    {demo.OWNER: "owned"} if kwargs.get("fields") == ["tags"] else None
+                )
+                return [
+                    NS(name="owned", freeform_tags=tags),
+                    NS(name="unowned", freeform_tags=None),
+                ]
+            return []
+
+        self.cloud.listing = listing
+        self.cloud.list_objects.side_effect = lambda name: [
+            NS(size=8 * demo.GIB if name == "owned" else 123)
+        ]
+        with patch.object(demo, "check_capacity") as capacity:
+            self.cloud.preflight(self.stack)
+        capacity.assert_called_once_with([], [], 123, new_installation=False)
+
     def test_repeat_release_keeps_database_and_credentials(self):
         self.cloud.initialize_secrets = Mock()
         with patch.object(demo, "report"):
