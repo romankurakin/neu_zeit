@@ -29,7 +29,7 @@ For GitHub Actions, provision `access/main.tf` once through Resource Manager wit
 
 ## Commands
 
-Run these commands from the project directory, either in your local terminal with an OCI profile or in Oracle Cloud Shell with its existing login. Shell, IEx and PostgreSQL access use temporary Bastion SSH sessions in both cases.
+Run the same commands from the project directory in a local terminal (OCI profile) or browser-based Oracle Cloud Shell (existing login).
 
 ```sh
 bash deploy/oracle/demo.sh deploy --revision HEAD
