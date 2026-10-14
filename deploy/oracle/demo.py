@@ -431,10 +431,32 @@ class Cloud:
             details = models.CreateDestroyJobOperationDetails(
                 execution_plan_strategy="AUTO_APPROVED"
             )
-        job = self.orm.create_job(
-            models.CreateJobDetails(stack_id=stack.id, job_operation_details=details)
-        ).data
-        self.pending = True
+        request = models.CreateJobDetails(
+            stack_id=stack.id, job_operation_details=details
+        )
+        token = str(uuid.uuid4())
+        for delay in (60, 180, 300, 600, 600, None):
+            # A lost response may hide an accepted job. Keep the operation lock in that case.
+            self.pending = True
+            try:
+                job = self.orm.create_job(
+                    request,
+                    opc_retry_token=token,
+                    retry_strategy=self.oci.retry.NoneRetryStrategy(),
+                ).data
+                break
+            except self.oci.exceptions.ServiceError as error:
+                if 400 <= error.status < 500 and error.status != 408:
+                    self.pending = False
+                if error.status != 429:
+                    raise
+                if delay is None:
+                    raise RuntimeError(
+                        "Oracle still throttles job creation after 29 minutes; "
+                        "no job was accepted. Retry later."
+                    ) from None
+                report(f"Oracle throttled {operation}; retrying in {delay} seconds")
+                time.sleep(delay)
         report(operation + " job: " + job.id)
 
         def complete():

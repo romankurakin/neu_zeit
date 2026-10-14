@@ -274,6 +274,64 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(events, ["stop", "purge", "destroy", "forget"])
 
 
+class JobTests(unittest.TestCase):
+    class ServiceError(Exception):
+        def __init__(self, status):
+            self.status = status
+
+    def setUp(self):
+        self.cloud = object.__new__(demo.Cloud)
+        self.cloud.pending = False
+        self.cloud.oci = NS(
+            resource_manager=NS(
+                models=NS(CreatePlanJobOperationDetails=NS, CreateJobDetails=NS)
+            ),
+            retry=NS(NoneRetryStrategy=NS),
+            exceptions=NS(ServiceError=self.ServiceError),
+        )
+        self.cloud.orm = Mock()
+        self.cloud.orm.get_job.return_value.data.lifecycle_state = "SUCCEEDED"
+        self.stack = NS(id="stack")
+
+    def test_throttled_submission_reuses_idempotency_token(self):
+        self.cloud.orm.create_job.side_effect = [
+            self.ServiceError(429),
+            self.ServiceError(429),
+            NS(data=NS(id="job")),
+        ]
+        with patch.object(demo.time, "sleep") as sleep, patch.object(demo, "report"):
+            self.assertEqual(self.cloud.job(self.stack, "PLAN"), "job")
+        requests = self.cloud.orm.create_job.call_args_list
+        self.assertEqual(len({c.kwargs["opc_retry_token"] for c in requests}), 1)
+        self.assertEqual([c.args[0] for c in sleep.call_args_list], [60, 180])
+        self.assertFalse(self.cloud.pending)
+
+    def test_persistent_throttling_is_bounded_and_leaves_no_pending_job(self):
+        self.cloud.orm.create_job.side_effect = self.ServiceError(429)
+        with (
+            patch.object(demo.time, "sleep") as sleep,
+            patch.object(demo, "report"),
+            self.assertRaisesRegex(RuntimeError, "no job was accepted"),
+        ):
+            self.cloud.job(self.stack, "PLAN")
+        self.assertEqual(sum(c.args[0] for c in sleep.call_args_list), 29 * 60)
+        self.assertFalse(self.cloud.pending)
+
+    def test_authentication_failure_is_not_retried(self):
+        self.cloud.orm.create_job.side_effect = self.ServiceError(401)
+        with self.assertRaises(self.ServiceError):
+            self.cloud.job(self.stack, "PLAN")
+        self.cloud.orm.create_job.assert_called_once()
+        self.assertFalse(self.cloud.pending)
+
+    def test_lost_submission_response_retains_operation_lock(self):
+        self.cloud.orm.create_job.side_effect = TimeoutError()
+        with self.assertRaises(TimeoutError):
+            self.cloud.job(self.stack, "PLAN")
+        self.cloud.orm.create_job.assert_called_once()
+        self.assertTrue(self.cloud.pending)
+
+
 class ConsoleTests(unittest.TestCase):
     def setUp(self):
         self.cloud = object.__new__(demo.Cloud)
