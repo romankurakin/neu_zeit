@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import io
 import json
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -187,9 +188,7 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(
             operations,
             [
-                ("database", "check"),
                 ("database", "backup"),
-                ("application", "init"),
                 ("application", "deploy"),
             ],
         )
@@ -358,6 +357,64 @@ class JobTests(unittest.TestCase):
             self.cloud.job(self.stack, "PLAN")
         self.cloud.orm.create_job.assert_called_once()
         self.assertTrue(self.cloud.pending)
+
+
+class CommandTests(unittest.TestCase):
+    def test_application_preparation_and_deploy_share_one_fail_fast_command(self):
+        cloud = object.__new__(demo.Cloud)
+        cloud.oci = Mock()
+        cloud.agent = Mock()
+        cloud.agent.get_instance_agent_command_execution.return_value.data = NS(
+            lifecycle_state="SUCCEEDED", content=NS(exit_code=0)
+        )
+        cloud.command(
+            {"compartment_id": "compartment", "application_id": "application"},
+            "application",
+            ["deploy", NEW, "c" * 64],
+        )
+        source = cloud.oci.compute_instance_agent.models.InstanceAgentCommandSourceViaTextDetails
+        script = source.call_args.kwargs["text"]
+        # Run the actual payload with inert host commands: failed preparation
+        # must stop deployment, while success runs both operations in order.
+        for status, operations in [(0, ["init", "deploy"]), (1, ["init"])]:
+            stubs = (
+                "test() { return 0; }; "
+                "sudo() { printf '%s\\n' \"$2\"; "
+                f"if [[ $2 == init ]]; then return {status}; fi; }};\n"
+            )
+            result = subprocess.run(
+                ["bash", "-c", stubs + script], capture_output=True, text=True
+            )
+            self.assertEqual(result.returncode, status)
+            self.assertEqual(result.stdout.splitlines(), operations)
+        cloud.agent.create_instance_agent_command.assert_called_once()
+
+
+class ConsoleCleanupTests(unittest.TestCase):
+    def setUp(self):
+        self.cloud = object.__new__(demo.Cloud)
+        self.cloud.bastion = Mock()
+        self.cloud.oci = NS(exceptions=NS(ServiceError=JobTests.ServiceError))
+
+    def test_expired_session_needs_no_second_delete(self):
+        self.cloud.bastion.get_session.return_value.data.lifecycle_state = "DELETED"
+        self.cloud.close_session("session")
+        self.cloud.bastion.delete_session.assert_not_called()
+
+    def test_expiry_racing_with_delete_is_awaited(self):
+        self.cloud.bastion.get_session.side_effect = [
+            NS(data=NS(lifecycle_state=state))
+            for state in ["ACTIVE", "DELETING", "DELETED"]
+        ]
+        self.cloud.bastion.delete_session.side_effect = JobTests.ServiceError(409)
+        self.cloud.close_session("session")
+        self.cloud.bastion.delete_session.assert_called_once_with("session")
+
+    def test_other_delete_conflicts_are_not_hidden(self):
+        self.cloud.bastion.get_session.return_value.data.lifecycle_state = "ACTIVE"
+        self.cloud.bastion.delete_session.side_effect = JobTests.ServiceError(409)
+        with self.assertRaises(JobTests.ServiceError):
+            self.cloud.close_session("session")
 
 
 class ConsoleTests(unittest.TestCase):
