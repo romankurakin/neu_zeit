@@ -25,7 +25,7 @@ In [Oracle Cloud Shell](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/
 
 The initial operator needs permission to create a child compartment, its compute/network/storage/Bastion resources and IAM policies, and a tenancy dynamic group; manage Resource Manager and Run Command; and read regional allocations for the free-capacity check. Set `OCI_COMPARTMENT_ID` to choose a parent compartment instead of the tenancy root. Servers use instance identities, without your API key or browser credentials.
 
-For GitHub Actions, provision `access/main.tf` once through Resource Manager with `region`, `tenancy_ocid` and an API signing public key. It creates a separate API-only user, a deployment parent compartment and permissions for demo resources, tenancy dynamic groups and allocation inspection. Store its `config` output and private key in repository secrets `OCI_CONFIG` and `OCI_API_KEY`; set `OCI_COMPARTMENT_ID` to its compartment output. The workflow supplies `key_file`. Use **Deploy Oracle demo** or **Undeploy Oracle demo**.
+For GitHub Actions, provision `access/main.tf` once through Resource Manager with `region`, `tenancy_ocid`, `operator_email` and an API signing public key. It creates a separate API-only user, a deployment parent compartment and permissions for demo resources, tenancy dynamic groups and allocation inspection. Store its `config` output and private key in repository secrets `OCI_CONFIG` and `OCI_API_KEY`; set `OCI_COMPARTMENT_ID` to its compartment output. The workflow supplies `key_file`. Use **Deploy Oracle demo** or **Undeploy Oracle demo**.
 
 ## Commands
 
