@@ -3,6 +3,13 @@ set -euo pipefail
 umask 077
 chmod 700 /opt/neu-zeit
 
+# The image can reserve 448 MB for crash dumps, almost half of Micro's RAM.
+systemctl disable --now kdump
+grubby --update-kernel=ALL --args=crashkernel=0
+if [[ $(< /sys/kernel/kexec_crash_size) != 0 ]]; then
+  printf 0 > /sys/kernel/kexec_crash_size
+fi
+
 # SSH accepts only Bastion sessions; the cloud network permits port 22 from its private endpoint.
 install -d -m 755 /etc/ssh/sshd_config.d
 printf '%s\n' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PermitRootLogin no' 'AllowUsers opc' \
@@ -11,12 +18,16 @@ sshd -t
 systemctl enable --now sshd
 systemctl reload sshd
 
-dnf install -y dnf-plugins-core python3.11 python3.11-pip curl
+# Loading every enabled Oracle repository exhausts Micro's memory. These
+# packages need only BaseOS/AppStream; Docker has its own signed repository.
+dnf --disablerepo='*' --enablerepo=ol9_baseos_latest,ol9_appstream \
+  install -y dnf-plugins-core python3.11 python3.11-pip curl
 
 # Oracle Linux 9 uses the EL9 packages. Keep RPM signature verification enabled.
 dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-dnf remove -y podman podman-docker runc
-dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+dnf --disablerepo='*' remove -y podman podman-docker runc
+dnf --disablerepo='*' --enablerepo=ol9_baseos_latest,ol9_appstream,docker-ce-stable \
+  install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 install -d -m 755 /etc/docker
 printf '%s\n' '{"log-driver":"local","log-opts":{"max-size":"10m","max-file":"3"}}' > /etc/docker/daemon.json
 systemctl enable --now docker
