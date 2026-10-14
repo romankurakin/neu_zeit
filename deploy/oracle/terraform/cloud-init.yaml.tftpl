@@ -1,0 +1,30 @@
+#cloud-config
+ssh_pwauth: false
+disable_root: true
+write_files:
+  - path: /opt/neu-zeit/bootstrap.sh
+    permissions: '0700'
+    encoding: b64
+    content: ${bootstrap}
+  - path: /opt/neu-zeit/host.py
+    permissions: '0700'
+    encoding: gz+b64
+    content: ${runtime}
+  - path: /opt/neu-zeit/config.json
+    permissions: '0600'
+    encoding: b64
+    content: ${config}
+  - path: /opt/neu-zeit/compose.application.yaml
+    permissions: '0600'
+    encoding: b64
+    content: ${compose_app}
+  - path: /opt/neu-zeit/compose.database.yaml
+    permissions: '0600'
+    encoding: b64
+    content: ${compose_db}
+  - path: /opt/neu-zeit/compose.proxy.yaml
+    permissions: '0600'
+    encoding: b64
+    content: ${compose_proxy}
+runcmd:
+  - [bash, /opt/neu-zeit/bootstrap.sh]

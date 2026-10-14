@@ -1,0 +1,35 @@
+name: neu_zeit_database
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file: /opt/neu-zeit/database.env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: neu_zeit
+    ports:
+      - "10.42.0.20:5432:5432"
+    volumes:
+      - /opt/neu-zeit/database:/var/lib/postgresql/data:Z
+    command:
+      [
+        postgres,
+        -c,
+        shared_buffers=64MB,
+        -c,
+        max_connections=30,
+        -c,
+        work_mem=2MB,
+        -c,
+        maintenance_work_mem=32MB,
+      ]
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres, -d, neu_zeit]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"

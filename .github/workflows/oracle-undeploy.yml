@@ -1,0 +1,25 @@
+name: Undeploy Oracle demo
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: oracle-demonstration-host
+  cancel-in-progress: false
+jobs:
+  undeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/oracle-auth
+        with:
+          config: ${{ secrets.OCI_CONFIG }}
+          private-key: ${{ secrets.OCI_API_KEY }}
+      - name: Remove the Oracle demo and all its data
+        env:
+          OCI_COMPARTMENT_ID: ${{ vars.OCI_COMPARTMENT_ID }}
+        run: bash deploy/oracle/demo.sh undeploy
+      - name: Remove runner credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/neu-zeit-oci"

@@ -20,8 +20,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Check deployment scripts and workflows
+        run: |
+          python3 -m pip install ruff==0.17.0 shellcheck-py==0.11.0.1
+          ruff check deploy
+          ruff format --check deploy
+          shellcheck deploy/oracle/*.sh
+          go run mvdan.cc/sh/v3/cmd/shfmt@v3.14.1 -d -i 2 -sr deploy/oracle/*.sh
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          npx --yes prettier@3.8.5 --check '.github/**/*.yml' 'deploy/**/*.yaml'
+
       - name: Check deployment data preservation
         run: python3 -m unittest discover -s deploy -p 'test_*.py'
+
+      - name: Validate the Oracle infrastructure without cloud access
+        run: |
+          python3 deploy/oracle/demo.py package
+          mkdir -p tmp/oracle-terraform
+          unzip -q tmp/oracle-stack.zip -d tmp/oracle-terraform
+          cp -R deploy/oracle/terraform/tests tmp/oracle-terraform/tests
+          docker run --rm -v "$PWD/tmp/oracle-terraform:/work" -w /work hashicorp/terraform:1.16.5 init -backend=false
+          docker run --rm -v "$PWD/tmp/oracle-terraform:/work" -w /work hashicorp/terraform:1.16.5 validate
+          docker run --rm -v "$PWD/tmp/oracle-terraform:/work" -w /work hashicorp/terraform:1.16.5 test
+          cp -R deploy/oracle/access tmp/oracle-terraform/access
+          cp tmp/oracle-terraform/.terraform.lock.hcl tmp/oracle-terraform/access/.terraform.lock.hcl
+          docker run --rm -e TF_DATA_DIR=/work/.terraform -v "$PWD/tmp/oracle-terraform:/work" -w /work/access hashicorp/terraform:1.16.5 validate
 
       - uses: docker/setup-buildx-action@v4
 
