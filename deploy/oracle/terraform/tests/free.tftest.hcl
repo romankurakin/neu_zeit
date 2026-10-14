@@ -34,6 +34,10 @@ run "free_resources_and_private_ssh" {
     error_message = "Both hosts must use Always Free Micro instances."
   }
   assert {
+    condition     = alltrue([for host in oci_core_instance.host : yamldecode(base64decode(host.metadata.user_data)).swap == { filename = "/swapfile", size = "2G", maxsize = "2G" }])
+    error_message = "Micro hosts need 2 GB of swap before the vendor package initialization stage."
+  }
+  assert {
     condition     = alltrue([for host in oci_core_instance.host : tonumber(host.source_details[0].boot_volume_size_in_gbs) == 50 && !host.preserve_boot_volume && !contains(keys(host.metadata), "ssh_authorized_keys")])
     error_message = "Disks must stay at 50 GB, be removed on undeploy, and have no SSH keys."
   }

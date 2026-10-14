@@ -3,15 +3,6 @@ set -euo pipefail
 umask 077
 chmod 700 /opt/neu-zeit
 
-# Micro has 1 GB of RAM. Swap uses the existing boot disk, with no extra cloud volume.
-if [[ -z "$(swapon --noheadings --show=NAME)" ]]; then
-  fallocate -l 2G /swapfile
-  chmod 600 /swapfile
-  mkswap /swapfile
-  swapon /swapfile
-  printf '%s\n' '/swapfile none swap defaults 0 0' >> /etc/fstab
-fi
-
 # SSH accepts only Bastion sessions; the cloud network permits port 22 from its private endpoint.
 install -d -m 755 /etc/ssh/sshd_config.d
 printf '%s\n' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PermitRootLogin no' 'AllowUsers opc' \
