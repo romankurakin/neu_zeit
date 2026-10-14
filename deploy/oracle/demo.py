@@ -756,7 +756,7 @@ class Cloud:
                     session = self.bastion.create_session(
                         models.CreateSessionDetails(
                             bastion_id=bastion_id,
-                            display_name="NeuZeit " + role,
+                            display_name="neu-zeit-" + role,
                             key_type="PUB",
                             key_details=models.PublicKeyDetails(
                                 public_key_content=key.with_suffix(".pub").read_text()

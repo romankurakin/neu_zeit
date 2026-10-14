@@ -1,7 +1,7 @@
 #cloud-config
 ssh_pwauth: false
 disable_root: true
-# Micro needs swap before Oracle's vendor initialization installs packages.
+# Micro needs swap before package installation starts.
 swap:
   filename: /swapfile
   size: 2G

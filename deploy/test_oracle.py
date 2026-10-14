@@ -380,6 +380,7 @@ class ConsoleTests(unittest.TestCase):
         with patch.object(demo, "report"):
             self.cloud.console(NS(id="stack"), "application", "iex", "8.8.8.8")
         request = self.cloud.bastion.create_session.call_args.args[0]
+        self.assertRegex(request.display_name, r"^[a-zA-Z0-9._+@-]+$")
         self.assertEqual(request.key_details.public_key_content, "ssh-rsa public")
         self.assertEqual(request.session_ttl_in_seconds, 1800)
         self.assertEqual(
