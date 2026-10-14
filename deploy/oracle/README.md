@@ -29,7 +29,7 @@ For GitHub Actions, provision `access/main.tf` once through Resource Manager wit
 
 ## Commands
 
-Run the same commands from the project directory in a local terminal (OCI profile) or browser-based Oracle Cloud Shell (existing login).
+Run the same commands from the project directory in a local terminal (OCI profile) or browser-based Oracle Cloud Shell (existing login). For a GitHub-managed demo, export the repository's `OCI_COMPARTMENT_ID` value first.
 
 ```sh
 bash deploy/oracle/demo.sh deploy --revision HEAD

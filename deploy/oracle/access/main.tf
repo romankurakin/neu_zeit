@@ -59,6 +59,7 @@ resource "oci_identity_policy" "github" {
   statements = [
     "Allow group id ${oci_identity_group.github.id} to manage all-resources in compartment id ${oci_identity_compartment.deployments.id}",
     "Allow group id ${oci_identity_group.github.id} to manage dynamic-groups in tenancy",
+    "Allow group id ${oci_identity_group.github.id} to inspect tenancies in tenancy",
     "Allow group id ${oci_identity_group.github.id} to inspect compartments in tenancy",
     "Allow group id ${oci_identity_group.github.id} to inspect instance-family in tenancy",
     "Allow group id ${oci_identity_group.github.id} to inspect volume-family in tenancy",
