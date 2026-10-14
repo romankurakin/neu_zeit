@@ -1,6 +1,11 @@
 #cloud-config
 ssh_pwauth: false
 disable_root: true
+# Micro needs swap before Oracle's vendor initialization installs packages.
+swap:
+  filename: /swapfile
+  size: 2G
+  maxsize: 2G
 write_files:
   - path: /opt/neu-zeit/bootstrap.sh
     permissions: '0700'
