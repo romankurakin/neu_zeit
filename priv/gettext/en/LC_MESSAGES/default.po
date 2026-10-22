@@ -3844,3 +3844,67 @@ msgid "and %{count} more"
 msgid_plural "and %{count} more"
 msgstr[0] "and %{count} more"
 msgstr[1] "and %{count} more"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:453
+#, elixir-autogen, elixir-format
+msgid "Apply"
+msgstr "Apply"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:449
+#, elixir-autogen, elixir-format
+msgid "Groups affected: %{groups}"
+msgstr "Groups affected: %{groups}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:435
+#, elixir-autogen, elixir-format
+msgid "Move %{session} to %{day} %{time}, %{room}"
+msgstr "Move %{session} to %{day} %{time}, %{room}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:424
+#, elixir-autogen, elixir-format
+msgid "Moving up to two unlocked sessions does not free this start."
+msgstr "Moving up to two unlocked sessions does not free this start."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:425
+#, elixir-autogen, elixir-format
+msgid "No option found yet."
+msgstr "No option found yet."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:469
+#, elixir-autogen, elixir-format
+msgid "Search for %{seconds} s"
+msgstr "Search for %{seconds} s"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:466
+#, elixir-autogen, elixir-format
+msgid "Search stopped after %{seconds} s."
+msgstr "Search stopped after %{seconds} s."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:420
+#, elixir-autogen, elixir-format
+msgid "Searching for up to two moves."
+msgstr "Searching for up to two moves."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:492
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: %{count} point better"
+msgid_plural "Soft constraints: %{count} points better"
+msgstr[0] "Soft constraints: %{count} point better"
+msgstr[1] "Soft constraints: %{count} points better"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:484
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: %{count} point worse"
+msgid_plural "Soft constraints: %{count} points worse"
+msgstr[0] "Soft constraints: %{count} point worse"
+msgstr[1] "Soft constraints: %{count} points worse"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:480
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: no change"
+msgstr "Soft constraints: no change"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:417
+#, elixir-autogen, elixir-format
+msgid "Suggested moves"
+msgstr "Suggested moves"

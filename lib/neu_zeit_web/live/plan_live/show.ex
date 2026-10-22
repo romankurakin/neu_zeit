@@ -8,13 +8,17 @@ defmodule NeuZeitWeb.PlanLive.Show do
   use NeuZeitWeb, :live_view
 
   alias NeuZeit.{Catalog, Curriculum, Planning}
-  alias NeuZeit.Planning.{Feasibility, Quality, Readiness}
+  alias NeuZeit.Planning.{Feasibility, Quality, Readiness, Repairs}
   alias NeuZeit.Solver.PlanRuns
   alias NeuZeitWeb.Nav
   alias NeuZeitWeb.PlanLive.{BoardEditor, Publication, Reports, RunStatus, Workspace}
 
   import NeuZeitWeb.PlanLive.Workspace,
     only: [workspace_path: 1, workspace_path: 2, parse_week: 2, busiest_week: 2]
+
+  # Repair search limits in milliseconds: the first search, then each longer one.
+  @repair_timeouts [5_000, 20_000, 60_000]
+  @placement_conflicts ["room_conflict", "teacher_conflict", "cohort_conflict"]
 
   @impl true
   def mount(%{"term_id" => term_id, "id" => id}, _session, socket) do
@@ -41,6 +45,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
      |> assign(:selected_session, nil)
      |> assign(:target, nil)
      |> assign(:assessment, [])
+     |> assign(:repairs, nil)
      |> assign(:explanation, nil)
      |> assign(:tab, "board")
      |> assign(:report_cache, %{})
@@ -143,14 +148,8 @@ defmodule NeuZeitWeb.PlanLive.Show do
       nil ->
         {:noreply, socket}
 
-      session ->
-        target = {String.to_integer(day), String.to_integer(slot)}
-        {d, t} = target
-
-        {:noreply,
-         socket
-         |> assign(:target, target)
-         |> assign(:assessment, Feasibility.assess(session, socket.assigns.plan_id, d, t))}
+      _session ->
+        {:noreply, inspect_target(socket, {String.to_integer(day), String.to_integer(slot)})}
     end
   end
 
@@ -164,6 +163,23 @@ defmodule NeuZeitWeb.PlanLive.Show do
     case socket.assigns.target do
       {day, slot} -> place(socket, socket.assigns.selected_session_id, day, slot, room_id)
       _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("apply_repair", %{"index" => index}, socket) do
+    with %{result: %{repairs: repairs}} <- socket.assigns.repairs,
+         {index, ""} <- Integer.parse(index),
+         %{} = repair <- Enum.at(repairs, index) do
+      apply_repair(socket, repair)
+    else
+      _stale -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("widen_repairs", _params, socket) do
+    case socket.assigns.repairs do
+      %{next: timeout} when is_integer(timeout) -> {:noreply, search_repairs(socket, timeout)}
+      _none -> {:noreply, socket}
     end
   end
 
@@ -379,6 +395,20 @@ defmodule NeuZeitWeb.PlanLive.Show do
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
+  @impl true
+  def handle_async(:repairs, {:ok, {target, result}}, socket) do
+    case socket.assigns.repairs do
+      %{target: ^target} = repairs ->
+        {:noreply, assign(socket, :repairs, %{repairs | result: result})}
+
+      _stale ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_async(:repairs, {:exit, _reason}, socket),
+    do: {:noreply, assign(socket, :repairs, nil)}
+
   defp flash_result(socket, {:ok, _result}),
     do:
       put_flash(
@@ -440,21 +470,44 @@ defmodule NeuZeitWeb.PlanLive.Show do
          |> push_patch(to: workspace_path(socket.assigns, %{"session" => session_id}))}
 
       {:error, reason} ->
-        socket = socket |> load_board() |> select_session(session_id)
+        refuse(socket, session_id, {day, slot}, reason)
+    end
+  end
 
-        socket =
-          if socket.assigns.selected_session do
-            socket
-            |> assign(:target, {day, slot})
-            |> assign(
-              :assessment,
-              Feasibility.assess(socket.assigns.selected_session, plan_id, day, slot)
-            )
-          else
-            socket
-          end
+  # Shows the error and why the start is blocked on the current board.
+  defp refuse(socket, session_id, target, reason) do
+    socket = socket |> load_board() |> select_session(session_id)
 
-        {:noreply, Errors.put(socket, reason)}
+    socket =
+      if socket.assigns.selected_session,
+        do: inspect_target(socket, target),
+        else: socket
+
+    {:noreply, Errors.put(socket, reason)}
+  end
+
+  # Every change is written in one transaction and undone as one edit.
+  defp apply_repair(socket, repair) do
+    session_id = socket.assigns.selected_session_id
+
+    entries =
+      Enum.map(repair.changes, fn change ->
+        socket.assigns.board.placements
+        |> Enum.find(&(&1.session_id == change.session_id))
+        |> undo_entry(change)
+      end)
+
+    case Planning.change_placements(socket.assigns.plan_id, repair.changes) do
+      {:ok, _ids} ->
+        {:noreply,
+         socket
+         |> push_undo({:batch, entries})
+         |> load_board()
+         |> select_session(session_id)
+         |> push_patch(to: workspace_path(socket.assigns, %{"session" => session_id}))}
+
+      {:error, reason} ->
+        refuse(socket, session_id, socket.assigns.target, reason)
     end
   end
 
@@ -496,6 +549,11 @@ defmodule NeuZeitWeb.PlanLive.Show do
   defp undo(%{assigns: %{undo: [entry | rest]}} = socket) do
     result =
       case entry do
+        {:batch, entries} ->
+          socket.assigns.plan_id
+          |> Planning.change_placements(Enum.map(entries, &undo_change/1))
+          |> after_undo(socket)
+
         {:remove, session_id} ->
           case Enum.find(socket.assigns.board.placements, &(&1.session_id == session_id)) do
             nil -> {:ok, socket}
@@ -531,6 +589,18 @@ defmodule NeuZeitWeb.PlanLive.Show do
       {:error, next} -> next
     end
   end
+
+  defp undo_change({:remove, session_id}), do: %{session_id: session_id, remove: true}
+
+  defp undo_change({:restore, session_id, room_id, day, slot, locked, weeks}),
+    do: %{
+      session_id: session_id,
+      room_id: room_id,
+      day: day,
+      slot: slot,
+      locked: locked,
+      week_mask: weeks
+    }
 
   defp after_undo({:ok, _record}, socket) do
     socket = socket |> load_board() |> select_session(socket.assigns.selected_session_id)
@@ -588,6 +658,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
       |> assign(:selected_session, session)
       |> assign(:target, nil)
       |> assign(:assessment, [])
+      |> stop_repairs()
       |> assign_selection_details(session, placement)
     else
       clear_selection(socket)
@@ -605,9 +676,51 @@ defmodule NeuZeitWeb.PlanLive.Show do
     |> assign(:selected_session, nil)
     |> assign(:target, nil)
     |> assign(:assessment, [])
+    |> stop_repairs()
     |> assign(:explanation, nil)
     |> assign(:legal, %{})
   end
+
+  # Shows each room at a start. When only other placements block every room,
+  # searches for repairs that move them.
+  defp inspect_target(socket, {day, slot} = target) do
+    %{selected_session: session, plan_id: plan_id} = socket.assigns
+
+    socket =
+      socket
+      |> assign(:target, target)
+      |> assign(:assessment, Feasibility.assess(session, plan_id, day, slot))
+
+    if repairable?(socket.assigns),
+      do: search_repairs(socket, hd(@repair_timeouts)),
+      else: stop_repairs(socket)
+  end
+
+  defp repairable?(assigns) do
+    assigns.plan.status == "draft" and
+      not match?(%{locked: true}, assigns.selected_placement) and
+      assigns.assessment != [] and
+      Enum.all?(assigns.assessment, &(&1.errors != [])) and
+      Enum.any?(assigns.assessment, fn choice ->
+        Enum.all?(choice.errors, &(&1.type in @placement_conflicts))
+      end)
+  end
+
+  # The search runs outside the LiveView process, so the board stays responsive.
+  defp search_repairs(socket, timeout) do
+    %{selected_session: session, plan_id: plan_id, target: {day, slot} = target} =
+      socket.assigns
+
+    next = @repair_timeouts |> Enum.drop_while(&(&1 <= timeout)) |> List.first()
+
+    socket
+    |> assign(:repairs, %{target: target, timeout: timeout, next: next, result: nil})
+    |> start_async(:repairs, fn ->
+      {target, Repairs.suggest(session, plan_id, day, slot, timeout: timeout)}
+    end)
+  end
+
+  defp stop_repairs(socket), do: socket |> cancel_async(:repairs) |> assign(:repairs, nil)
 
   # Select the first allowed room. If none exists, let the context explain the refusal.
   defp first_free_room(_socket, nil, _day, _slot), do: nil
@@ -767,6 +880,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
         legal={@legal}
         target={@target}
         assessment={@assessment}
+        repairs={@repairs}
         explanation={@explanation}
         cohorts={@cohorts}
         teachers={@teachers}

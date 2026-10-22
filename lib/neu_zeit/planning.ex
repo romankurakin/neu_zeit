@@ -106,6 +106,7 @@ defmodule NeuZeit.Planning do
   defdelegate create_placement(attrs), to: NeuZeit.Planning.Placements
   defdelegate update_placement(placement, attrs), to: NeuZeit.Planning.Placements
   defdelegate delete_placement(placement), to: NeuZeit.Planning.Placements
+  defdelegate change_placements(plan_id, changes), to: NeuZeit.Planning.Placements
   defdelegate solve_plan(plan_id), to: NeuZeit.Solver.PlanRuns, as: :solve
   defdelegate describe_conflict(term_id, conflict), to: NeuZeit.Solver.Conflict, as: :describe
   defdelegate project_active_term(term_id), to: NeuZeit.Planning.Calendar

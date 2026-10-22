@@ -3844,3 +3844,67 @@ msgid "and %{count} more"
 msgid_plural "and %{count} more"
 msgstr[0] ""
 msgstr[1] ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:453
+#, elixir-autogen, elixir-format
+msgid "Apply"
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:449
+#, elixir-autogen, elixir-format
+msgid "Groups affected: %{groups}"
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:435
+#, elixir-autogen, elixir-format
+msgid "Move %{session} to %{day} %{time}, %{room}"
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:424
+#, elixir-autogen, elixir-format
+msgid "Moving up to two unlocked sessions does not free this start."
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:425
+#, elixir-autogen, elixir-format
+msgid "No option found yet."
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:469
+#, elixir-autogen, elixir-format
+msgid "Search for %{seconds} s"
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:466
+#, elixir-autogen, elixir-format
+msgid "Search stopped after %{seconds} s."
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:420
+#, elixir-autogen, elixir-format
+msgid "Searching for up to two moves."
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:492
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: %{count} point better"
+msgid_plural "Soft constraints: %{count} points better"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:484
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: %{count} point worse"
+msgid_plural "Soft constraints: %{count} points worse"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:480
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: no change"
+msgstr ""
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:417
+#, elixir-autogen, elixir-format
+msgid "Suggested moves"
+msgstr ""

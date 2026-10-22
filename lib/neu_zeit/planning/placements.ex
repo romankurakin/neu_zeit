@@ -91,6 +91,99 @@ defmodule NeuZeit.Planning.Placements do
     end)
   end
 
+  @doc """
+  Applies several placement changes as one edit.
+
+  A change sets `day`, `slot`, `room_id` and optionally `week_mask` for a
+  session, creating its placement when it has none, or removes the placement
+  with `remove: true`. Rules are checked once on the result, so sessions can
+  exchange positions.
+  """
+  def change_placements(plan_id, changes) do
+    WriteSupport.transaction_result(fn ->
+      with {:ok, term} <- WriteSupport.lock_plan_term(plan_id),
+           {:ok, _plan} <- WriteSupport.lock_draft_plan(plan_id) do
+        # Rows may pass through each other's rooms until the last change is written.
+        Repo.query!("SET CONSTRAINTS placements_no_overlapping_week_room DEFERRED")
+
+        current =
+          Repo.all(from p in Placement, where: p.plan_id == ^plan_id, lock: "FOR UPDATE")
+          |> Map.new(&{&1.session_id, &1})
+
+        with {:ok, ids} <- write_changes(plan_id, current, changes),
+             :ok <- validate_changed(term, plan_id, ids) do
+          {:ok, ids}
+        end
+      end
+    end)
+  end
+
+  defp write_changes(plan_id, current, changes) do
+    Enum.reduce_while(changes, {:ok, []}, fn change, {:ok, ids} ->
+      case write_change(plan_id, Map.get(current, change.session_id), change) do
+        {:ok, nil} -> {:cont, {:ok, ids}}
+        {:ok, placement} -> {:cont, {:ok, [placement.id | ids]}}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp write_change(_plan_id, nil, %{remove: true}), do: {:ok, nil}
+
+  defp write_change(_plan_id, placement, %{remove: true}) do
+    with :ok <- ensure_unlocked_update(placement, %{"delete" => true}),
+         {:ok, _placement} <- Repo.delete(placement) do
+      {:ok, nil}
+    end
+  end
+
+  defp write_change(plan_id, nil, change) do
+    attrs = change |> WriteSupport.stringify_keys() |> Map.put("plan_id", plan_id)
+
+    with {:ok, attrs} <- hydrate_placement_attrs(attrs, lock_plan: false) do
+      %Placement{} |> Placement.changeset(attrs) |> Repo.insert()
+    end
+  end
+
+  defp write_change(_plan_id, placement, change) do
+    attrs = placement |> placement_attrs() |> Map.merge(WriteSupport.stringify_keys(change))
+
+    with {:ok, attrs} <- hydrate_placement_attrs(attrs, lock_plan: false),
+         :ok <- ensure_unlocked_update(placement, attrs) do
+      placement |> Placement.changeset(attrs) |> Repo.update()
+    end
+  end
+
+  # The same rules as a single edit, on the plan after every change.
+  defp validate_changed(term, plan_id, ids) do
+    placements =
+      Repo.all(
+        from p in Placement,
+          where: p.plan_id == ^plan_id,
+          preload: [
+            :room,
+            session: [
+              :cohorts,
+              teacher: [:availability_cells],
+              slot_profile: [:cells],
+              course_component: [:allowed_rooms]
+            ]
+          ]
+      )
+
+    changed = Enum.filter(placements, &(&1.id in ids))
+
+    case Hard.validate_placements(placements, NeuZeit.Config.grid!(term)) do
+      :ok ->
+        with :ok <- NeuZeit.Constraints.AutomaticWeeks.validate(term, changed) do
+          NeuZeit.Planning.SharedResources.validate(term, changed)
+        end
+
+      {:error, errors} ->
+        {:error, %{errors: errors}}
+    end
+  end
+
   defp hydrate_placement_attrs(attrs, opts) do
     with {:ok, plan_id} <-
            WriteSupport.require_id(WriteSupport.attr(attrs, :plan_id), %Placement{}, :plan_id),

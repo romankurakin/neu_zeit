@@ -20,6 +20,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
   attr :legal, :map, required: true
   attr :target, :any, required: true
   attr :assessment, :list, required: true
+  attr :repairs, :map, default: nil
   attr :explanation, :map, required: true
   attr :cohorts, :list, required: true
   attr :teachers, :list, required: true
@@ -164,6 +165,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
           target={@target}
           legal={@legal}
           assessment={@assessment}
+          repairs={@repairs}
           allowed_weeks={@allowed_weeks}
         />
       </div>
@@ -181,6 +183,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
   attr :target, :any, required: true
   attr :legal, :map, required: true
   attr :assessment, :list, required: true
+  attr :repairs, :map, default: nil
 
   attr :allowed_weeks, :list, default: []
 
@@ -374,6 +377,7 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
                     {gettext("Place here")}
                   </button>
                 </div>
+                <.repair_suggestions :if={@repairs} repairs={@repairs} grid={@grid} />
               </div>
             </div>
           </div>
@@ -397,4 +401,85 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
     </div>
     """
   end
+
+  attr :repairs, :map, required: true
+  attr :grid, :map, required: true
+
+  defp repair_suggestions(assigns) do
+    assigns = assign(assigns, :result, assigns.repairs.result)
+
+    ~H"""
+    <section id="position-repairs" class="flex flex-col gap-2">
+      <h4 class="font-semibold">{gettext("Suggested moves")}</h4>
+      <p :if={!@result} role="status" class="flex items-center gap-2 type-detail">
+        <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+        {gettext("Searching for up to two moves.")}
+      </p>
+      <p :if={@result && @result.repairs == []} class="type-detail">
+        {if @result.complete,
+          do: gettext("Moving up to two unlocked sessions does not free this start."),
+          else: gettext("No option found yet.")}
+      </p>
+      <div
+        :for={{repair, index} <- Enum.with_index((@result && @result.repairs) || [])}
+        id={"repair-#{index}"}
+        class="flex flex-col gap-1 border border-base-300 rounded-box p-2 type-detail"
+      >
+        <p class="font-semibold">{room_label(repair.room)}</p>
+        <ul class="flex flex-col gap-1">
+          <li :for={move <- repair.moves}>
+            {gettext("Move %{session} to %{day} %{time}, %{room}",
+              session: session_label(move.session),
+              day: day_label(Enum.at(@grid.days, move.day - 1)),
+              time:
+                NeuZeitWeb.Scheduling.SessionCard.time_range(
+                  @grid,
+                  move.slot,
+                  move.session.duration_slots
+                ),
+              room: room_label(move.room)
+            )}
+          </li>
+        </ul>
+        <p :if={repair.groups != []}>
+          {gettext("Groups affected: %{groups}", groups: Enum.join(repair.groups, ", "))}
+        </p>
+        <p class="tabular-nums">{penalty_label(repair.penalty)}</p>
+        <button class="btn self-start" phx-click="apply_repair" phx-value-index={index}>
+          {gettext("Apply")}
+        </button>
+      </div>
+      <div :if={@result && !@result.complete} class="flex flex-col gap-2 type-detail">
+        <p class="tabular-nums">
+          {gettext("Search stopped after %{seconds} s.", seconds: div(@repairs.timeout, 1000))}
+        </p>
+        <button :if={@repairs.next} class="btn self-start" phx-click="widen_repairs">
+          {gettext("Search for %{seconds} s", seconds: div(@repairs.next, 1000))}
+        </button>
+      </div>
+    </section>
+    """
+  end
+
+  defp session_label(session),
+    do: "#{course_title(session.course_component.course)}, #{session.teacher.name}"
+
+  # The weighted sum of soft constraints that the solver minimizes.
+  defp penalty_label(0), do: gettext("Soft constraints: no change")
+
+  defp penalty_label(change) when change > 0,
+    do:
+      ngettext(
+        "Soft constraints: %{count} point worse",
+        "Soft constraints: %{count} points worse",
+        change
+      )
+
+  defp penalty_label(change),
+    do:
+      ngettext(
+        "Soft constraints: %{count} point better",
+        "Soft constraints: %{count} points better",
+        -change
+      )
 end

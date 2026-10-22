@@ -3881,3 +3881,69 @@ msgid_plural "and %{count} more"
 msgstr[0] "и ещё %{count}"
 msgstr[1] "и ещё %{count}"
 msgstr[2] "и ещё %{count}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:453
+#, elixir-autogen, elixir-format
+msgid "Apply"
+msgstr "Применить"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:449
+#, elixir-autogen, elixir-format
+msgid "Groups affected: %{groups}"
+msgstr "Затронутые группы: %{groups}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:435
+#, elixir-autogen, elixir-format
+msgid "Move %{session} to %{day} %{time}, %{room}"
+msgstr "Перенести %{session} на %{day} %{time}, %{room}"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:424
+#, elixir-autogen, elixir-format
+msgid "Moving up to two unlocked sessions does not free this start."
+msgstr "Перенос до двух незакреплённых занятий не освобождает это начало."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:425
+#, elixir-autogen, elixir-format
+msgid "No option found yet."
+msgstr "Вариант пока не найден."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:469
+#, elixir-autogen, elixir-format
+msgid "Search for %{seconds} s"
+msgstr "Искать %{seconds} с"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:466
+#, elixir-autogen, elixir-format
+msgid "Search stopped after %{seconds} s."
+msgstr "Поиск остановлен через %{seconds} с."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:420
+#, elixir-autogen, elixir-format
+msgid "Searching for up to two moves."
+msgstr "Поиск вариантов с переносом до двух занятий."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:492
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: %{count} point better"
+msgid_plural "Soft constraints: %{count} points better"
+msgstr[0] "Мягкие ограничения: на %{count} балл лучше"
+msgstr[1] "Мягкие ограничения: на %{count} балла лучше"
+msgstr[2] "Мягкие ограничения: на %{count} баллов лучше"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:484
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: %{count} point worse"
+msgid_plural "Soft constraints: %{count} points worse"
+msgstr[0] "Мягкие ограничения: на %{count} балл хуже"
+msgstr[1] "Мягкие ограничения: на %{count} балла хуже"
+msgstr[2] "Мягкие ограничения: на %{count} баллов хуже"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:480
+#, elixir-autogen, elixir-format
+msgid "Soft constraints: no change"
+msgstr "Мягкие ограничения: без изменений"
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:417
+#, elixir-autogen, elixir-format
+msgid "Suggested moves"
+msgstr "Предлагаемые переносы"
