@@ -62,6 +62,7 @@ defmodule NeuZeitWeb.Router do
       live "/terms/:term_id/sessions/:id/edit", SessionLive.Index, :edit
 
       live "/terms/:term_id/plans", PlanLive.Index, :index
+      live "/terms/:term_id/plans/compare", PlanLive.Compare, :index
       live "/terms/:term_id/plans/:id/rename", PlanLive.Index, :rename
       live "/terms/:term_id/plans/:id", PlanLive.Show, :show
 

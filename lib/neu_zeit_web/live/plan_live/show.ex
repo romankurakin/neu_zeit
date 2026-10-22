@@ -11,7 +11,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
   alias NeuZeit.Planning.{Feasibility, Quality, Readiness, Repairs}
   alias NeuZeit.Solver.PlanRuns
   alias NeuZeitWeb.Nav
-  alias NeuZeitWeb.PlanLive.{BoardEditor, Publication, Reports, RunStatus, Workspace}
+  alias NeuZeitWeb.PlanLive.{BoardEditor, Compare, Publication, Reports, RunStatus, Workspace}
 
   import NeuZeitWeb.PlanLive.Workspace,
     only: [workspace_path: 1, workspace_path: 2, parse_week: 2, busiest_week: 2]
@@ -54,6 +54,7 @@ defmodule NeuZeitWeb.PlanLive.Show do
      |> assign(:legal, %{})
      |> assign(:undo, [])
      |> assign(:plan_id, id)
+     |> assign(:active_plan, Enum.find(Planning.list_plans(term.id), &(&1.status == "active")))
      |> assign(:solving_since, PlanRuns.started_at(id))
      |> assign(:last_result, PlanRuns.last_result(id))
      |> assign(:tick, 0)
@@ -789,6 +790,13 @@ defmodule NeuZeitWeb.PlanLive.Show do
             navigate={~p"/terms/#{@term}?plan_id=#{@plan.id}"}
             class="btn"
           >{gettext("Overview")}</.link>
+          <.link
+            :if={@plan.status == "draft" && @active_plan}
+            id="compare-active"
+            navigate={Compare.path(@term, @active_plan, @plan)}
+            class="btn"
+            title={gettext("Compare with active plan")}
+          >{gettext("Compare")}</.link>
           <button
             :if={@plan.status == "draft"}
             class="btn btn-neutral"

@@ -9,6 +9,7 @@ defmodule NeuZeitWeb.PlanLive.Index do
 
   alias NeuZeit.{Catalog, Planning}
   alias NeuZeitWeb.Nav
+  alias NeuZeitWeb.PlanLive.Compare
 
   @impl true
   def mount(%{"term_id" => term_id}, _session, socket) do
@@ -22,6 +23,7 @@ defmodule NeuZeitWeb.PlanLive.Index do
      |> assign(:deleting, nil)
      |> assign(:editing, nil)
      |> assign(:form, nil)
+     |> assign(:comparing, [])
      |> load()}
   end
 
@@ -66,6 +68,27 @@ defmodule NeuZeitWeb.PlanLive.Index do
     end
   end
 
+  # A comparison takes two plans, so a third choice replaces the earliest one.
+  def handle_event("toggle_compare", %{"id" => id}, socket) do
+    comparing =
+      if id in socket.assigns.comparing,
+        do: List.delete(socket.assigns.comparing, id),
+        else: Enum.take([id | socket.assigns.comparing], 2)
+
+    {:noreply, assign(socket, :comparing, comparing)}
+  end
+
+  def handle_event("compare", _params, socket) do
+    case Enum.filter(socket.assigns.plans, &(&1.id in socket.assigns.comparing)) do
+      [_, _] = plans ->
+        [before, after_] = Compare.ordered(plans)
+        {:noreply, push_navigate(socket, to: Compare.path(socket.assigns.term, before, after_))}
+
+      _plans ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("validate", %{"plan" => params}, socket) do
     changeset = Planning.change_plan(socket.assigns.editing, params)
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
@@ -105,7 +128,14 @@ defmodule NeuZeitWeb.PlanLive.Index do
     end
   end
 
-  defp load(socket), do: assign(socket, :plans, Planning.list_plans(socket.assigns.term.id))
+  defp load(socket) do
+    plans = Planning.list_plans(socket.assigns.term.id)
+    ids = Enum.map(plans, & &1.id)
+
+    socket
+    |> assign(:plans, plans)
+    |> update(:comparing, fn comparing -> Enum.filter(comparing, &(&1 in ids)) end)
+  end
 
   @impl true
   def render(assigns) do
@@ -119,6 +149,16 @@ defmodule NeuZeitWeb.PlanLive.Index do
     >
       <.page_header title={gettext("Plans")}>
         <:actions>
+          <button
+            :if={length(@plans) > 1}
+            id="compare-button"
+            class="btn"
+            phx-click="compare"
+            disabled={length(@comparing) != 2}
+            title={length(@comparing) != 2 && gettext("Select two plans to compare.")}
+          >
+            {gettext("Compare")}
+          </button>
           <button class="btn btn-primary" phx-click="create">
             <.icon name="hero-plus" class="size-4" /> {gettext("New draft")}
           </button>
@@ -151,10 +191,23 @@ defmodule NeuZeitWeb.PlanLive.Index do
       />
 
       <.table :if={@plans != []} id="plans" rows={@plans} row_id={&"plan-#{&1.id}"}>
+        <%!-- The row actions already fill a laptop screen, so the choice for comparison shares the name cell. --%>
         <:col :let={plan} label={gettext("Plan")}>
-          <.link navigate={~p"/terms/#{@term}/plans/#{plan}"} class="link link-hover font-semibold">
-            {plan.name}
-          </.link>
+          <div class="flex items-start gap-3">
+            <input
+              :if={length(@plans) > 1}
+              type="checkbox"
+              id={"compare-#{plan.id}"}
+              class="checkbox checkbox-sm mt-0.5"
+              checked={plan.id in @comparing}
+              phx-click="toggle_compare"
+              phx-value-id={plan.id}
+              aria-label={gettext("Compare %{name}", name: plan.name)}
+            />
+            <.link navigate={~p"/terms/#{@term}/plans/#{plan}"} class="link link-hover font-semibold">
+              {plan.name}
+            </.link>
+          </div>
         </:col>
         <:col :let={plan} label={gettext("Status")}><.status_indicator status={plan.status} /></:col>
         <:col :let={plan} label={gettext("Published")}>
