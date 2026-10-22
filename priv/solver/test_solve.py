@@ -413,3 +413,215 @@ class AutomaticWeeksTest(unittest.TestCase):
         self.assertEqual(
             {value["weeks"][0] for value in result["assignment"].values()}, {3, 4}
         )
+
+
+def overloaded_teacher_spec(available_slots=2):
+    """Teacher t teaches a, b and c but is available only in the first slots of day 1."""
+    spec = small_spec()
+    available = [{"day": 1, "slot": slot} for slot in range(1, available_slots + 1)]
+    spec["rooms"].append({"id": "q", "building_id": "main"})
+    spec["sessions"] = [
+        {
+            "id": key,
+            "teacher": teacher,
+            "cohorts": [cohort],
+            "allowed_rooms": ["r", "q"],
+            "weeks": [1],
+            **({"allowed_starts": available} if teacher == "t" else {}),
+        }
+        for key, teacher, cohort in [
+            ("a", "t", "g"),
+            ("b", "t", "g"),
+            ("c", "t", "h"),
+            ("d", "u", "h"),
+        ]
+    ]
+    ids = ["a", "b", "c", "d"]
+    spec["hard"] = {
+        "room_groups": [{"room_id": room, "session_ids": ids} for room in ("r", "q")],
+        "exclusive_groups": [
+            {"session_ids": ["a", "b", "c"]},
+            {"session_ids": ["a", "b"]},
+            {"session_ids": ["c", "d"]},
+        ],
+    }
+    spec["soft"]["gap_groups"] = spec["soft"]["active_day_groups"] = []
+    spec["explanation"] = {
+        "rules": [
+            {
+                "kind": "teacher_availability",
+                "id": "t",
+                "session_ids": ["a", "b", "c"],
+                "cells": available,
+            },
+            {"kind": "teacher_load", "id": "t", "session_ids": ["a", "b", "c"]},
+            {"kind": "group_load", "id": "g", "session_ids": ["a", "b"]},
+            {"kind": "group_load", "id": "h", "session_ids": ["c", "d"]},
+        ]
+    }
+    return spec
+
+
+def teacher_and_group_spec():
+    """Locked a and c take both slots. Teacher t shares b with a, group g shares b with c."""
+    spec = small_spec()
+    spec["grid"] = {"days_count": 1, "slots_per_day": 2}
+    spec["rooms"] = [{"id": room, "building_id": "main"} for room in "rst"]
+    spec["sessions"] = [
+        {"id": key, "allowed_rooms": [room], "weeks": [1]}
+        for key, room in [("a", "r"), ("b", "s"), ("c", "t")]
+    ]
+    spec["fixed"] = {
+        "a": {"day": 1, "slot": 1, "room": "r"},
+        "c": {"day": 1, "slot": 2, "room": "t"},
+    }
+    spec["hard"] = {
+        "room_groups": [],
+        "exclusive_groups": [
+            {"session_ids": ["a", "b"]},
+            {"session_ids": ["b", "c"]},
+        ],
+    }
+    spec["soft"]["gap_groups"] = spec["soft"]["active_day_groups"] = []
+    spec["explanation"] = {
+        "rules": [
+            {"kind": "teacher_load", "id": "t", "session_ids": ["a", "b"]},
+            {"kind": "group_load", "id": "g", "session_ids": ["b", "c"]},
+        ]
+    }
+    return spec
+
+
+class ConflictExplanationTest(unittest.TestCase):
+    def test_teacher_with_less_availability_than_load_is_named_with_their_sessions(
+        self,
+    ):
+        result = solve.cp_sat_solve(overloaded_teacher_spec(), time.monotonic())
+
+        self.assertEqual(result["status"], "INFEASIBLE")
+        self.assertEqual(
+            result["conflict"],
+            {
+                "minimal": True,
+                "rules": [
+                    {"kind": "teacher_load", "id": "t", "session_ids": ["a", "b", "c"]},
+                    {
+                        "kind": "teacher_availability",
+                        "id": "t",
+                        "session_ids": ["a", "b", "c"],
+                    },
+                ],
+                "session_ids": ["a", "b", "c"],
+            },
+        )
+
+    def test_guarded_model_with_every_rule_allows_the_main_model_placements(self):
+        for available_slots, expected in [
+            (2, cp_model.INFEASIBLE),
+            (3, cp_model.OPTIMAL),
+        ]:
+            with self.subTest(available_slots=available_slots):
+                spec = overloaded_teacher_spec(available_slots)
+                model, rules, placed = solve.conflict_model(spec)
+                model.add_assumptions(
+                    [rule["literal"] for rule in rules] + list(placed.values())
+                )
+                solver = cp_model.CpSolver()
+                solver.parameters.num_search_workers = 1
+                self.assertEqual(solver.solve(model), expected)
+                self.assertEqual(
+                    solve.cp_sat_solve(spec, time.monotonic())["ok"],
+                    expected == cp_model.OPTIMAL,
+                )
+
+    def test_two_locks_in_one_room_conflict_without_the_teacher_load(self):
+        spec = small_spec()
+        for session in spec["sessions"]:
+            session.update(teacher="t", cohorts=[])
+        spec["fixed"] = {
+            "a": {"day": 1, "slot": 1, "room": "r"},
+            "b": {"day": 1, "slot": 1, "room": "r"},
+        }
+        spec["explanation"] = {
+            "rules": [{"kind": "teacher_load", "id": "t", "session_ids": ["a", "b"]}]
+        }
+
+        result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertEqual(
+            result["conflict"]["rules"],
+            [
+                {"kind": "lock", "id": "a", "session_ids": ["a"]},
+                {"kind": "lock", "id": "b", "session_ids": ["b"]},
+            ],
+        )
+
+    def test_single_allowed_room_is_named_when_it_cannot_hold_the_sessions(self):
+        spec = small_spec()
+        ids = [f"s{index}" for index in range(7)]
+        spec["rooms"].append({"id": "q", "building_id": "main"})
+        spec["sessions"] = [
+            {"id": key, "allowed_rooms": ["r"], "weeks": [1]} for key in ids
+        ]
+        spec["hard"] = {
+            "room_groups": [{"room_id": "r", "session_ids": ids}],
+            "exclusive_groups": [],
+        }
+        spec["soft"]["gap_groups"] = spec["soft"]["active_day_groups"] = []
+        spec["explanation"] = {
+            "rules": [{"kind": "allowed_rooms", "id": "lab", "session_ids": ids}]
+        }
+
+        result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertEqual(
+            result["conflict"]["rules"],
+            [{"kind": "allowed_rooms", "id": "lab", "session_ids": ids}],
+        )
+
+    def test_spec_without_rule_identities_reports_no_conflict(self):
+        spec = small_spec()
+        spec["grid"] = {"days_count": 1, "slots_per_day": 1}
+
+        result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertEqual(result["status"], "INFEASIBLE")
+        self.assertIsNone(result["conflict"])
+
+    def test_explanation_stays_within_the_time_limit(self):
+        now = time.monotonic()
+        self.assertLessEqual(solve.explanation_deadline(now + 1, 180), now + 1.01)
+        self.assertLessEqual(
+            solve.explanation_deadline(now + 170, 180),
+            time.monotonic() + solve.EXPLANATION_SECONDS,
+        )
+        self.assertLessEqual(
+            solve.explanation_deadline(now + 2, 2), time.monotonic() + 1
+        )
+        self.assertIsNone(
+            solve.explain_infeasibility(
+                overloaded_teacher_spec(), {"workers": 1}, time.monotonic()
+            )
+        )
+
+    def test_whole_term_is_skipped_when_building_it_could_pass_the_deadline(self):
+        spec = teacher_and_group_spec()
+        config = {"workers": 1}
+
+        self.assertIsNone(
+            solve.explain_infeasibility(spec, config, time.monotonic() + 1, 10.0)
+        )
+        self.assertIsNotNone(
+            solve.explain_infeasibility(spec, config, time.monotonic() + 1, 0.0)
+        )
+
+    def test_conflict_across_a_teacher_and_a_group_uses_the_whole_term(self):
+        spec = teacher_and_group_spec()
+
+        result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertEqual(
+            [(rule["kind"], rule["id"]) for rule in result["conflict"]["rules"]],
+            [("teacher_load", "t"), ("group_load", "g"), ("lock", "a"), ("lock", "c")],
+        )
+        self.assertEqual(result["conflict"]["session_ids"], ["a", "b", "c"])

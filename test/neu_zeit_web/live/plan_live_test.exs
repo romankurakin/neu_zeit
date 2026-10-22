@@ -665,5 +665,99 @@ defmodule NeuZeitWeb.PlanLiveTest do
       assert has_element?(live, ~s{a[href="/courses"]})
       assert has_element?(live, ~s{a[href="/terms/#{ctx.term.id}/slot-profiles"]})
     end
+
+    test "a proven conflict names its rules and links to where each is edited",
+         %{conn: conn} = ctx do
+      first = session(ctx, "INF120", "Anna Weber")
+      teacher_id = first.teacher_id
+      second = session(ctx, "INF121", "Unused", %{"teacher_id" => teacher_id})
+      ids = Enum.sort([first.id, second.id])
+
+      {:ok, _cells} =
+        Catalog.replace_teacher_availability(ctx.term.id, teacher_id, [%{day: 1, slot: 1}])
+
+      # The solver payload uses JSON keys and record IDs.
+      conflict = %{
+        "minimal" => true,
+        "rules" => [
+          %{"kind" => "teacher_load", "id" => teacher_id, "session_ids" => ids},
+          %{"kind" => "teacher_availability", "id" => teacher_id, "session_ids" => ids},
+          %{
+            "kind" => "allowed_rooms",
+            "id" => first.course_component_id,
+            "session_ids" => [first.id]
+          },
+          %{"kind" => "lock", "id" => first.id, "session_ids" => [first.id]}
+        ],
+        "session_ids" => ids
+      }
+
+      failure =
+        {:error,
+         %{
+           errors: [
+             %{
+               type: "solver_infeasible",
+               message: "solver could not produce a complete timetable",
+               solver_status: "INFEASIBLE",
+               conflict: conflict
+             }
+           ]
+         }}
+
+      live = board(conn, ctx)
+      send(live.pid, {:solve_finished, ctx.plan.id, failure})
+      html = render(live)
+
+      assert has_element?(live, "#solver-conflict", "These rules cannot all be met.")
+      refute html =~ "Check whether locked placements"
+
+      rule = "#solver-conflict-teacher_availability-#{teacher_id}"
+      assert has_element?(live, rule, "Anna Weber is available in 1 time slot.")
+
+      assert has_element?(
+               live,
+               ~s{#{rule} a[href^="/terms/#{ctx.term.id}/availability/#{teacher_id}?return_to="]},
+               "Availability"
+             )
+
+      assert has_element?(
+               live,
+               "#solver-conflict-teacher_load-#{teacher_id}",
+               "Anna Weber cannot teach two sessions at the same time."
+             )
+
+      assert has_element?(
+               live,
+               ~s{#solver-conflict a[href^="/terms/#{ctx.term.id}/workload?return_to="]},
+               "Teaching load"
+             )
+
+      component = Catalog.get_course_component!(first.course_component_id)
+
+      assert has_element?(
+               live,
+               "#solver-conflict",
+               "Allowed rooms for INF120, Lecture: 101, 102."
+             )
+
+      assert has_element?(
+               live,
+               ~s{#solver-conflict a[href^="/courses/#{component.course_id}?return_to="]},
+               "Allowed rooms"
+             )
+
+      assert has_element?(live, "#solver-conflict", "Locked placement: INF120, Lecture, WI-1.")
+      assert has_element?(live, ~s{#solver-conflict a[href*="session=#{first.id}"]})
+
+      assert has_element?(
+               live,
+               ~s{#solver-conflict-sessions a[href^="/terms/#{ctx.term.id}/workload/#{first.workload_id}/edit"]},
+               "INF120, Lecture, WI-1"
+             )
+
+      assert has_element?(live, "#solver-conflict-sessions", "INF121, Lecture, WI-1")
+      assert has_element?(live, "#solver-conflict", "These sessions cannot all be placed:")
+    end
   end
 end

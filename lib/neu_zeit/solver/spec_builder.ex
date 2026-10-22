@@ -66,6 +66,7 @@ defmodule NeuZeit.Solver.SpecBuilder do
       current: placement_map(placements),
       hard: Hard.solver_rules(session_specs, room_specs),
       soft: Soft.solver_rules(session_specs, config),
+      explanation: %{rules: explanation_rules(sessions)},
       requirements: %{all_sessions_placed: config.solver.require_complete_solution},
       solver: %{
         time_limit: config.solver.time_limit,
@@ -74,6 +75,64 @@ defmodule NeuZeit.Solver.SpecBuilder do
       }
     }
   end
+
+  # Rules an administrator edits as one record. When no timetable exists, the
+  # solver names the smallest set of them that conflict. Locks, non-teaching
+  # dates and bookings in other terms come from the rest of the contract.
+  defp explanation_rules(sessions) do
+    by_teacher = Enum.group_by(sessions, & &1.teacher_id)
+
+    profiles =
+      sessions
+      |> Enum.filter(& &1.slot_profile)
+      |> Enum.group_by(& &1.slot_profile_id)
+      |> Enum.map(fn {profile_id, [session | _] = members} ->
+        rule("time_profile", profile_id, members, starts: cells(session.slot_profile.cells))
+      end)
+
+    availability =
+      Enum.flat_map(by_teacher, fn {teacher_id, [session | _] = members} ->
+        case term_availability(session) do
+          [] ->
+            []
+
+          available ->
+            [rule("teacher_availability", teacher_id, members, cells: cells(available))]
+        end
+      end)
+
+    rooms =
+      sessions
+      |> Enum.filter(
+        &(DeliveryMode.physical?(&1.delivery_mode) and &1.course_component.allowed_rooms != [])
+      )
+      |> Enum.group_by(& &1.course_component_id)
+      |> Enum.map(fn {component_id, members} -> rule("allowed_rooms", component_id, members) end)
+
+    teacher_loads =
+      Enum.map(by_teacher, fn {teacher_id, members} ->
+        rule("teacher_load", teacher_id, members)
+      end)
+
+    group_loads =
+      sessions
+      |> Enum.flat_map(fn session -> Enum.map(session.cohorts, &{&1.id, session}) end)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.map(fn {cohort_id, members} -> rule("group_load", cohort_id, members) end)
+
+    # One session cannot overlap itself.
+    loads = Enum.filter(teacher_loads ++ group_loads, &match?([_, _ | _], &1.session_ids))
+
+    Enum.sort_by(profiles ++ availability ++ rooms ++ loads, &{&1.kind, &1.id})
+  end
+
+  defp rule(kind, id, members, fields \\ []) do
+    session_ids = members |> Enum.map(&to_string(&1.id)) |> Enum.sort()
+    Map.merge(%{kind: kind, id: to_string(id), session_ids: session_ids}, Map.new(fields))
+  end
+
+  defp cells(cells),
+    do: cells |> Enum.map(&%{day: &1.day, slot: &1.slot}) |> Enum.sort_by(&{&1.day, &1.slot})
 
   # Boundary weeks can be partial at either end of the term.
   defp excluded_cells(term, config) do
@@ -164,21 +223,22 @@ defmodule NeuZeit.Solver.SpecBuilder do
   end
 
   defp teacher_available?(session, start) do
-    cells =
-      case session.teacher do
-        %{availability_cells: cells} when is_list(cells) ->
-          Enum.filter(cells, &(&1.term_id == session.term_id))
-
-        _ ->
-          []
-      end
-
     TeacherAvailabilityCell.unavailable_slots(
-      cells,
+      term_availability(session),
       start.day,
       start.slot,
       session.duration_slots
     ) == []
+  end
+
+  defp term_availability(session) do
+    case session.teacher do
+      %{availability_cells: cells} when is_list(cells) ->
+        Enum.filter(cells, &(&1.term_id == session.term_id))
+
+      _ ->
+        []
+    end
   end
 
   defp placement_map(placements) do

@@ -46,11 +46,17 @@ defmodule NeuZeit.Planning.Solving do
 
     Logger.error("solver failed with status #{inspect(status)}: #{inspect(result)}")
 
-    %{
+    error = %{
       type: "solver_#{status |> to_string() |> String.downcase()}",
       message: result["error"] || "solver could not produce a complete timetable",
       solver_status: status
     }
+
+    # A proven conflict names rules and sessions by record ID.
+    case result["conflict"] do
+      %{"rules" => [_ | _]} = conflict -> Map.put(error, :conflict, conflict)
+      _none -> error
+    end
   end
 
   defp persist_solver_result(plan_id, result, original_spec) do

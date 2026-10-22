@@ -47,6 +47,7 @@ msgstr "Все преподаватели"
 #: lib/neu_zeit_web/components/ui/errors.ex:320
 #: lib/neu_zeit_web/live/course_live/show.ex:297
 #: lib/neu_zeit_web/live/course_live/show.ex:323
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:210
 #: lib/neu_zeit_web/live/term_live/show.ex:283
 #: storybook/components/transfer_list.story.exs:32
 #, elixir-autogen, elixir-format
@@ -560,6 +561,7 @@ msgid "Term"
 msgstr "Семестр"
 
 #: lib/neu_zeit_web/components/layouts.ex:206
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:212
 #: lib/neu_zeit_web/live/term_live/index.ex:15
 #: lib/neu_zeit_web/live/term_live/index.ex:138
 #: lib/neu_zeit_web/nav.ex:99
@@ -719,6 +721,7 @@ msgstr "Профиль «%{name}» ещё назначен занятию."
 #: lib/neu_zeit_web/components/ui/errors.ex:337
 #: lib/neu_zeit_web/live/availability_live/index.ex:19
 #: lib/neu_zeit_web/live/availability_live/index.ex:107
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:204
 #: lib/neu_zeit_web/live/term_live/show.ex:415
 #: lib/neu_zeit_web/nav.ex:34
 #, elixir-autogen, elixir-format
@@ -912,7 +915,7 @@ msgstr[2] "%{count} случаев"
 
 #: lib/neu_zeit_web/components/scheduling/check_results.ex:29
 #: lib/neu_zeit_web/components/scheduling/diagnostics.ex:52
-#: lib/neu_zeit_web/live/plan_live/run_status.ex:32
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:48
 #: lib/neu_zeit_web/live/plan_live/show.ex:726
 #: lib/neu_zeit_web/live/term_live/show.ex:196
 #: lib/neu_zeit_web/live/term_live/show.ex:418
@@ -1648,6 +1651,7 @@ msgid "No teaching types yet"
 msgstr "Видов занятий пока нет"
 
 #: lib/neu_zeit_web/components/scheduling/diagnostics.ex:248
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:82
 #, elixir-autogen, elixir-format
 msgid "No timetable fits the current rules"
 msgstr "По этим правилам расписание невозможно"
@@ -1683,7 +1687,7 @@ msgstr "Возможные пересечения групп"
 msgid "Related blocks"
 msgstr "Последовательность занятий"
 
-#: lib/neu_zeit_web/live/plan_live/run_status.ex:31
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:47
 #: lib/neu_zeit_web/live/term_live/show.ex:183
 #, elixir-autogen, elixir-format
 msgid "Resolve rule violations on the Checks tab before generating the timetable."
@@ -1731,6 +1735,7 @@ msgstr "Занятия с этим профилем могут начинать�
 #: lib/neu_zeit_web/components/scheduling/diagnostics.ex:72
 #: lib/neu_zeit_web/live/plan_live/reports.ex:85
 #: lib/neu_zeit_web/live/plan_live/reports.ex:201
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:103
 #, elixir-autogen, elixir-format
 msgid "Show in timetable"
 msgstr "Показать в расписании"
@@ -1823,6 +1828,7 @@ msgstr "Профиль времени"
 msgid "Time profile: %{name}"
 msgstr "Профиль времени: %{name}"
 
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:209
 #: lib/neu_zeit_web/live/slot_profile_live/index.ex:20
 #: lib/neu_zeit_web/live/slot_profile_live/index.ex:204
 #: lib/neu_zeit_web/nav.ex:35
@@ -2204,12 +2210,12 @@ msgid "Elapsed: %{elapsed} s."
 msgstr "Прошло: %{elapsed} с."
 
 #: lib/neu_zeit_web/components/ui/loading_state.ex:24
-#: lib/neu_zeit_web/live/plan_live/run_status.ex:25
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:41
 #, elixir-autogen, elixir-format
 msgid "Elapsed: %{elapsed} s. Limit: %{limit} s."
 msgstr "Прошло: %{elapsed} с. Лимит: %{limit} с."
 
-#: lib/neu_zeit_web/live/plan_live/run_status.ex:24
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:40
 #: lib/neu_zeit_web/live/term_live/show.ex:176
 #, elixir-autogen, elixir-format
 msgid "Generating timetable"
@@ -2583,6 +2589,7 @@ msgstr "Учебная нагрузка не задана"
 msgid "Set the teaching load and constraints, then generate a timetable."
 msgstr "Задайте учебную нагрузку и ограничения, затем составьте расписание."
 
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:207
 #: lib/neu_zeit_web/live/term_live/show.ex:416
 #: lib/neu_zeit_web/live/workload_live/index.ex:17
 #: lib/neu_zeit_web/live/workload_live/index.ex:282
@@ -2911,6 +2918,7 @@ msgstr "Учебных дней в неделю, начиная с понеде�
 msgid "Term dates"
 msgstr "Даты семестра"
 
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:211
 #: lib/neu_zeit_web/live/term_live/settings.ex:10
 #: lib/neu_zeit_web/live/term_live/settings.ex:173
 #: lib/neu_zeit_web/live/term_live/show.ex:119
@@ -3804,3 +3812,72 @@ msgstr "преподаватель не указан."
 #, elixir-autogen, elixir-format
 msgid "the teaching type is empty."
 msgstr "вид занятий не указан."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:157
+#, elixir-autogen, elixir-format
+msgid "%{teacher} cannot teach two sessions at the same time."
+msgstr "%{teacher} не может вести два занятия одновременно."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:149
+#, elixir-autogen, elixir-format
+msgid "%{teacher} is available in %{count} time slot."
+msgid_plural "%{teacher} is available in %{count} time slots."
+msgstr[0] "Преподаватель %{teacher} доступен в %{count} интервале."
+msgstr[1] "Преподаватель %{teacher} доступен в %{count} интервалах."
+msgstr[2] "Преподаватель %{teacher} доступен в %{count} интервалах."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:173
+#, elixir-autogen, elixir-format
+msgid "Allowed rooms for %{course}, %{type}: %{rooms}."
+msgstr "Допустимые аудитории для %{course}, %{type}: %{rooms}."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:160
+#, elixir-autogen, elixir-format
+msgid "Group %{group} cannot attend two sessions at the same time."
+msgstr "Группа %{group} не может посещать два занятия одновременно."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:180
+#, elixir-autogen, elixir-format
+msgid "Locked placement: %{session}."
+msgstr "Закреплённое размещение: %{session}."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:183
+#, elixir-autogen, elixir-format
+msgid "Sessions do not take place on non-teaching dates."
+msgstr "В неучебные даты занятия не проводятся."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:186
+#, elixir-autogen, elixir-format
+msgid "Teachers, groups or rooms are booked in active plans of other terms."
+msgstr "Преподаватели, группы или аудитории заняты в действующих планах других семестров."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:86
+#, elixir-autogen, elixir-format
+msgid "These rules cannot all be met. Change at least one of them, then generate the timetable again."
+msgstr "Эти правила нельзя выполнить одновременно. Измените хотя бы одно из них и запустите расчёт снова."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:118
+#, elixir-autogen, elixir-format
+msgid "These sessions cannot all be placed:"
+msgstr "Эти занятия нельзя разместить вместе:"
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:117
+#, elixir-autogen, elixir-format
+msgid "This session cannot be placed:"
+msgstr "Это занятие нельзя разместить:"
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:164
+#, elixir-autogen, elixir-format
+msgid "Time profile %{name} allows %{count} start time."
+msgid_plural "Time profile %{name} allows %{count} start times."
+msgstr[0] "Профиль времени %{name} допускает %{count} вариант начала."
+msgstr[1] "Профиль времени %{name} допускает %{count} варианта начала."
+msgstr[2] "Профиль времени %{name} допускает %{count} вариантов начала."
+
+#: lib/neu_zeit_web/live/plan_live/run_status.ex:135
+#, elixir-autogen, elixir-format
+msgid "and %{count} more"
+msgid_plural "and %{count} more"
+msgstr[0] "и ещё %{count}"
+msgstr[1] "и ещё %{count}"
+msgstr[2] "и ещё %{count}"

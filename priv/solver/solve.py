@@ -103,32 +103,7 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
     x = AssignmentVariables(sessions)
 
     for session in sessions:
-        session_id = session["id"]
-        allowed_rooms = [
-            room for room in candidate_rooms(session) if room is None or room in rooms
-        ]
-
-        for slot_index in session["allowed_starts"]:
-            for room in allowed_rooms:
-                x[(session_id, slot_index, room)] = model.new_bool_var(
-                    f"x_{session_id}_{slot_index}_{room}"
-                )
-                if session["choose_week"]:
-                    choices = []
-                    for week in sorted(session["weeks"]):
-                        variable = model.new_bool_var(
-                            f"week_{session_id}_{slot_index}_{room}_{week}"
-                        )
-                        x.weekly[(session_id, slot_index, room, week)] = variable
-                        choices.append(variable)
-                    model.add(sum(choices) == x[(session_id, slot_index, room)])
-
-        assignment_vars = [
-            x[(session_id, slot_index, room)]
-            for slot_index in session["allowed_starts"]
-            for room in allowed_rooms
-        ]
-        model.add(sum(assignment_vars) == 1)
+        model.add(sum(add_assignment_variables(model, x, session, rooms)) == 1)
 
     # Published bookings in overlapping terms are already mapped to each
     # session's weeks by the Elixir context; keep the full Cartesian domain so
@@ -274,7 +249,9 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
         if key in x:
             model.add_hint(x[key], 1)
 
-    remaining_time = deadline - time.monotonic()
+    now = time.monotonic()
+    build_seconds = now - started
+    remaining_time = deadline - now
     if remaining_time <= 0:
         return error_result("UNKNOWN", "time budget exhausted before search", started)
 
@@ -294,15 +271,23 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
             status = solver.solve(model)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        return {
+        result = {
             "ok": False,
             "status": solver.status_name(status),
             "objective": None,
-            "wall_time": round(time.monotonic() - started, 4),
             "unplaced": [],
             "assignment": {},
             "backend": "cp_sat",
         }
+        if status == cp_model.INFEASIBLE:
+            result["conflict"] = explain_infeasibility(
+                spec,
+                solver_config,
+                explanation_deadline(deadline, float(solver_config["time_limit"])),
+                build_seconds,
+            )
+        result["wall_time"] = round(time.monotonic() - started, 4)
+        return result
 
     if use_two_phases:
         # A hint alone does not guarantee an outcome as good as this incumbent.
@@ -359,6 +344,505 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
     }
 
 
+def add_assignment_variables(model, x, session, rooms):
+    """Create the session's start/room choices and, for movable meetings, their
+    week choices. Return the start/room choices."""
+    session_id = session["id"]
+    allowed_rooms = [
+        room for room in candidate_rooms(session) if room is None or room in rooms
+    ]
+    variables = []
+
+    for slot_index in session["allowed_starts"]:
+        for room in allowed_rooms:
+            variable = model.new_bool_var(f"x_{session_id}_{slot_index}_{room}")
+            x[(session_id, slot_index, room)] = variable
+            variables.append(variable)
+            if session["choose_week"]:
+                choices = []
+                for week in sorted(session["weeks"]):
+                    choice = model.new_bool_var(
+                        f"week_{session_id}_{slot_index}_{room}_{week}"
+                    )
+                    x.weekly[(session_id, slot_index, room, week)] = choice
+                    choices.append(choice)
+                model.add(sum(choices) == variable)
+
+    return variables
+
+
+# Conflict search after a proof of infeasibility gets at most this long, at most
+# half the time limit, and only the time left before the limit.
+EXPLANATION_SECONDS = 30.0
+MIN_CHECK_SECONDS = 0.01
+
+# A room without other bookings. It stands in for every room outside a restricted list.
+STAND_IN_ROOM = "*"
+
+# When several conflicts exist, QuickXplain keeps rules listed first. Rules that
+# are hardest to change come first, so the explanation names rules that can give
+# way. A teacher's load explains a short availability better than a room list.
+RULE_PREFERENCE = (
+    "teacher_load",
+    "group_load",
+    "other_terms",
+    "non_teaching_dates",
+    "teacher_availability",
+    "lock",
+    "time_profile",
+    "allowed_rooms",
+)
+
+
+def explanation_deadline(deadline, time_limit):
+    now = time.monotonic()
+    return now + max(0.0, min(EXPLANATION_SECONDS, time_limit / 2, deadline - now))
+
+
+def explain_infeasibility(spec, solver_config, deadline, build_seconds=0.0):
+    """Return a small set of rules that cannot hold together, and their sessions.
+
+    Each rule an administrator can change, and each session's placement, is
+    guarded by an assumption literal. CP-SAT returns a sufficient set of literals;
+    QuickXplain (Junker, AAAI 2004) shrinks it to a minimal set in preference
+    order. Return None when no conflict with a rule is proven within the budget.
+    `build_seconds` is how long the main model took to build."""
+    started = time.monotonic()
+    if deadline - started <= MIN_CHECK_SECONDS:
+        return None
+
+    workers = int(solver_config["workers"])
+    *groups, whole_term = conflict_candidates(spec)
+
+    for session_ids in groups:
+        # Half of the budget is kept for the whole term.
+        if time.monotonic() - started > (deadline - started) / 2:
+            break
+        conflict = explain_sessions(spec, session_ids, deadline, workers, 0.05)
+        if conflict is not None:
+            return conflict
+
+    # The whole-term model is larger than the main one. Building it must not pass the deadline.
+    if deadline - time.monotonic() < 2 * build_seconds:
+        return None
+    return explain_sessions(spec, whole_term, deadline, workers, 0.5)
+
+
+def conflict_candidates(spec):
+    """Return teacher, group and room session sets, most crowded first, then all sessions.
+
+    Most conflicts stay within one such set. Its small model is proven much
+    faster than the whole term, where assumptions cannot help presolve."""
+    grid = spec["grid"]
+    sessions = {
+        session["id"]: session
+        for session in normalize_sessions(
+            spec["sessions"], int(grid["days_count"]), int(grid["slots_per_day"])
+        )
+    }
+    rules = (spec.get("explanation") or {}).get("rules", [])
+    groups = [
+        rule["session_ids"]
+        for rule in rules
+        if rule["kind"] in ("teacher_load", "group_load")
+    ] or [group["session_ids"] for group in spec["hard"]["exclusive_groups"]]
+    groups += [group["session_ids"] for group in spec["hard"]["room_groups"]]
+    whole_term = tuple(sorted(sessions))
+
+    def crowding(session_ids):
+        members = [sessions[session_id] for session_id in session_ids]
+        weeks = set().union(*(member["weeks"] for member in members))
+        cells = {
+            start + offset
+            for member in members
+            for start in member["allowed_starts"]
+            for offset in range(member["duration_slots"])
+        }
+        demand = sum(
+            member["duration_slots"]
+            * (1 if member["choose_week"] else len(member["weeks"]))
+            for member in members
+        )
+        return demand / max(1, len(cells) * len(weeks))
+
+    unique = {
+        tuple(sorted(str(session_id) for session_id in group))
+        for group in groups
+        if len(group) > 1
+    } - {whole_term}
+    local = [
+        session_ids
+        for session_ids in unique
+        if all(session_id in sessions for session_id in session_ids)
+    ]
+    return sorted(local, key=lambda ids: (-crowding(ids), ids)) + [whole_term]
+
+
+def explain_sessions(spec, session_ids, deadline, workers, share):
+    """Return a minimal conflict among the given sessions, or None without a proof."""
+    search = ConflictSearch(spec, session_ids, deadline, workers)
+    core = search.infeasible(search.literals, share)
+    if core is None:
+        return None
+
+    narrowed = [
+        session_id
+        for session_id, literal in search.placed.items()
+        if literal.index in core
+    ]
+    if len(narrowed) < len(search.placed):
+        # Sessions outside the core stay unplaced; a smaller model drops them for presolve.
+        search = ConflictSearch(spec, narrowed, deadline, workers)
+        core = search.infeasible(search.literals, 0.5)
+        if core is None:
+            return None
+
+    return search.describe(
+        search.quickxplain(
+            [], False, [literal for literal in search.literals if literal.index in core]
+        )
+    )
+
+
+class ConflictSearch:
+    """Run infeasibility checks on the guarded model of some sessions."""
+
+    def __init__(self, spec, session_ids, deadline, workers):
+        self.model, rules, self.placed = conflict_model(
+            restrict_spec(spec, session_ids)
+        )
+        self.rules = sorted(rules, key=lambda rule: RULE_PREFERENCE.index(rule["kind"]))
+        # QuickXplain keeps earlier literals, so preferred rules come first.
+        self.literals = [rule["literal"] for rule in self.rules] + list(
+            self.placed.values()
+        )
+        self.deadline = deadline
+        self.workers = workers
+        self.minimal = True
+
+    def infeasible(self, literals, share):
+        """Return the sufficient literal indices when the assumed literals are proven
+        infeasible, otherwise None. An unfinished check counts as feasible: the
+        result stays a conflict, but it may not be minimal."""
+        remaining = self.deadline - time.monotonic()
+        if remaining <= MIN_CHECK_SECONDS:
+            self.minimal = False
+            return None
+
+        self.model.clear_assumptions()
+        self.model.add_assumptions(literals)
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = max(
+            remaining * share, MIN_CHECK_SECONDS
+        )
+        solver.parameters.num_search_workers = self.workers
+        status = solver.solve(self.model)
+        if status == cp_model.INFEASIBLE:
+            return set(solver.sufficient_assumptions_for_infeasibility())
+        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            self.minimal = False
+        return None
+
+    def quickxplain(self, background, added, candidates):
+        """Return a minimal subset of candidates that conflicts with the background.
+
+        Background and candidates together must be infeasible. When several
+        conflicts exist, the result keeps earlier candidates."""
+        if added and self.infeasible(background, 0.25) is not None:
+            return []
+        if len(candidates) <= 1:
+            return candidates
+
+        half = len(candidates) // 2
+        first, second = candidates[:half], candidates[half:]
+        second_core = self.quickxplain(background + first, True, second)
+        first_core = self.quickxplain(
+            background + second_core, bool(second_core), first
+        )
+        return first_core + second_core
+
+    def describe(self, literals):
+        indexes = {literal.index for literal in literals}
+        session_ids = [
+            session_id
+            for session_id, literal in sorted(self.placed.items())
+            if literal.index in indexes
+        ]
+        rules = [rule for rule in self.rules if rule["literal"].index in indexes]
+        # Without a rule, only the grid and room capacity conflict.
+        if not rules:
+            return None
+
+        return {
+            "minimal": self.minimal,
+            "rules": [
+                {
+                    "kind": rule["kind"],
+                    "id": rule["id"],
+                    "session_ids": [
+                        session_id
+                        for session_id in rule["session_ids"]
+                        if session_id in session_ids
+                    ],
+                }
+                for rule in rules
+            ],
+            "session_ids": session_ids,
+        }
+
+
+def restrict_spec(spec, session_ids):
+    """Keep the given sessions and the rules and locks that refer to them."""
+    keep = {str(session_id) for session_id in session_ids}
+
+    def only(group):
+        return {
+            **group,
+            "session_ids": [
+                session_id
+                for session_id in group["session_ids"]
+                if str(session_id) in keep
+            ],
+        }
+
+    restricted = {
+        **spec,
+        "sessions": [
+            session for session in spec["sessions"] if str(session["id"]) in keep
+        ],
+        "fixed": {
+            session_id: placement
+            for session_id, placement in spec["fixed"].items()
+            if str(session_id) in keep
+        },
+        "hard": {
+            "room_groups": [only(group) for group in spec["hard"]["room_groups"]],
+            "exclusive_groups": [
+                only(group) for group in spec["hard"]["exclusive_groups"]
+            ],
+        },
+    }
+    if "explanation" in spec:
+        restricted["explanation"] = {
+            "rules": [only(rule) for rule in spec["explanation"]["rules"]]
+        }
+    return restricted
+
+
+def conflict_model(spec):
+    """Build the hard rules with one assumption literal per rule an administrator
+    can change, and one literal per session that requires its placement.
+
+    With every literal true, the model allows the same placements as the main
+    model. A false rule literal removes or loosens its rule: starts may use the
+    whole grid, and sessions of a restricted room list may use a stand-in room.
+    Looser rules keep every conflict found here a conflict of the real rules."""
+    grid = spec["grid"]
+    days_count = int(grid["days_count"])
+    slots_per_day = int(grid["slots_per_day"])
+    slot_count = days_count * slots_per_day
+    rooms = {str(room["id"]) for room in spec["rooms"]} | {STAND_IN_ROOM}
+    explanation = spec.get("explanation")
+    rule_specs = [] if explanation is None else explanation["rules"]
+    restricted_rooms = {
+        str(session_id)
+        for rule in rule_specs
+        if rule["kind"] == "allowed_rooms"
+        for session_id in rule["session_ids"]
+    }
+
+    raw_sessions = []
+    for raw in spec["sessions"]:
+        raw = dict(raw)
+        if explanation is not None:
+            # Time rules are guarded below, so every start that fits the grid is a candidate.
+            raw.pop("allowed_starts", None)
+        if str(raw["id"]) in restricted_rooms:
+            raw["allowed_rooms"] = [*raw["allowed_rooms"], STAND_IN_ROOM]
+        raw_sessions.append(raw)
+
+    sessions = normalize_sessions(raw_sessions, days_count, slots_per_day)
+    sessions_by_id = {session["id"]: session for session in sessions}
+    model = cp_model.CpModel()
+    x = AssignmentVariables(sessions)
+    placed = {}
+    for session in sessions:
+        variables = add_assignment_variables(model, x, session, rooms)
+        literal = model.new_bool_var(f"placed_{session['id']}")
+        model.add(sum(variables) == 1).only_enforce_if(literal)
+        model.add(sum(variables) == 0).only_enforce_if(~literal)
+        placed[session["id"]] = literal
+
+    rules = []
+
+    def guard(kind, rule_id, variables_by_session):
+        """Forbid the given choices while the new rule literal is true."""
+        if not any(variables_by_session.values()):
+            return
+        literal = model.new_bool_var(f"rule_{len(rules)}")
+        for variables in variables_by_session.values():
+            for variable in variables:
+                model.add_implication(variable, ~literal)
+        rules.append(
+            {
+                "kind": kind,
+                "id": rule_id,
+                "session_ids": sorted(
+                    session_id
+                    for session_id, variables in variables_by_session.items()
+                    if variables
+                ),
+                "literal": literal,
+            }
+        )
+
+    choices_by_session = {}
+    for (session_id, start, room), variable in x.items():
+        choices_by_session.setdefault(session_id, []).append((start, room, variable))
+
+    def guard_choices(kind, rule_id, members, forbidden):
+        guard(
+            kind,
+            rule_id,
+            {
+                session["id"]: [
+                    variable
+                    for start, room, variable in choices_by_session.get(
+                        session["id"], []
+                    )
+                    if forbidden(session, start, room)
+                ]
+                for session in members
+            },
+        )
+
+    for rule in rule_specs:
+        members = [
+            sessions_by_id[str(session_id)]
+            for session_id in rule["session_ids"]
+            if str(session_id) in sessions_by_id
+        ]
+        kind = rule["kind"]
+        if kind == "time_profile":
+            starts = flat_cells(rule["starts"], slots_per_day)
+            guard_choices(
+                kind,
+                str(rule["id"]),
+                members,
+                lambda _session, start, _room: start not in starts,
+            )
+        elif kind == "teacher_availability":
+            cells = flat_cells(rule["cells"], slots_per_day)
+            # Empty availability does not restrict the teacher.
+            if cells:
+                guard_choices(
+                    kind,
+                    str(rule["id"]),
+                    members,
+                    lambda session, start, _room: any(
+                        start + offset not in cells
+                        for offset in range(session["duration_slots"])
+                    ),
+                )
+        elif kind == "allowed_rooms":
+            guard_choices(
+                kind,
+                str(rule["id"]),
+                members,
+                lambda _session, _start, room: room == STAND_IN_ROOM,
+            )
+        elif kind in ("teacher_load", "group_load") and len(members) > 1:
+            literal = model.new_bool_var(f"rule_{len(rules)}")
+            add_exclusive_group_constraints(
+                model,
+                x,
+                [{"session_ids": [session["id"] for session in members]}],
+                sessions_by_id,
+                slot_count,
+                slots_per_day,
+                set(),
+                literal,
+            )
+            rules.append(
+                {
+                    "kind": kind,
+                    "id": str(rule["id"]),
+                    "session_ids": sorted(session["id"] for session in members),
+                    "literal": literal,
+                }
+            )
+
+    add_room_group_constraints(
+        model, x, spec["hard"]["room_groups"], sessions_by_id, slot_count, slots_per_day
+    )
+    if explanation is None:
+        # Without rule identities, teacher and group overlaps stay fixed.
+        add_exclusive_group_constraints(
+            model,
+            x,
+            spec["hard"]["exclusive_groups"],
+            sessions_by_id,
+            slot_count,
+            slots_per_day,
+        )
+
+    blocked = {}
+    for session in spec["sessions"]:
+        for cell in session.get("blocked_assignments", []):
+            key = (
+                str(session["id"]),
+                (int(cell["day"]) - 1) * slots_per_day + int(cell["slot"]) - 1,
+                normalize_room(cell.get("room")),
+            )
+            variable = (
+                x.weekly.get((*key, int(cell["week"])))
+                if "week" in cell
+                else x.get(key)
+            )
+            if variable is not None:
+                blocked.setdefault(key[0], []).append(variable)
+    guard("other_terms", None, blocked)
+
+    excluded = normalize_excluded_cells(spec.get("excluded_cells", []))
+    dated = {}
+    for (session_id, start, _room, week), variable in x.weekly.items():
+        if (week, start // slots_per_day + 1) in excluded:
+            dated.setdefault(session_id, []).append(variable)
+    guard("non_teaching_dates", None, dated)
+
+    for session_id, placement in normalize_placements(
+        spec["fixed"], slots_per_day
+    ).items():
+        key = (session_id, placement["slot_index"], placement["room"])
+        if key not in x:
+            continue
+        variables = [x[key]]
+        weeks = placement.get("weeks", [])
+        if sessions_by_id[session_id]["choose_week"] and len(weeks) == 1:
+            variables.append(x.weekly[(*key, weeks[0])])
+        literal = model.new_bool_var(f"rule_{len(rules)}")
+        for variable in variables:
+            # An unplaced session in the session search does not keep its lock.
+            model.add(variable == 1).only_enforce_if([literal, placed[session_id]])
+        rules.append(
+            {
+                "kind": "lock",
+                "id": session_id,
+                "session_ids": [session_id],
+                "literal": literal,
+            }
+        )
+
+    return model, rules, placed
+
+
+def flat_cells(cells, slots_per_day):
+    """Convert 1-based day/slot cells to 0-based flattened grid indexes."""
+    return {
+        (int(cell["day"]) - 1) * slots_per_day + int(cell["slot"]) - 1 for cell in cells
+    }
+
+
 def configured_solver(solver_config, time_limit):
     """Create a CP-SAT solver with a phase-specific share of the time budget."""
     solver = cp_model.CpSolver()
@@ -384,7 +868,7 @@ def add_room_group_constraints(
 
 
 def add_exclusive_group_constraints(
-    model, x, groups, sessions_by_id, slot_count, slots_per_day, seen=None
+    model, x, groups, sessions_by_id, slot_count, slots_per_day, seen=None, enforce=None
 ):
     """Prevent teacher and cohort conflicts in every occupied slot and teaching week.
     Check all rooms."""
@@ -394,18 +878,18 @@ def add_exclusive_group_constraints(
 
         for slot_index in range(slot_count):
             add_week_overlap_constraints(
-                model, x, sessions, slot_index, None, slots_per_day, seen
+                model, x, sessions, slot_index, None, slots_per_day, seen, enforce
             )
 
 
 def add_week_overlap_constraints(
-    model, x, sessions, slot_index, rooms, slots_per_day, seen
+    model, x, sessions, slot_index, rooms, slots_per_day, seen, enforce=None
 ):
     """Add at-most-one constraints per (slot, week) over the sessions' candidate
     room variables.
 
     `rooms` limits the check to the given rooms. With None, check each session's
-    allowed rooms."""
+    allowed rooms. With `enforce`, the constraints hold only while that literal is true."""
     weeks = (
         set().union(*(session["weeks"] for session in sessions)) if sessions else set()
     )
@@ -441,7 +925,10 @@ def add_week_overlap_constraints(
         if len(variables) > 1:
             key = tuple(sorted(variable.index for variable in variables))
             if key not in seen:
-                model.add_at_most_one(variables)
+                if enforce is None:
+                    model.add_at_most_one(variables)
+                else:
+                    model.add(sum(variables) <= 1).only_enforce_if(enforce)
                 seen.add(key)
 
 

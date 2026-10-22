@@ -76,6 +76,7 @@ defmodule NeuZeitWeb.Problem do
         error |> error_value(:occurrence_dates, []) |> present_list()
       )
       |> put_present(:solver_status, error_value(error, :solver_status, nil))
+      |> put_present(:conflict, error_value(error, :conflict, nil))
     end)
   end
 

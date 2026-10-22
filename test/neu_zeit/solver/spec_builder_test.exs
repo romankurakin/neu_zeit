@@ -188,4 +188,55 @@ defmodule NeuZeit.Solver.SpecBuilderTest do
     assert spec.duration_slots == 2
     assert spec.allowed_starts == [%{day: 1, slot: 2}, %{day: 6, slot: 3}]
   end
+
+  test "names each rule an administrator edits with its sessions" do
+    term = term_fixture()
+    room = room_fixture()
+    restricted = component_fixture(rooms: [room])
+    open = component_fixture(rooms: [])
+    teacher = teacher_fixture()
+    cohort = cohort_fixture()
+    profile = slot_profile_fixture(term: term, cells: [%{day: 2, slot: 1}, %{day: 1, slot: 3}])
+    teacher_availability_fixture(term: term, teacher: teacher, cells: [%{day: 1, slot: 3}])
+
+    first =
+      session_fixture(
+        term: term,
+        component: restricted,
+        teacher: teacher,
+        cohorts: [cohort],
+        slot_profile_id: profile.id
+      )
+
+    second = session_fixture(term: term, component: open, teacher: teacher, cohorts: [cohort])
+    _alone = session_fixture(term: term, component: open)
+    plan = plan_fixture(term: term)
+
+    rules = SpecBuilder.build!(plan.id).explanation.rules
+    both = Enum.sort([first.id, second.id])
+
+    assert Enum.find(rules, &(&1.kind == "time_profile")) == %{
+             kind: "time_profile",
+             id: profile.id,
+             session_ids: [first.id],
+             starts: [%{day: 1, slot: 3}, %{day: 2, slot: 1}]
+           }
+
+    assert Enum.find(rules, &(&1.kind == "teacher_availability")) == %{
+             kind: "teacher_availability",
+             id: teacher.id,
+             session_ids: both,
+             cells: [%{day: 1, slot: 3}]
+           }
+
+    assert Enum.filter(rules, &(&1.kind == "allowed_rooms")) == [
+             %{kind: "allowed_rooms", id: restricted.id, session_ids: [first.id]}
+           ]
+
+    # A teacher or group with one session has no load to conflict.
+    assert Enum.filter(rules, &(&1.kind in ["teacher_load", "group_load"])) == [
+             %{kind: "group_load", id: cohort.id, session_ids: both},
+             %{kind: "teacher_load", id: teacher.id, session_ids: both}
+           ]
+  end
 end
