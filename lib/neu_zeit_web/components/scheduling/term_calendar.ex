@@ -49,10 +49,10 @@ defmodule NeuZeitWeb.Scheduling.TermCalendar do
                     else: gettext("Outside term")
                 }
                 class={[
-                  "disabled:pointer-events-none w-full rounded-field px-1.5 py-1 tabular-nums type-detail motion-safe:transition-colors",
+                  "disabled:pointer-events-none w-full rounded-field px-1.5 py-1 tabular-nums type-detail text-base-content motion-safe:transition-colors",
                   if(MapSet.member?(@excluded, date),
-                    do: "bg-error/15 text-error line-through",
-                    else: "text-base-content hover:bg-base-200"
+                    do: "bg-error/15 line-through",
+                    else: "hover:bg-base-200"
                   ),
                   !TermDates.within?(@term, date) && "opacity-40",
                   !@readonly && TermDates.within?(@term, date) && "cursor-pointer"

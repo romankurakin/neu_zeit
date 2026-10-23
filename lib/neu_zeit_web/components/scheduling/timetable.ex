@@ -18,6 +18,11 @@ defmodule NeuZeitWeb.Scheduling.Timetable do
   attr :on_place, :any, default: nil
   attr :readonly, :boolean, default: false
 
+  # A lane fits a two-line course title and two group badges. The time column
+  # fits a start and an end time. Both widths are in rem.
+  @lane_width 10
+  @time_width 4
+
   def timetable(assigns) do
     grid = assigns.grid || Config.grid!()
     placed = Enum.filter(assigns.placements, &(assigns.week in &1.week_mask))
@@ -31,15 +36,17 @@ defmodule NeuZeitWeb.Scheduling.Timetable do
 
     columns =
       Enum.map_join(1..length(grid.days), " ", fn day ->
-        "minmax(#{Map.get(lanes, day, 1) * 14}rem, 1fr)"
+        "minmax(#{Map.get(lanes, day, 1) * @lane_width}rem, 1fr)"
       end)
 
     assigns =
       assigns
       |> assign(:columns, columns)
+      |> assign(:time_width, @time_width)
       |> assign(
         :min_width,
-        5 + Enum.sum(for day <- 1..length(grid.days), do: Map.get(lanes, day, 1) * 14)
+        @time_width +
+          Enum.sum(for day <- 1..length(grid.days), do: Map.get(lanes, day, 1) * @lane_width)
       )
       |> assign(:grid, grid)
       |> assign(:days, Enum.with_index(Enum.map(grid.days, &day_label/1), 1))
@@ -58,7 +65,7 @@ defmodule NeuZeitWeb.Scheduling.Timetable do
         phx-hook=".BoardDrag"
         data-readonly={to_string(@readonly)}
         class="grid gap-1 min-w-full"
-        style={"min-width: calc(#{@min_width}rem + #{length(@days)} * var(--spacing)); grid-template-columns: 5rem #{@columns}; grid-template-rows: auto repeat(#{length(@slots)}, minmax(10rem, auto));"}
+        style={"min-width: calc(#{@min_width}rem + #{length(@days)} * var(--spacing)); grid-template-columns: #{@time_width}rem #{@columns}; grid-template-rows: auto repeat(#{length(@slots)}, minmax(7rem, auto));"}
       >
         <span class="sticky left-0 top-0 z-20 bg-base-200"></span>
         <div
@@ -83,7 +90,7 @@ defmodule NeuZeitWeb.Scheduling.Timetable do
             data-slot={slot_index}
             style={"grid-column: #{day_index + 1}; grid-row: #{slot_index + 1};"}
             class={[
-              "rounded-box border border-base-300 bg-base-200 min-h-40",
+              "rounded-box border border-base-300 bg-base-200 min-h-28",
               Map.has_key?(@legal, {day_index, slot_index}) && !@readonly &&
                 "border-success bg-success/10"
             ]}

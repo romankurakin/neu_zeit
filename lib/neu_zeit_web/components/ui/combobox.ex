@@ -93,7 +93,7 @@ defmodule NeuZeitWeb.UI.Combobox do
               data-value={option}
               data-label={label}
             >
-              <button type="button" tabindex="-1">{label}</button>
+              <span>{label}</span>
             </li>
             <li data-role="empty" hidden class="menu-disabled">
               <span>{gettext("No matches")}</span>

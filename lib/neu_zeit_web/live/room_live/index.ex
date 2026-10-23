@@ -264,7 +264,11 @@ defmodule NeuZeitWeb.RoomLive.Index do
           <div :if={@rooms != []}>
             <.toolbar>
               <form phx-change="filter_building" id="building-filter">
-                <select name="building_id" class="select select-bordered">
+                <select
+                  aria-label={gettext("Building")}
+                  name="building_id"
+                  class="select select-bordered"
+                >
                   <option value="all" selected={@building_filter == "all"}>
                     {gettext("All buildings")}
                   </option>

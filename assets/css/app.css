@@ -49,7 +49,13 @@
   themes: false;
 }
 
-/* Shared theme values apply to all administrator screens. */
+/*
+ * Shared theme values apply to all administrator screens.
+ * Both themes use the same hues: orange for the brand, then blue, teal, gold and
+ * red for states. Gold keeps a warning apart from the brand orange. The light
+ * theme darkens each color and the dark theme lightens it, so every color pair
+ * and every color used as text on base-100 or base-200 reaches 4.5:1.
+ */
 @plugin "daisyui/theme" {
   name: "dark";
   default: false;
@@ -59,22 +65,22 @@
   --color-base-200: oklch(25.26% 0.014 253.1);
   --color-base-300: oklch(20.15% 0.012 254.09);
   --color-base-content: oklch(97.807% 0.029 256.847);
-  --color-primary: oklch(58% 0.233 277.117);
-  --color-primary-content: oklch(96% 0.018 272.314);
-  --color-secondary: oklch(58% 0.233 277.117);
-  --color-secondary-content: oklch(96% 0.018 272.314);
-  --color-accent: oklch(60% 0.25 292.717);
-  --color-accent-content: oklch(96% 0.016 293.756);
-  --color-neutral: oklch(37% 0.044 257.287);
+  --color-primary: oklch(72% 0.16 48);
+  --color-primary-content: oklch(22% 0.035 45);
+  --color-secondary: oklch(65% 0.027 264.364);
+  --color-secondary-content: oklch(20% 0.01 264);
+  --color-accent: oklch(98% 0 0);
+  --color-accent-content: oklch(0% 0 0);
+  --color-neutral: oklch(42% 0.03 257.287);
   --color-neutral-content: oklch(98% 0.003 247.858);
-  --color-info: oklch(58% 0.158 241.966);
-  --color-info-content: oklch(97% 0.013 236.62);
-  --color-success: oklch(60% 0.118 184.704);
-  --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(66% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
+  --color-info: oklch(72% 0.13 245);
+  --color-info-content: oklch(22% 0.03 250);
+  --color-success: oklch(74% 0.12 175);
+  --color-success-content: oklch(22% 0.03 250);
+  --color-warning: oklch(82% 0.15 82);
+  --color-warning-content: oklch(25% 0.05 70);
+  --color-error: oklch(70% 0.17 22);
+  --color-error-content: oklch(22% 0.03 250);
   --radius-selector: 0.25rem;
   --radius-field: 0.25rem;
   --radius-box: 0.5rem;
@@ -94,7 +100,7 @@
   --color-base-200: oklch(96% 0.001 286.375);
   --color-base-300: oklch(92% 0.004 286.32);
   --color-base-content: oklch(21% 0.006 285.885);
-  --color-primary: oklch(70% 0.213 47.604);
+  --color-primary: oklch(55% 0.18 47);
   --color-primary-content: oklch(98% 0.016 73.684);
   --color-secondary: oklch(55% 0.027 264.364);
   --color-secondary-content: oklch(98% 0.002 247.839);
@@ -102,13 +108,13 @@
   --color-accent-content: oklch(100% 0 0);
   --color-neutral: oklch(44% 0.017 285.786);
   --color-neutral-content: oklch(98% 0 0);
-  --color-info: oklch(62% 0.214 259.815);
+  --color-info: oklch(54% 0.19 259);
   --color-info-content: oklch(97% 0.014 254.604);
-  --color-success: oklch(70% 0.14 182.503);
+  --color-success: oklch(52% 0.11 170);
   --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning: oklch(54% 0.12 78);
   --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
+  --color-error: oklch(54% 0.21 22);
   --color-error-content: oklch(96% 0.015 12.422);
   --radius-selector: 0.25rem;
   --radius-field: 0.25rem;
@@ -139,6 +145,14 @@
 @media (prefers-reduced-motion: reduce) {
   .modal-box { transition: none }
 }
+
+/*
+ * A default button is painted with base-200, which is also the page behind the
+ * cards. On the page it kept only a faint edge, and in the dark theme none. This
+ * tone differs from both the page and a card, and the button derives its edge,
+ * hover and pressed states from it. Variants set their own color and stay as is.
+ */
+.btn { --color-base-200: color-mix(in oklab, var(--color-base-100), var(--color-base-content) 7%) }
 
 /*
  * A date field carries its own calendar, which greys out the dates the field

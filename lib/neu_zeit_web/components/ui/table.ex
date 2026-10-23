@@ -35,10 +35,12 @@ defmodule NeuZeitWeb.UI.Table do
       <table class="table table-pin-rows">
         <thead>
           <tr>
+            <%!-- DaisyUI keeps headings on one line. Long ones then took the width the data needed. --%>
             <th
               :for={col <- @col}
               scope="col"
               class={[
+                "whitespace-normal",
                 col[:class],
                 if(col[:numeric], do: "text-right tabular-nums", else: "text-left")
               ]}

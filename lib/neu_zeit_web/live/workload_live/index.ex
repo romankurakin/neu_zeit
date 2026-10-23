@@ -295,7 +295,12 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
       </.page_header>
 
       <div class={["grid gap-4", @form && "lg:grid-cols-[3fr_2fr]"]}>
-        <div class="min-w-0">
+        <%!--
+          The table drops columns by its own width, which the form beside it narrows.
+          A dropped column folds into the course cell, so no row needs scrolling.
+          34rem holds four columns in German, the longest language; 56rem holds six.
+        --%>
+        <div class="@container min-w-0">
           <.table
             id="workload"
             rows={@rows}
@@ -313,57 +318,65 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
                 class="link"
               >{course_title(row.requirement.course_component.course)}</.link>
               <div>{component_kind_label(row.requirement.course_component)}</div>
-              <div>{delivery_mode_label(row.requirement.delivery_mode)}</div>
-            </:col>
-            <:col :let={row} label={gettext("Teacher")} class="whitespace-nowrap">
-              {row.requirement.teacher.name}
-            </:col>
-            <:col :let={row} label={gettext("Groups")} class="whitespace-nowrap">
-              {Enum.map_join(row.requirement.cohorts, ", ", & &1.name)}
-            </:col>
-            <:col :let={row} label={gettext("Required hours")} numeric>
-              {decimal(Workloads.hours(row))}
-            </:col>
-            <:col :let={row} label={gettext("Hours from sessions")} numeric>
-              {rounded_decimal(Workloads.planned_hours(row, @term))}
-            </:col>
-            <:col :let={row} label={gettext("Difference")} numeric>
-              <span class={if !Decimal.equal?(row_difference(row, @term), 0), do: "text-warning"}>
-                {signed_decimal(row_difference(row, @term))}
-              </span>
-            </:col>
-            <:col :let={row} label={gettext("Session duration")}>
-              {duration_label(
-                Enum.find(@duration_options, &(&1.slots == row.requirement.duration_slots))
-              )}
-            </:col>
-            <:col :let={row} label={gettext("Weekly pattern")}>
-              <span :if={row.requirement.automatic_weeks}>{gettext(
-                "Weeks selected during calculation"
-              )}</span>
-              <div :if={!row.requirement.automatic_weeks}>
-                <p :for={
-                  label <- rhythm_labels(Enum.map(row.sessions, & &1.week_mask), @term.weeks_count)
-                }>
-                  {label}
+              <%!-- In person is the default, so only the exception takes a line. --%>
+              <div :if={row.requirement.delivery_mode == :online}>
+                {delivery_mode_label(row.requirement.delivery_mode)}
+              </div>
+              <div class="mt-2 @4xl:hidden">
+                <p>
+                  <span class="sr-only">{gettext("Teacher")}:</span> {row.requirement.teacher.name}
                 </p>
+                <p><span class="sr-only">{gettext("Groups")}:</span> {cohort_names(row)}</p>
+              </div>
+              <div class="mt-2 @min-[34rem]:hidden">
+                <div class="flex gap-2">
+                  <span>{gettext("Required hours")}:</span>
+                  <.required_hours row={row} term={@term} />
+                </div>
+                <.session_summary row={row} term={@term} duration_options={@duration_options} />
               </div>
             </:col>
-            <:col :let={row} label={gettext("Time profile")} class="whitespace-nowrap">
-              {if row.requirement.slot_profile,
-                do: slot_profile_label(row.requirement.slot_profile),
-                else: gettext("No time profile")}
+            <:col :let={row} label={gettext("Teacher")} class="hidden @4xl:table-cell">
+              {row.requirement.teacher.name}
             </:col>
+            <:col :let={row} label={gettext("Groups")} class="hidden @4xl:table-cell">
+              {cohort_names(row)}
+            </:col>
+            <:col
+              :let={row}
+              label={gettext("Required hours")}
+              numeric
+              class="hidden @min-[34rem]:table-cell"
+            >
+              <.required_hours row={row} term={@term} />
+            </:col>
+            <:col :let={row} label={gettext("Sessions")} class="hidden @min-[34rem]:table-cell">
+              <.session_summary row={row} term={@term} duration_options={@duration_options} />
+            </:col>
+            <%!-- Three text buttons were wider than any data column. Icons keep the row on a laptop screen. --%>
             <:action :let={row}>
-              <.link patch={~p"/terms/#{@term}/workload/new?from=#{row.id}"} class="btn btn-ghost">{gettext(
-                "Duplicate"
-              )}</.link>
-              <.link patch={~p"/terms/#{@term}/workload/#{row.id}/edit"} class="btn btn-ghost">{gettext(
-                "Edit"
-              )}</.link>
-              <button class="btn btn-ghost text-error" phx-click="delete_prompt" phx-value-id={row.id}>{gettext(
-                "Delete"
-              )}</button>
+              <.link
+                patch={~p"/terms/#{@term}/workload/new?from=#{row.id}"}
+                class="btn btn-ghost btn-square"
+                title={gettext("Duplicate")}
+              >
+                <.icon name="hero-document-duplicate" /><span class="sr-only">{gettext("Duplicate")}</span>
+              </.link>
+              <.link
+                patch={~p"/terms/#{@term}/workload/#{row.id}/edit"}
+                class="btn btn-ghost btn-square"
+                title={gettext("Edit")}
+              >
+                <.icon name="hero-pencil-square" /><span class="sr-only">{gettext("Edit")}</span>
+              </.link>
+              <button
+                class="btn btn-ghost btn-square text-error"
+                phx-click="delete_prompt"
+                phx-value-id={row.id}
+                title={gettext("Delete")}
+              >
+                <.icon name="hero-trash" /><span class="sr-only">{gettext("Delete")}</span>
+              </button>
             </:action>
           </.table>
         </div>
@@ -595,6 +608,55 @@ defmodule NeuZeitWeb.WorkloadLive.Index do
     cohorts
     |> Enum.filter(&(&1.id in selected == selected?))
     |> Enum.map(&%{id: &1.id, label: &1.name})
+  end
+
+  defp cohort_names(row), do: Enum.map_join(row.requirement.cohorts, ", ", & &1.name)
+
+  # Hours from sessions are the required hours plus the difference, so only the
+  # difference shows, and only when whole sessions miss the requirement.
+  attr :row, :map, required: true
+  attr :term, :map, required: true
+
+  defp required_hours(assigns) do
+    assigns = assign(assigns, :difference, row_difference(assigns.row, assigns.term))
+
+    ~H"""
+    <div>
+      <p>{decimal(Workloads.hours(@row))}</p>
+      <p
+        :if={!Decimal.equal?(@difference, 0)}
+        class="text-warning"
+        title={difference_label(@difference)}
+      >
+        <span aria-hidden="true">{signed_decimal(@difference)}</span>
+        <span class="sr-only">{difference_label(@difference)}</span>
+      </p>
+    </div>
+    """
+  end
+
+  # A time profile is the exception, so the summary names one only when it is set.
+  attr :row, :map, required: true
+  attr :term, :map, required: true
+  attr :duration_options, :list, required: true
+
+  defp session_summary(assigns) do
+    ~H"""
+    <div>
+      <p>
+        {duration_label(Enum.find(@duration_options, &(&1.slots == @row.requirement.duration_slots)))}
+      </p>
+      <p :if={@row.requirement.automatic_weeks}>{gettext("Weeks selected during calculation")}</p>
+      <div :if={!@row.requirement.automatic_weeks}>
+        <p :for={label <- rhythm_labels(Enum.map(@row.sessions, & &1.week_mask), @term.weeks_count)}>
+          {label}
+        </p>
+      </div>
+      <p :if={@row.requirement.slot_profile}>
+        {gettext("Time profile")}: {slot_profile_label(@row.requirement.slot_profile)}
+      </p>
+    </div>
+    """
   end
 
   defp decimal(value), do: value |> Decimal.normalize() |> Decimal.to_string(:normal)

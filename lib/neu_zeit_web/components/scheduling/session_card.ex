@@ -35,40 +35,46 @@ defmodule NeuZeitWeb.Scheduling.SessionCard do
         if(@selected, do: "border-primary bg-base-200", else: "border-base-300 hover:bg-base-200")
       ]}
     >
+      <%!--
+        The layout follows a calendar entry, so a week of cards fits on the board.
+        The grid row already shows the time; it stays for screen readers.
+      --%>
       <span class="card-body gap-1 break-words type-detail font-normal">
-        <span class="type-heading">
-          <.icon :if={@placement && @placement.locked} name="hero-lock-closed" class="size-4" />
-          {course_title(@session.course_component.course)}
-          <span class="block type-detail font-normal">{component_kind_label(@session.course_component)}</span>
+        <span class="flex items-start gap-1 font-semibold">
+          <.icon
+            :if={@placement && @placement.locked}
+            name="hero-lock-closed"
+            class="mt-0.5 size-4 shrink-0"
+          />
+          <span :if={@placement && @placement.locked} class="sr-only">{gettext("Locked")}</span>
+          <span class="min-w-0">{course_title(@session.course_component.course)}</span>
         </span>
-        <span :if={@placement} class="flex items-start gap-2 tabular-nums">
-          <.icon name="hero-clock" class="size-4 shrink-0 self-center" />
-          <span>{time_range(@grid, @placement.slot, @placement.duration_slots)}</span>
+        <span :if={@placement} class="sr-only">
+          {time_range(@grid, @placement.slot, @placement.duration_slots)}
         </span>
-        <span class="flex items-start gap-2">
-          <.icon name="hero-user" class="size-4 shrink-0 self-center" />
-          <span>{@session.teacher.name}</span>
+        <span class="flex flex-wrap justify-between gap-x-2">
+          <span class="flex flex-wrap gap-x-2">
+            <span>{component_kind_label(@session.course_component)}</span>
+            <span :if={!@placement && Map.get(@session, :delivery_mode) == :online}>{gettext("Online")}</span>
+          </span>
+          <span :if={!@placement && Map.get(@session, :automatic_weeks, false)}>
+            {gettext("Week selected automatically")}
+          </span>
+          <.teaching_weeks
+            :if={@placement || !Map.get(@session, :automatic_weeks, false)}
+            weeks={if @placement, do: @placement.week_mask, else: @session.week_mask}
+            total={@weeks_count}
+            compact
+          />
         </span>
-        <span class="flex items-start gap-2">
-          <.icon name="hero-user-group" class="size-4 shrink-0" />
-          <span class="flex flex-wrap gap-x-2 gap-y-1">
-            <span :for={cohort <- @session.cohorts}>{cohort.name}</span>
+        <span><span class="sr-only">{gettext("Teacher")}:</span> {@session.teacher.name}</span>
+        <span class="flex flex-wrap items-center gap-1">
+          <span class="sr-only">{gettext("Groups")}:</span>
+          <span :for={cohort <- @session.cohorts} class="badge badge-ghost badge-md">{cohort.name}</span>
+          <span :if={@placement} class="ml-auto">
+            <span class="sr-only">{gettext("Room")}:</span> {room_label(@placement.room)}
           </span>
         </span>
-        <span :if={@placement} class="flex items-start gap-2">
-          <.icon name="hero-map-pin" class="size-4 shrink-0 self-center" />
-          <span><span class="sr-only">{gettext("Room")}:</span> {room_label(@placement.room)}</span>
-        </span>
-        <span :if={!@placement && Map.get(@session, :delivery_mode) == :online}>{gettext("Online")}</span>
-        <span :if={!@placement && Map.get(@session, :automatic_weeks, false)}>
-          {gettext("Week selected automatically")}
-        </span>
-        <.teaching_weeks
-          :if={@placement || !Map.get(@session, :automatic_weeks, false)}
-          weeks={if @placement, do: @placement.week_mask, else: @session.week_mask}
-          total={@weeks_count}
-          compact
-        />
       </span>
     </.dynamic_tag>
     """

@@ -12,7 +12,8 @@ defmodule NeuZeitWeb.Layouts do
 
   Navigation is a list of `%{title: String.t(), items: [item]}`.
   Each item has `:label`, `:path` and `:icon`, with an optional `:badge` count.
-  The sidebar becomes a drawer on narrow screens.
+  The sidebar becomes a drawer on narrow screens. Its foot holds the language and
+  theme, so the header keeps the width for the term name on a phone.
   """
   attr :nav, :list, default: []
   attr :current_path, :string, default: nil
@@ -55,9 +56,6 @@ defmodule NeuZeitWeb.Layouts do
           <div class="flex-1 min-w-0">
             <.term_switcher terms={@terms} current_term={@current_term} />
           </div>
-
-          <.locale_switcher current_path={@page_path || @current_path} />
-          <.theme_toggle />
         </header>
 
         <main
@@ -84,7 +82,7 @@ defmodule NeuZeitWeb.Layouts do
           id="main-navigation"
           phx-window-keydown={JS.exec("phx-click", to: "#app-drawer.drawer-open #nav-close")}
           phx-key="escape"
-          class="flex min-h-full w-72 flex-col border-r border-base-300 bg-base-100"
+          class="flex min-h-full w-64 flex-col border-r border-base-300 bg-base-100"
         >
           <div class="flex h-16 items-center gap-2 border-b border-base-300 px-4">
             <.icon name="hero-calendar-days" class="size-5 text-primary" />
@@ -101,7 +99,8 @@ defmodule NeuZeitWeb.Layouts do
             ><.icon name="hero-x-mark" class="size-5" /></button>
           </div>
 
-          <ul class="menu w-full grow gap-1 px-3 py-4">
+          <%!-- The current page takes a brand tint. A solid fill outweighed the page itself. --%>
+          <ul class="menu w-full grow gap-1 px-3 py-4 [--menu-active-bg:color-mix(in_oklab,var(--color-primary)_12%,transparent)] [--menu-active-fg:var(--color-base-content)]">
             <%= for section <- @nav do %>
               <li class="menu-title type-detail">{section.title}</li>
               <li :for={item <- section.items}>
@@ -111,11 +110,17 @@ defmodule NeuZeitWeb.Layouts do
                   aria-current={NeuZeitWeb.Nav.active?(item.path, @current_path) && "page"}
                   class={[
                     "justify-between",
-                    NeuZeitWeb.Nav.active?(item.path, @current_path) && "menu-active"
+                    NeuZeitWeb.Nav.active?(item.path, @current_path) && "menu-active font-semibold"
                   ]}
                 >
                   <span class="flex items-center gap-2">
-                    <.icon name={item.icon} class="size-4" />
+                    <.icon
+                      name={item.icon}
+                      class={[
+                        "size-4 shrink-0",
+                        NeuZeitWeb.Nav.active?(item.path, @current_path) && "text-primary"
+                      ]}
+                    />
                     {item.label}
                   </span>
                   <span :if={item[:badge] not in [nil, 0]} class="badge badge-md badge-warning">
@@ -128,6 +133,11 @@ defmodule NeuZeitWeb.Layouts do
               </li>
             <% end %>
           </ul>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 border-t border-base-300 px-4 py-3">
+            <.locale_switcher current_path={@page_path || @current_path} />
+            <.theme_toggle />
+          </div>
         </nav>
       </div>
     </div>
@@ -211,7 +221,11 @@ defmodule NeuZeitWeb.Layouts do
     ~H"""
     <form id="term-switcher-form" phx-change="switch_term" class="flex min-w-0 items-center gap-2">
       <label for="term-switcher" class="sr-only">{gettext("Current term")}</label>
-      <select id="term-switcher" name="term_id" class="select select-ghost font-semibold max-w-full">
+      <select
+        id="term-switcher"
+        name="term_id"
+        class="select select-ghost w-auto max-w-full font-semibold"
+      >
         <option
           :for={term <- @terms}
           value={term.id}

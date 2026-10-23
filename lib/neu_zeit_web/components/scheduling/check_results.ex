@@ -26,7 +26,7 @@ defmodule NeuZeitWeb.Scheduling.CheckResults do
       <:col :let={item} label={gettext("Status")} class="w-0 whitespace-nowrap">
         <.status_indicator status={item.status} />
       </:col>
-      <:col :let={item} label={gettext("Checks")} class="w-full min-w-64 whitespace-normal">
+      <:col :let={item} label={gettext("Checks")} class="w-full min-w-56 whitespace-normal">
         <p class="font-semibold">{item.label}</p>
         <p :if={item[:detail]}>{item[:detail]}</p>
       </:col>

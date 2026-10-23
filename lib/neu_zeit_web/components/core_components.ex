@@ -39,12 +39,13 @@ defmodule NeuZeitWeb.CoreComponents do
 
     ~H"""
     <% message = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind) %>
+    <%!-- Page actions sit at the top right. A notice there covered the button that caused it. --%>
     <div
       :if={@title || message}
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="toast toast-bottom toast-end z-50"
       {@rest}
     >
       <div class={[

@@ -15,9 +15,9 @@ defmodule NeuZeitWeb.Scheduling.SessionTray do
     <div
       id={@id}
       data-dropzone="tray"
-      class="min-h-12 flex flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-2"
+      class="min-h-12 grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] items-start gap-2 rounded-box border border-base-300 bg-base-100 p-2"
     >
-      <p :if={@sessions == []} class="type-detail text-base-content">
+      <p :if={@sessions == []} class="col-span-full type-detail text-base-content">
         {@empty_message || gettext("Everything is placed.")}
       </p>
       <.session_card
