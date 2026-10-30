@@ -65,8 +65,8 @@ defmodule NeuZeit.Planning.Repairs do
     ctx = context(board, session, Keyword.fetch!(opts, :deadline))
     limit = Keyword.get(opts, :limit, 5)
 
-    {solutions, complete} =
-      deepen(ctx, day, slot, 1, %{}, Keyword.get(opts, :max_moves, @max_moves), limit)
+    {{solutions, _cache}, complete} =
+      deepen(ctx, day, slot, 1, {%{}, %{}}, Keyword.get(opts, :max_moves, @max_moves), limit)
 
     %{
       repairs:
@@ -86,9 +86,9 @@ defmodule NeuZeit.Planning.Repairs do
   # Repairs with more moves rank after those found, so a deeper pass runs only
   # while fewer than `limit` were found, and past two moves only while none was.
   # A pass that never reached its move budget has seen every repair there is.
-  defp deepen(ctx, day, slot, moves, found, max_moves, limit) do
-    if moves > max_moves or map_size(found) >= limit or
-         (moves > 2 and map_size(found) > 0) do
+  defp deepen(ctx, day, slot, moves, {solutions, _cache} = found, max_moves, limit) do
+    if moves > max_moves or map_size(solutions) >= limit or
+         (moves > 2 and map_size(solutions) > 0) do
       {found, true}
     else
       :counters.put(ctx.cut, 1, 0)
@@ -248,17 +248,17 @@ defmodule NeuZeit.Planning.Repairs do
     }
   end
 
-  defp record(ctx, state, found) do
+  defp record(ctx, state, {solutions, cache} = found) do
     target = state.positions[ctx.selected]
     moves = Enum.map(state.moved, &{&1, state.positions[&1]})
+    key = {target, Enum.sort(moves)}
 
-    Map.put_new_lazy(found, {target, Enum.sort(moves)}, fn ->
-      %{
-        target: target,
-        moves: moves,
-        penalty: penalty_change(ctx, state.positions, [ctx.selected | state.moved])
-      }
-    end)
+    if Map.has_key?(solutions, key) do
+      found
+    else
+      {penalty, cache} = penalty_change(ctx, state.positions, [ctx.selected | state.moved], cache)
+      {Map.put(solutions, key, %{target: target, moves: moves, penalty: penalty}), cache}
+    end
   end
 
   defp rank(solution),
@@ -336,7 +336,17 @@ defmodule NeuZeit.Planning.Repairs do
   defp external_free?(%{external: external}, _item, _position) when map_size(external) == 0,
     do: true
 
-  defp external_free?(ctx, item, {day, slot, room}) do
+  defp external_free?(ctx, item, {day, _slot, room} = position) do
+    # Grid days are weekdays. A miss cannot overlap any projected occurrence.
+    booked? =
+      MapSet.member?(ctx.external_days, {"room", room, day}) or
+        MapSet.member?(ctx.external_days, {"teacher", item.teacher, day}) or
+        Enum.any?(item.cohorts, &MapSet.member?(ctx.external_days, {"cohort", &1, day}))
+
+    not booked? or projected_free?(ctx, item, position)
+  end
+
+  defp projected_free?(ctx, item, {day, slot, room}) do
     placement = %Placement{
       id: item.id,
       session_id: item.id,
@@ -353,22 +363,51 @@ defmodule NeuZeit.Planning.Repairs do
   # Soft penalty, as in priv/solver/solve.py. Only groups, days and pairs that
   # contain a changed session can differ, so the rest of the plan is skipped.
 
-  defp penalty_change(ctx, positions, changed) do
-    days =
-      for id <- changed,
-          position <- [ctx.before[id], positions[id]],
-          position,
-          uniq: true,
-          do: elem(position, 0)
-
-    # The solver weighs identical groups of a teacher and a group separately.
-    classes =
+  defp penalty_change(ctx, positions, changed, cache) do
+    # A weekly group changes only on the days its changed sessions leave or
+    # take. The solver weighs identical groups of a teacher and a group
+    # separately.
+    class_days =
       for id <- changed,
           subject <- time_resources(ctx.items[id]),
-          {members, repetitions} <- ctx.classes[subject],
+          {index, members, repetitions} <- ctx.classes[subject],
+          length(members) > 1,
           id in members,
-          uniq: true,
-          do: {subject, members, repetitions}
+          position <- [ctx.before[id], positions[id]],
+          position,
+          reduce: %{} do
+        days ->
+          key = {index, members, repetitions, elem(position, 0)}
+          Map.update(days, key, [id], &Enum.uniq([id | &1]))
+      end
+
+    # Cache only days that a repair touches, including across deeper passes.
+    {compact, cache} =
+      Enum.reduce(class_days, {0, cache}, fn {{index, members, repetitions, day}, ids},
+                                             {sum, cache} ->
+        key = {index, day}
+
+        cache =
+          Map.put_new_lazy(cache, key, fn ->
+            base =
+              Enum.reduce(members, {%{}, %{}}, fn id, acc ->
+                shift_day(ctx, day, acc, id, Map.get(ctx.before, id), 1)
+              end)
+
+            {day_penalty(ctx, base), base}
+          end)
+
+        {before, base} = Map.fetch!(cache, key)
+
+        after_day =
+          Enum.reduce(ids, base, fn id, acc ->
+            acc = shift_day(ctx, day, acc, id, Map.get(ctx.before, id), -1)
+            shift_day(ctx, day, acc, id, Map.get(positions, id), 1)
+          end)
+
+        delta = day_penalty(ctx, after_day) - before
+        {sum + repetitions * delta, cache}
+      end)
 
     pairs =
       for id <- changed,
@@ -378,27 +417,12 @@ defmodule NeuZeit.Planning.Repairs do
 
     requirements = for id <- changed, key = ctx.workloads[id], uniq: true, do: key
 
-    penalty(ctx, positions, changed, days, classes, pairs) -
-      penalty(ctx, ctx.before, changed, days, classes, pairs) +
-      recurring(ctx, positions, requirements) - recurring(ctx, ctx.before, requirements)
+    {compact + penalty(ctx, positions, changed, pairs, requirements) -
+       penalty(ctx, ctx.before, changed, pairs, requirements), cache}
   end
 
-  # The solver counts each time and room a requirement's generated meetings
-  # use, unweighted.
-  defp recurring(ctx, positions, requirements) do
-    for key <- requirements, reduce: 0 do
-      sum ->
-        sum + (ctx.meetings[key] |> Enum.map(&positions[&1]) |> Enum.uniq() |> Enum.count(& &1))
-    end
-  end
-
-  defp penalty(ctx, positions, changed, days, classes, pairs) do
+  defp penalty(ctx, positions, changed, pairs, requirements) do
     weights = ctx.weights
-
-    compact =
-      for {_subject, members, repetitions} <- classes, day <- days, reduce: 0 do
-        sum -> sum + repetitions * day_penalty(ctx, positions, members, day)
-      end
 
     sequence =
       for {left, right} <- pairs,
@@ -418,40 +442,49 @@ defmodule NeuZeit.Planning.Repairs do
         sum -> sum + 1
       end
 
-    compact + weights.sequence * sequence + weights.excluded_days * lost
+    weights.sequence * sequence + weights.excluded_days * lost +
+      recurring(ctx, positions, requirements)
   end
 
-  # The solver skips weekly groups with one session.
-  defp day_penalty(_ctx, _positions, [_single], _day), do: 0
-
-  defp day_penalty(ctx, positions, members, day) do
-    placed =
-      for id <- members, {^day, slot, room} <- [positions[id]], do: {ctx.items[id], slot, room}
-
-    if placed == [] do
-      0
-    else
-      cells =
-        for {item, slot, _room} <- placed,
-            cell <- slot..(slot + item.duration - 1),
-            uniq: true,
-            do: cell
-
-      gaps =
-        if ctx.slots_per_day >= 3,
-          do: Enum.max(cells) - Enum.min(cells) + 1 - length(cells),
-          else: 0
-
-      buildings =
-        placed
-        |> Enum.map(fn {_item, _slot, room} -> ctx.buildings[room] end)
-        |> Enum.reject(&is_nil/1)
-        |> Enum.uniq()
-        |> length()
-
-      ctx.weights.gaps * gaps + ctx.weights.active_days +
-        ctx.weights.building * max(buildings - 1, 0)
+  # The solver counts each time and room a requirement's generated meetings
+  # use, unweighted.
+  defp recurring(ctx, positions, requirements) do
+    for key <- requirements, reduce: 0 do
+      sum ->
+        sum + (ctx.meetings[key] |> Enum.map(&positions[&1]) |> Enum.uniq() |> Enum.count(& &1))
     end
+  end
+
+  # Counts preserve overlapping spans and buildings shared by several members.
+  defp shift_day(ctx, day, {cells, buildings}, id, {day, slot, room}, amount) do
+    %{duration: duration} = Map.fetch!(ctx.items, id)
+    cells = Enum.reduce(slot..(slot + duration - 1), cells, &count(&2, &1, amount))
+    building = Map.get(ctx.buildings, room)
+    buildings = if is_nil(building), do: buildings, else: count(buildings, building, amount)
+    {cells, buildings}
+  end
+
+  defp shift_day(_ctx, _day, acc, _id, _position, _amount), do: acc
+
+  defp count(counts, key, amount) do
+    case Map.get(counts, key, 0) + amount do
+      0 -> Map.delete(counts, key)
+      value -> Map.put(counts, key, value)
+    end
+  end
+
+  defp day_penalty(_ctx, {cells, _buildings}) when map_size(cells) == 0, do: 0
+
+  defp day_penalty(ctx, {cells, buildings}) do
+    {first, last} =
+      Enum.reduce(cells, {nil, nil}, fn {cell, _count}, {first, last} ->
+        {min(first || cell, cell), max(last || cell, cell)}
+      end)
+
+    gaps = if ctx.slots_per_day >= 3, do: last - first + 1 - map_size(cells), else: 0
+
+    ctx.weights.gaps * gaps + ctx.weights.active_days +
+      ctx.weights.building * max(map_size(buildings) - 1, 0)
   end
 
   # Zero when the blocks touch, otherwise the slots between them.
@@ -510,6 +543,10 @@ defmodule NeuZeit.Planning.Repairs do
       weights: Soft.weights(),
       slots_per_day: length(grid.slots),
       external: board.external,
+      external_days:
+        MapSet.new(Map.keys(board.external), fn {date, kind, id} ->
+          {kind, id, Date.day_of_week(date)}
+        end),
       term: term,
       deadline: deadline,
       explored: :counters.new(1, []),
@@ -594,18 +631,29 @@ defmodule NeuZeit.Planning.Repairs do
   end
 
   # Weekly groups of each teacher and group, with their number of weeks. Weeks
-  # with the same sessions share one entry, as in the solver.
+  # with the same sessions share one entry, as in the solver. One walk lists
+  # every week's sessions in the same order, so equal weeks compare equal.
   defp classes(items) do
-    items
-    |> Map.values()
-    |> Enum.flat_map(fn item ->
-      for subject <- time_resources(item), week <- item.week_mask, do: {{subject, week}, item.id}
+    subjects =
+      for {id, item} <- items, subject <- time_resources(item), reduce: %{} do
+        subjects ->
+          weeks =
+            for week <- item.week_mask, reduce: Map.get(subjects, subject, %{}) do
+              weeks -> Map.update(weeks, week, [id], &[id | &1])
+            end
+
+          Map.put(subjects, subject, weeks)
+      end
+
+    subjects
+    |> Enum.flat_map(fn {subject, weeks} ->
+      for {members, repetitions} <- Enum.frequencies(Map.values(weeks)),
+          do: {subject, members, repetitions}
     end)
-    |> Enum.group_by(fn {key, _id} -> key end, fn {_key, id} -> id end)
-    |> Enum.group_by(fn {{subject, _week}, _ids} -> subject end, fn {_key, ids} ->
-      Enum.sort(ids)
+    |> Enum.with_index()
+    |> Enum.group_by(fn {{subject, _members, _repetitions}, _index} -> subject end, fn
+      {{_subject, members, repetitions}, index} -> {index, members, repetitions}
     end)
-    |> Map.new(fn {subject, groups} -> {subject, Map.to_list(Enum.frequencies(groups))} end)
   end
 
   # The weeks each session has in the solver's contract. A generated meeting is

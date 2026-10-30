@@ -272,6 +272,31 @@ defmodule NeuZeit.Planning.RepairsTest do
     assert best.penalty == -8
   end
 
+  test "scores a multi-slot move on the same day once", ctx do
+    room = hd(ctx.rooms)
+    teacher = teacher_fixture()
+    cohorts = [cohort_fixture()]
+    selected = session(ctx, rooms: [room])
+
+    blocker =
+      session(ctx,
+        rooms: [room],
+        teacher: teacher,
+        cohorts: cohorts,
+        duration_slots: 2,
+        slot_profile_id: profile(ctx, [{1, 1}, {1, 4}]).id
+      )
+
+    neighbour = session(ctx, rooms: [room], teacher: teacher, cohorts: cohorts)
+    place(ctx, blocker, 1, 1)
+    place(ctx, neighbour, 1, 6)
+
+    assert [repair] = Repairs.suggest(selected, ctx.plan.id, 1, 1).repairs
+    assert moves(repair) == [{blocker.id, 1, 4}]
+    # Three gap slots disappear in each of two weeks, for teacher and group.
+    assert repair.penalty == -12 * NeuZeit.Constraints.Soft.weights().gaps
+  end
+
   # Two generated meetings of one requirement, in weeks 1 and 2. A session of
   # the same teacher in week 2 blocks the second meeting's target, which is
   # where the first meeting is held.
