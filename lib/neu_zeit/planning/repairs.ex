@@ -28,11 +28,31 @@ defmodule NeuZeit.Planning.Repairs do
 
   Each repair has the session's `room`, the other `moves`, the affected
   `groups`, the soft `penalty` change (lower is better) and the `changes` for
-  `NeuZeit.Planning.change_placements/2`.
+  `NeuZeit.Planning.change_placements/2`. `explored` counts the placements the
+  search tried.
   """
   def suggest(session, plan_id, day, slot, opts \\ []) do
     deadline = System.monotonic_time(:millisecond) + Keyword.get(opts, :timeout, 5_000)
-    ctx = context(session, plan_id, deadline)
+    search(board(session, plan_id), session, day, slot, Keyword.put(opts, :deadline, deadline))
+  end
+
+  @doc false
+  # What the search reads from the database, so a benchmark can replay it.
+  def board(session, plan_id) do
+    term = Catalog.get_term!(session.term_id)
+
+    %{
+      term: term,
+      rooms: Catalog.list_rooms(),
+      placements: Planning.list_placements(plan_id),
+      external: SharedResources.external_index(term)
+    }
+  end
+
+  @doc false
+  # Searches a loaded board until `:deadline`, in monotonic milliseconds.
+  def search(board, session, day, slot, opts) do
+    ctx = context(board, session, Keyword.fetch!(opts, :deadline))
     max_moves = Keyword.get(opts, :max_moves, 2)
 
     # One move first, so a short limit still returns the smallest repairs.
@@ -51,7 +71,8 @@ defmodule NeuZeit.Planning.Repairs do
         |> Enum.sort_by(&rank/1)
         |> Enum.take(Keyword.get(opts, :limit, 5))
         |> Enum.map(&present(ctx, &1)),
-      complete: complete
+      complete: complete,
+      explored: :counters.get(ctx.explored, 1)
     }
   end
 
@@ -133,6 +154,8 @@ defmodule NeuZeit.Planning.Repairs do
   end
 
   defp place(ctx, state, item, position, displaced) do
+    :counters.add(ctx.explored, 1, 1)
+
     index =
       Enum.reduce(displaced, state.index, fn id, index ->
         vacate(index, ctx.items[id], state.positions[id])
@@ -358,11 +381,8 @@ defmodule NeuZeit.Planning.Repairs do
 
   # Context
 
-  defp context(session, plan_id, deadline) do
-    term = Catalog.get_term!(session.term_id)
+  defp context(%{term: term, rooms: rooms, placements: placements} = board, session, deadline) do
     grid = Config.grid!(term)
-    rooms = Catalog.list_rooms()
-    placements = Planning.list_placements(plan_id)
     current = Enum.find(placements, &(&1.session_id == session.id))
     others = Enum.reject(placements, &(&1.session_id == session.id))
     room_ids = Enum.map(rooms, & &1.id)
@@ -394,9 +414,10 @@ defmodule NeuZeit.Planning.Repairs do
       excluded: excluded(term, grid),
       weights: Soft.weights(),
       slots_per_day: length(grid.slots),
-      external: SharedResources.external_index(term),
+      external: board.external,
       term: term,
       deadline: deadline,
+      explored: :counters.new(1, []),
       max_moves: 0
     }
   end
