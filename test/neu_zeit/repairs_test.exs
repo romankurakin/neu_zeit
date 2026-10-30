@@ -156,6 +156,100 @@ defmodule NeuZeit.Planning.RepairsTest do
     end
   end
 
+  # The teacher teaches exactly the group's two sessions, so the solver weighs
+  # their days once for the teacher and once for the group.
+  test "weighs a teacher's and a group's identical weekly sessions twice", ctx do
+    room = hd(ctx.rooms)
+    teacher = teacher_fixture()
+    cohorts = [cohort_fixture()]
+
+    [first, second] =
+      for _ <- 1..2, do: session(ctx, rooms: [room], teacher: teacher, cohorts: cohorts)
+
+    blocker = session(ctx, rooms: [room])
+    place(ctx, first, 1, 1)
+    place(ctx, second, 3, 1)
+    place(ctx, blocker, 1, 2)
+
+    assert [best | _] = Repairs.suggest(second, ctx.plan.id, 1, 2).repairs
+    # Two weeks for the teacher and two for the group, each with one active day
+    # fewer: 4 * -2.
+    assert best.penalty == -8
+  end
+
+  # Two generated meetings of one requirement, in weeks 1 and 2. A session of
+  # the same teacher in week 2 blocks the second meeting's target, which is
+  # where the first meeting is held.
+  test "counts the times and rooms a requirement's meetings use", ctx do
+    [room, other_room] = ctx.rooms
+    teacher = teacher_fixture()
+    component = component_fixture(rooms: ctx.rooms)
+    cohorts = [cohort_fixture()]
+
+    [first, second] =
+      for _ <- 1..2 do
+        session_fixture(
+          term: ctx.term,
+          component: component,
+          teacher: teacher,
+          cohorts: cohorts,
+          automatic_weeks: true,
+          week_mask: [1, 2]
+        )
+      end
+
+    blocker =
+      session(ctx,
+        teacher: teacher,
+        week_mask: [2],
+        slot_profile_id: profile(ctx, [{2, 1}, {4, 1}]).id
+      )
+
+    place(ctx, first, 2, 1, %{week_mask: [1]})
+    place(ctx, second, 3, 1, %{week_mask: [2]})
+    place(ctx, blocker, 2, 1, %{room_id: other_room.id})
+
+    assert [repair] = Repairs.suggest(%{second | week_mask: [2]}, ctx.plan.id, 2, 1).repairs
+    assert repair.room.id == room.id
+    assert moves(repair) == [{blocker.id, 4, 1}]
+    # The teacher's week 2 keeps two active days, and both meetings now share
+    # one time and room.
+    assert repair.penalty == -1
+  end
+
+  # A lecture and a seminar of one sequence group, each a generated meeting of
+  # weeks 1 and 2, held in different weeks. The solver relates them by the
+  # weeks they may be held in.
+  test "relates sequence blocks held in different weeks", ctx do
+    room = hd(ctx.rooms)
+
+    [lecture, seminar] =
+      for _ <- 1..2 do
+        session(ctx,
+          rooms: [room],
+          automatic_weeks: true,
+          week_mask: [1, 2],
+          sequence_group: "pair"
+        )
+      end
+
+    blocker =
+      session(ctx,
+        rooms: [room],
+        week_mask: [2],
+        slot_profile_id: profile(ctx, [{1, 2}, {5, 1}]).id
+      )
+
+    place(ctx, lecture, 1, 1, %{week_mask: [1]})
+    place(ctx, seminar, 1, 4, %{week_mask: [2]})
+    place(ctx, blocker, 1, 2)
+
+    assert [repair] = Repairs.suggest(%{seminar | week_mask: [2]}, ctx.plan.id, 1, 2).repairs
+    assert moves(repair) == [{blocker.id, 5, 1}]
+    # The seminar now follows the lecture: three slots apart before, so 8 * -3.
+    assert repair.penalty == -24
+  end
+
   test "two sessions can exchange rooms and starts", ctx do
     room = hd(ctx.rooms)
     profile = profile(ctx, [{1, 1}, {1, 2}])

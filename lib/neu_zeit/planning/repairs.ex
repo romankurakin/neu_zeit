@@ -8,8 +8,9 @@ defmodule NeuZeit.Planning.Repairs do
   Murray and Rudová, PATAT 2010): depth-first, limited by moves and by time.
 
   Repairs are ranked by moves, then by the change in the soft penalty that the
-  solver minimizes: gaps, active days, buildings per day, related blocks and
-  meetings lost on non-teaching dates. Week sets never change.
+  solver minimizes: gaps, active days, buildings per day, related blocks,
+  meetings lost on non-teaching dates and the times and rooms that each
+  requirement's generated meetings use. Week sets never change.
   """
 
   alias NeuZeit.{Catalog, Config, Planning}
@@ -283,13 +284,14 @@ defmodule NeuZeit.Planning.Repairs do
           uniq: true,
           do: elem(position, 0)
 
+    # The solver weighs identical groups of a teacher and a group separately.
     classes =
       for id <- changed,
           subject <- time_resources(ctx.items[id]),
           {members, repetitions} <- ctx.classes[subject],
           id in members,
           uniq: true,
-          do: {members, repetitions}
+          do: {subject, members, repetitions}
 
     pairs =
       for id <- changed,
@@ -297,15 +299,27 @@ defmodule NeuZeit.Planning.Repairs do
           uniq: true,
           do: Enum.min_max([id, other])
 
+    requirements = for id <- changed, key = ctx.workloads[id], uniq: true, do: key
+
     penalty(ctx, positions, changed, days, classes, pairs) -
-      penalty(ctx, ctx.before, changed, days, classes, pairs)
+      penalty(ctx, ctx.before, changed, days, classes, pairs) +
+      recurring(ctx, positions, requirements) - recurring(ctx, ctx.before, requirements)
+  end
+
+  # The solver counts each time and room a requirement's generated meetings
+  # use, unweighted.
+  defp recurring(ctx, positions, requirements) do
+    for key <- requirements, reduce: 0 do
+      sum ->
+        sum + (ctx.meetings[key] |> Enum.map(&positions[&1]) |> Enum.uniq() |> Enum.count(& &1))
+    end
   end
 
   defp penalty(ctx, positions, changed, days, classes, pairs) do
     weights = ctx.weights
 
     compact =
-      for {members, repetitions} <- classes, day <- days, reduce: 0 do
+      for {_subject, members, repetitions} <- classes, day <- days, reduce: 0 do
         sum -> sum + repetitions * day_penalty(ctx, positions, members, day)
       end
 
@@ -396,6 +410,8 @@ defmodule NeuZeit.Planning.Repairs do
 
     before = Map.new(placements, &{&1.session_id, {&1.day, &1.slot, &1.room_id}})
     positions = Map.delete(before, session.id)
+    eligible = eligible(items, placements)
+    workloads = workloads(items, eligible)
 
     %{
       selected: session.id,
@@ -410,7 +426,9 @@ defmodule NeuZeit.Planning.Repairs do
       rooms: Map.new(rooms, &{&1.id, &1}),
       buildings: Map.new(rooms, &{&1.id, &1.building_id}),
       classes: classes(items),
-      partners: partners(items),
+      partners: partners(items, eligible),
+      workloads: workloads,
+      meetings: Enum.group_by(Map.keys(workloads), &workloads[&1]),
       excluded: excluded(term, grid),
       weights: Soft.weights(),
       slots_per_day: length(grid.slots),
@@ -506,7 +524,35 @@ defmodule NeuZeit.Planning.Repairs do
     |> Map.new(fn {subject, groups} -> {subject, Map.to_list(Enum.frequencies(groups))} end)
   end
 
-  defp partners(items) do
+  # The weeks each session has in the solver's contract. A generated meeting is
+  # held in one of its requirement's weeks; the selected one comes with the
+  # week it is edited for, so its requirement's weeks come from a placed
+  # meeting of its workload.
+  defp eligible(items, placements) do
+    weeks = Map.new(placements, &{&1.session.workload_id, &1.session.week_mask})
+
+    Map.new(items, fn
+      {id, %{session: %{automatic_weeks: true} = session}} ->
+        {id, MapSet.new(Map.get(weeks, session.workload_id, session.week_mask))}
+
+      {id, item} ->
+        {id, item.weeks}
+    end)
+  end
+
+  # Generated meetings by requirement, keyed as SpecBuilder keys them.
+  defp workloads(items, eligible) do
+    for {id, %{session: %{automatic_weeks: true} = session}} <- items, into: %{} do
+      {id,
+       {session.course_component_id, session.teacher_id,
+        Enum.sort(Enum.map(session.cohorts, & &1.id)), session.duration_slots,
+        session.slot_profile_id, Enum.sort(eligible[id]), session.delivery_mode}}
+    end
+  end
+
+  # The solver relates the blocks of a sequence group whose weeks overlap,
+  # counting all weeks a generated meeting may be held in.
+  defp partners(items, eligible) do
     related =
       items
       |> Map.values()
@@ -517,7 +563,7 @@ defmodule NeuZeit.Planning.Repairs do
       partners =
         for other <- Map.get(related, item.session.sequence_group, []),
             other.id != id,
-            not MapSet.disjoint?(other.weeks, item.weeks),
+            not MapSet.disjoint?(eligible[other.id], eligible[id]),
             do: other.id
 
       {id, partners}
