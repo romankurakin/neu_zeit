@@ -51,24 +51,88 @@ def load_spec() -> dict:
 
 
 class AssignmentVariables(dict):
-    """Expose recurring assignments and week-specific choices through one lookup."""
+    """Expose recurring assignments and week-specific choices through one lookup.
+
+    Choices are also indexed by session and start, and movable meetings by week,
+    so later constraints can gather variables without scanning the whole model.
+    """
 
     def __init__(self, sessions):
         super().__init__()
         self.sessions = {session["id"]: session for session in sessions}
         self.weekly = {}
         self.views = {}
+        # session -> start -> [(room, variable), ...] in candidate-room order
+        self.by_start = {}
+        # session -> week -> variables in start, then room, order
+        self.weekly_by_week = {}
+        # session -> week -> start -> [(room, variable), ...]
+        self.weekly_by_start = {}
+        self._covering = {}
 
     def for_week(self, week):
+        """Return assignment variables as they stand in one teaching week.
+
+        Movable meetings contribute their week variable. Every other meeting
+        contributes its recurring variable when the week is one of its weeks.
+        """
         if not self.weekly:
             return self
-        if week not in self.views:
-            self.views[week] = {
-                key: self.weekly.get((*key, week), variable)
-                for key, variable in self.items()
-                if week in self.sessions[key[0]]["weeks"]
-            }
-        return self.views[week]
+        view = self.views.get(week)
+        if view is None:
+            view = {}
+            for session_id, session in self.sessions.items():
+                if week not in session["weeks"]:
+                    continue
+                if session["choose_week"]:
+                    starts = self.weekly_by_start.get(session_id, {}).get(week, {})
+                else:
+                    starts = self.by_start.get(session_id, {})
+                for start, pairs in starts.items():
+                    for room, variable in pairs:
+                        view[(session_id, start, room)] = variable
+            self.views[week] = view
+        return view
+
+    def covering(self, session, slots_per_day, week, rooms):
+        """Map each grid slot to the variables of `session` that occupy it.
+
+        Lists follow allowed-start order, and within a start the given `rooms`
+        (every candidate room when `rooms` is None). A movable meeting uses the
+        variables of `week`; any other meeting uses its recurring variables.
+        """
+        use_week = week if week is not None and session["choose_week"] else None
+        rooms_key = None if rooms is None else tuple(rooms)
+        key = (session["id"], slots_per_day, use_week, rooms_key)
+        cached = self._covering.get(key)
+        if cached is not None:
+            return cached
+
+        if use_week is None:
+            by_start = self.by_start.get(session["id"], {})
+        else:
+            by_start = self.weekly_by_start.get(session["id"], {}).get(use_week, {})
+        covered = {}
+        duration = session["duration_slots"]
+        for start in session["allowed_starts"]:
+            pairs = by_start.get(start)
+            if not pairs:
+                continue
+            if rooms is None:
+                variables = [variable for _room, variable in pairs]
+            else:
+                found = {room: variable for room, variable in pairs}
+                variables = [found[room] for room in rooms if room in found]
+            if not variables:
+                continue
+            day, inner = divmod(start, slots_per_day)
+            for offset in range(duration):
+                if inner + offset >= slots_per_day:
+                    break
+                slot_index = day * slots_per_day + inner + offset
+                covered.setdefault(slot_index, []).extend(variables)
+        self._covering[key] = covered
+        return covered
 
 
 def cp_sat_solve(spec: dict, started: float) -> dict:
@@ -352,11 +416,22 @@ def add_assignment_variables(model, x, session, rooms):
         room for room in candidate_rooms(session) if room is None or room in rooms
     ]
     variables = []
+    # Indexes describe the variables added below. Drop a view cached earlier.
+    x.views.clear()
+    x._covering.clear()
+    by_start = {}
+    x.by_start[session_id] = by_start
+    if session["choose_week"]:
+        weekly_by_week = {}
+        weekly_by_start = {}
+        x.weekly_by_week[session_id] = weekly_by_week
+        x.weekly_by_start[session_id] = weekly_by_start
 
     for slot_index in session["allowed_starts"]:
         for room in allowed_rooms:
             variable = model.new_bool_var(f"x_{session_id}_{slot_index}_{room}")
             x[(session_id, slot_index, room)] = variable
+            by_start.setdefault(slot_index, []).append((room, variable))
             variables.append(variable)
             if session["choose_week"]:
                 choices = []
@@ -365,6 +440,10 @@ def add_assignment_variables(model, x, session, rooms):
                         f"week_{session_id}_{slot_index}_{room}_{week}"
                     )
                     x.weekly[(session_id, slot_index, room, week)] = choice
+                    weekly_by_week.setdefault(week, []).append(choice)
+                    weekly_by_start.setdefault(week, {}).setdefault(
+                        slot_index, []
+                    ).append((room, choice))
                     choices.append(choice)
                 model.add(sum(choices) == variable)
 
@@ -859,12 +938,15 @@ def add_room_group_constraints(
     seen = set() if seen is None else seen
     for group in groups:
         sessions = [sessions_by_id[session_id] for session_id in group["session_ids"]]
-        room = str(group["room_id"])
-
-        for slot_index in range(slot_count):
-            add_week_overlap_constraints(
-                model, x, sessions, slot_index, [room], slots_per_day, seen
-            )
+        add_overlap_constraints(
+            model,
+            x,
+            sessions,
+            [str(group["room_id"])],
+            range(slot_count),
+            slots_per_day,
+            seen,
+        )
 
 
 def add_exclusive_group_constraints(
@@ -875,61 +957,113 @@ def add_exclusive_group_constraints(
     seen = set() if seen is None else seen
     for group in groups:
         sessions = [sessions_by_id[session_id] for session_id in group["session_ids"]]
-
-        for slot_index in range(slot_count):
-            add_week_overlap_constraints(
-                model, x, sessions, slot_index, None, slots_per_day, seen, enforce
-            )
+        add_overlap_constraints(
+            model,
+            x,
+            sessions,
+            None,
+            range(slot_count),
+            slots_per_day,
+            seen,
+            enforce,
+        )
 
 
 def add_week_overlap_constraints(
     model, x, sessions, slot_index, rooms, slots_per_day, seen, enforce=None
 ):
-    """Add at-most-one constraints per (slot, week) over the sessions' candidate
-    room variables.
+    """Add at-most-one constraints for one grid slot over the sessions' rooms.
 
     `rooms` limits the check to the given rooms. With None, check each session's
-    allowed rooms. With `enforce`, the constraints hold only while that literal is true."""
-    weeks = (
-        set().union(*(session["weeks"] for session in sessions)) if sessions else set()
+    allowed rooms. With `enforce`, the constraints hold only while that literal
+    is true.
+    """
+    add_overlap_constraints(
+        model,
+        x,
+        sessions,
+        rooms,
+        range(slot_index, slot_index + 1),
+        slots_per_day,
+        seen,
+        enforce,
     )
-    weekly_ids = {
-        (
-            week if getattr(x, "weekly", {}) else None,
-            tuple(s["id"] for s in sessions if week in s["weeks"]),
-        )
-        for week in weeks
-    }
+
+
+def add_overlap_constraints(
+    model, x, sessions, rooms, slots, slots_per_day, seen, enforce=None
+):
+    """Post one group's at-most-one constraints for every slot in `slots`.
+
+    Week membership is prepared once. Each slot reuses the sessions' covering
+    index, in the same start and room order as the per-slot scan.
+    """
+    if not sessions:
+        return
+    memberships = overlap_memberships(x, sessions)
     by_id = {session["id"]: session for session in sessions}
-    for week, session_ids in sorted(weekly_ids):
-        candidates = x.for_week(week) if week is not None else x
-        variables = []
-        for session_id in session_ids:
-            session = by_id[session_id]
-
-            room_candidates = rooms if rooms is not None else candidate_rooms(session)
-            for start_index in session["allowed_starts"]:
-                if not covers_slot(
-                    start_index,
-                    session["duration_slots"],
-                    slot_index,
-                    slots_per_day,
-                ):
-                    continue
-
-                for room in room_candidates:
-                    variable = candidates.get((session["id"], start_index, room))
-                    if variable is not None:
-                        variables.append(variable)
-
-        if len(variables) > 1:
+    plans = []
+    for week, session_ids in memberships:
+        plans.append(
+            [
+                x.covering(by_id[session_id], slots_per_day, week, rooms)
+                for session_id in session_ids
+            ]
+        )
+    for slot_index in slots:
+        for covers in plans:
+            variables = []
+            for covered in covers:
+                found = covered.get(slot_index)
+                if found:
+                    variables.extend(found)
+            if len(variables) <= 1:
+                continue
             key = tuple(sorted(variable.index for variable in variables))
-            if key not in seen:
-                if enforce is None:
-                    model.add_at_most_one(variables)
-                else:
-                    model.add(sum(variables) <= 1).only_enforce_if(enforce)
-                seen.add(key)
+            if key in seen:
+                continue
+            if enforce is None:
+                model.add_at_most_one(variables)
+            else:
+                model.add(sum(variables) <= 1).only_enforce_if(enforce)
+            seen.add(key)
+
+
+def overlap_memberships(x, sessions):
+    """Return (week, session ids) in the order overlap constraints are posted.
+
+    The pairs are the sorted set the per-slot loop used to build. Movable
+    meetings keep one pair per week. A repeated pair in which nobody chooses a
+    week uses the same variables every time, so later copies are omitted; the
+    seen set would have dropped those constraints.
+    """
+    labelled = bool(x.weekly)
+    memberships = sorted(
+        {
+            (
+                week if labelled else None,
+                tuple(
+                    session["id"] for session in sessions if week in session["weeks"]
+                ),
+            )
+            for week in set().union(*(session["weeks"] for session in sessions))
+        }
+    )
+    if not labelled:
+        return memberships
+
+    choosers = {session["id"] for session in sessions if session["choose_week"]}
+    kept = []
+    seen_ids = set()
+    for week, session_ids in memberships:
+        if choosers.isdisjoint(session_ids):
+            if session_ids in seen_ids:
+                continue
+            seen_ids.add(session_ids)
+            kept.append((None, session_ids))
+        else:
+            kept.append((week, session_ids))
+    return kept
 
 
 def perturbation_terms(model, x, current, weight):
@@ -972,10 +1106,10 @@ def excluded_day_terms(x, sessions, excluded_cells, slots_per_day, weight):
 
             for slot in range(slots_per_day):
                 slot_index = (day - 1) * slots_per_day + slot
-                for room in candidate_rooms(session):
-                    variable = x.get((session["id"], slot_index, room))
-                    if variable is not None:
-                        terms.append(weight * lost * variable)
+                for _room, variable in x.by_start.get(session["id"], {}).get(
+                    slot_index, ()
+                ):
+                    terms.append(weight * lost * variable)
 
     return terms
 
@@ -1030,11 +1164,9 @@ def automatic_workload_terms(model, x, sessions, weight, existing_ids):
         weeks = sorted(set().union(*(session["weeks"] for session in group)))
         week_counts = {}
         for week in weeks:
-            variables = [
-                variable
-                for (sid, _start, _room, candidate_week), variable in x.weekly.items()
-                if sid in ids and candidate_week == week
-            ]
+            variables = []
+            for session in group:
+                variables.extend(x.weekly_by_week.get(session["id"], {}).get(week, ()))
             week_counts[week] = sum(variables)
             deviation = model.new_int_var(
                 0, len(weeks) * len(group), f"spread_{index}_{week}"
@@ -1057,21 +1189,32 @@ def automatic_workload_terms(model, x, sessions, weight, existing_ids):
                 )
                 terms.append(weight * deviation)
         positions = {}
-        for (sid, start, room), variable in x.items():
-            if sid in ids:
-                positions.setdefault((start, room), []).append(variable)
+        for session in group:
+            by_start = x.by_start.get(session["id"], {})
+            for start in session["allowed_starts"]:
+                for room, variable in by_start.get(start, ()):
+                    positions.setdefault((start, room), []).append(variable)
         for position, variables in positions.items():
             used = model.new_bool_var(f"recurring_{index}_{position}")
             model.add_max_equality(used, variables)
             terms.append(used)
-        if not ids.intersection(existing_ids) and all(
-            (session["weeks"], session["allowed_starts"], session["allowed_rooms"])
-            == (
-                group[0]["weeks"],
-                group[0]["allowed_starts"],
-                group[0]["allowed_rooms"],
+        # A single meeting has no partner to order, so the sums would be unused.
+        if (
+            len(group) > 1
+            and not ids.intersection(existing_ids)
+            and all(
+                (
+                    session["weeks"],
+                    session["allowed_starts"],
+                    session["allowed_rooms"],
+                )
+                == (
+                    group[0]["weeks"],
+                    group[0]["allowed_starts"],
+                    group[0]["allowed_rooms"],
+                )
+                for session in group
             )
-            for session in group
         ):
             # New interchangeable meetings can be ordered without removing a timetable.
             cells = sorted(
@@ -1263,14 +1406,16 @@ def sequence_terms(model, x, pairs, sessions_by_id, slots_per_day, weight):
                 continue
 
             left_variables = [
-                x[(left["id"], left_start, room)]
-                for room in candidate_rooms(left)
-                if (left["id"], left_start, room) in x
+                variable
+                for _room, variable in x.by_start.get(left["id"], {}).get(
+                    left_start, ()
+                )
             ]
             right_variables = [
-                x[(right["id"], right_start, room)]
-                for room in candidate_rooms(right)
-                if (right["id"], right_start, room) in x
+                variable
+                for _room, variable in x.by_start.get(right["id"], {}).get(
+                    right_start, ()
+                )
             ]
             if not left_variables or not right_variables:
                 continue

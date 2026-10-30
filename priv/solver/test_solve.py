@@ -701,3 +701,194 @@ class ConflictExplanationTest(unittest.TestCase):
             [("teacher_load", "t"), ("group_load", "g"), ("lock", "a"), ("lock", "c")],
         )
         self.assertEqual(result["conflict"]["session_ids"], ["a", "b", "c"])
+
+
+def _reference_overlap(x, sessions, slot_count, rooms, slots_per_day, seen):
+    """Replay the direct per-slot scan. `seen` drops repeated variable sets."""
+    posted = []
+    if not sessions:
+        return posted
+    weeks = set().union(*(session["weeks"] for session in sessions))
+    weekly_ids = {
+        (
+            week if x.weekly else None,
+            tuple(session["id"] for session in sessions if week in session["weeks"]),
+        )
+        for week in weeks
+    }
+    by_id = {session["id"]: session for session in sessions}
+    for slot_index in range(slot_count):
+        for week, session_ids in sorted(weekly_ids):
+            candidates = x.for_week(week) if week is not None else x
+            variables = []
+            for session_id in session_ids:
+                session = by_id[session_id]
+                room_candidates = (
+                    rooms if rooms is not None else solve.candidate_rooms(session)
+                )
+                for start_index in session["allowed_starts"]:
+                    if not solve.covers_slot(
+                        start_index,
+                        session["duration_slots"],
+                        slot_index,
+                        slots_per_day,
+                    ):
+                        continue
+                    for room in room_candidates:
+                        variable = candidates.get((session["id"], start_index, room))
+                        if variable is not None:
+                            variables.append(variable)
+            if len(variables) > 1:
+                key = tuple(sorted(variable.index for variable in variables))
+                if key not in seen:
+                    seen.add(key)
+                    posted.append([variable.index for variable in variables])
+    return posted
+
+
+class IndexTests(unittest.TestCase):
+    def _sessions(self):
+        raw = [
+            {
+                "id": "a",
+                "allowed_rooms": ["r", "q"],
+                "weeks": [1, 2, 3],
+                "duration_slots": 2,
+                "allowed_starts": [
+                    {"day": 1, "slot": 1},
+                    {"day": 1, "slot": 2},
+                    {"day": 2, "slot": 1},
+                ],
+            },
+            {
+                "id": "b",
+                "allowed_rooms": ["r"],
+                "weeks": [1, 3],
+                "duration_slots": 1,
+                "allowed_starts": [{"day": 1, "slot": 1}, {"day": 1, "slot": 2}],
+            },
+            {
+                "id": "c",
+                "allowed_rooms": ["q"],
+                "weeks": [2, 3],
+                "choose_week": True,
+                "duration_slots": 2,
+                "allowed_starts": [{"day": 1, "slot": 1}],
+            },
+            {
+                "id": "d",
+                "delivery_mode": "online",
+                "allowed_rooms": [],
+                "weeks": [1, 2],
+                "duration_slots": 1,
+                "allowed_starts": [{"day": 1, "slot": 1}],
+            },
+        ]
+        return solve.normalize_sessions(raw, 2, 4)
+
+    def _variables(self, sessions):
+        model = cp_model.CpModel()
+        x = solve.AssignmentVariables(sessions)
+        for session in sessions:
+            solve.add_assignment_variables(model, x, session, ["r", "q"])
+        return model, x
+
+    def test_for_week_and_indexes_follow_creation_order(self):
+        sessions = self._sessions()
+        _model, x = self._variables(sessions)
+        for week in (1, 2, 3):
+            direct = {
+                key: x.weekly.get((*key, week), variable)
+                for key, variable in x.items()
+                if week in x.sessions[key[0]]["weeks"]
+            }
+            self.assertEqual(list(x.for_week(week).items()), list(direct.items()))
+
+        for session in sessions:
+            if not session["choose_week"]:
+                continue
+            for week in sorted(session["weeks"]):
+                scanned = [
+                    variable
+                    for (sid, _start, _room, candidate), variable in x.weekly.items()
+                    if sid == session["id"] and candidate == week
+                ]
+                self.assertEqual(x.weekly_by_week[session["id"]][week], scanned)
+
+        group = [session for session in sessions if session["choose_week"]]
+        ids = {session["id"] for session in group}
+        positions = {}
+        for session in group:
+            for start in session["allowed_starts"]:
+                for room, variable in x.by_start[session["id"]].get(start, ()):
+                    positions.setdefault((start, room), []).append(variable)
+        scanned = {}
+        for (sid, start, room), variable in x.items():
+            if sid in ids:
+                scanned.setdefault((start, room), []).append(variable)
+        self.assertEqual(list(positions.items()), list(scanned.items()))
+
+    def test_overlap_constraints_match_the_direct_slot_scan(self):
+        sessions = self._sessions()
+        by_id = {session["id"]: session for session in sessions}
+        model, x = self._variables(sessions)
+        seen = set()
+        room_groups = [
+            {"room_id": "r", "session_ids": ["a", "b"]},
+            {"room_id": "q", "session_ids": ["a", "c"]},
+        ]
+        exclusive = [{"session_ids": ["a", "b", "c", "d"]}]
+        solve.add_room_group_constraints(model, x, room_groups, by_id, 8, 4, seen)
+        solve.add_exclusive_group_constraints(model, x, exclusive, by_id, 8, 4, seen)
+
+        posted = []
+        shared = set()
+        for group, rooms in (
+            (["a", "b"], ["r"]),
+            (["a", "c"], ["q"]),
+            (["a", "b", "c", "d"], None),
+        ):
+            posted.extend(
+                _reference_overlap(
+                    x,
+                    [by_id[session_id] for session_id in group],
+                    8,
+                    rooms,
+                    4,
+                    shared,
+                )
+            )
+
+        got = [
+            list(constraint.at_most_one.literals)
+            for constraint in model.proto.constraints
+            if constraint.has_at_most_one()
+        ]
+        self.assertEqual(got, posted)
+        self.assertTrue(posted)
+
+        enforced = cp_model.CpModel()
+        y = solve.AssignmentVariables(sessions)
+        for session in sessions:
+            solve.add_assignment_variables(enforced, y, session, ["r", "q"])
+        literal = enforced.new_bool_var("rule")
+        solve.add_exclusive_group_constraints(
+            enforced, y, exclusive, by_id, 8, 4, enforce=literal
+        )
+        added = _reference_overlap(
+            y,
+            [by_id[session_id] for session_id in exclusive[0]["session_ids"]],
+            8,
+            None,
+            4,
+            set(),
+        )
+        guarded = []
+        for constraint in enforced.proto.constraints:
+            if constraint.enforcement_literal and constraint.has_linear():
+                guarded.append(list(constraint.linear.vars))
+        # Enforced sums are stored canonically by variable index.
+        self.assertEqual(
+            guarded,
+            [sorted(literals) for literals in added],
+        )
