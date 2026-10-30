@@ -26,22 +26,39 @@ def metrics(spec, assignment):
     counts = dict(
         gaps=0, active_days=0, building=0, perturbation=0, excluded_days=0, sequence=0
     )
+    # A generated meeting belongs only to its chosen week's groups.
+    chosen = {
+        sid: assignment[sid].get("weeks", [])
+        for sid, s in sessions.items()
+        if s.get("choose_week")
+    }
     for field, metric in [
         ("gap_groups", "gaps"),
         ("active_day_groups", "active_days"),
         ("building_groups", "building"),
     ]:
+        # The solver skips groups of one session and gaps on days of two slots.
+        if metric == "gaps" and spec["grid"]["slots_per_day"] < 3:
+            continue
         for group in spec["soft"][field]:
+            if len(group["session_ids"]) < 2:
+                continue
             days = defaultdict(list)
             for sid in group["session_ids"]:
-                days[assignment[sid]["day"]].append(sid)
+                if "week" not in group or group["week"] in chosen.get(
+                    sid, [group["week"]]
+                ):
+                    days[assignment[sid]["day"]].append(sid)
             for ids in days.values():
                 if metric == "active_days":
                     counts[metric] += 1
                 elif metric == "building":
-                    counts[metric] += (
-                        len({buildings[assignment[sid]["room"]] for sid in ids}) - 1
-                    )
+                    used = {
+                        buildings[assignment[sid]["room"]]
+                        for sid in ids
+                        if assignment[sid]["room"] is not None
+                    }
+                    counts[metric] += max(0, len(used) - 1)
                 else:
                     slots = {
                         slot
@@ -59,15 +76,15 @@ def metrics(spec, assignment):
     domain = {s["id"]: s for s in normalized}
     for sid, old in spec["current"].items():
         start = (old["day"] - 1) * spec["grid"]["slots_per_day"] + old["slot"] - 1
-        if (
-            start in domain[sid]["allowed_starts"]
-            and old["room"] in domain[sid]["allowed_rooms"]
-        ):
+        if start in domain[sid]["allowed_starts"] and old[
+            "room"
+        ] in solve.candidate_rooms(domain[sid]):
             counts["perturbation"] += assignment[sid] != old
     for cell in {tuple((c["week"], c["day"])) for c in spec.get("excluded_cells", [])}:
         counts["excluded_days"] += sum(
             cell[0] in s["weeks"] and assignment[sid]["day"] == cell[1]
             for sid, s in sessions.items()
+            if not s.get("choose_week")
         )
     for pair in spec["soft"]["sequence_pairs"]:
         a, b = pair["left"], pair["right"]
@@ -93,28 +110,37 @@ def metrics(spec, assignment):
 
 
 def validate(spec, assignment):
-    """Check assignment domains, locks, blocked bookings and overlapping resources."""
+    """Check assignment domains, locks, blocked bookings, dates of generated
+    meetings and overlapping resources."""
     sessions = solve.normalize_sessions(
         spec["sessions"], spec["grid"]["days_count"], spec["grid"]["slots_per_day"]
     )
     assert set(assignment) == {s["id"] for s in sessions}, "missing/extra sessions"
+    excluded = solve.normalize_excluded_cells(spec.get("excluded_cells", []))
     cells = {}
     for s in sessions:
         p = assignment[s["id"]]
         start = (p["day"] - 1) * spec["grid"]["slots_per_day"] + p["slot"] - 1
-        assert start in s["allowed_starts"] and p["room"] in s["allowed_rooms"], (
+        assert start in s["allowed_starts"] and p["room"] in solve.candidate_rooms(s), (
             "outside domain"
         )
+        weeks = s["weeks"]
+        if s["choose_week"]:
+            weeks = set(p.get("weeks", []))
+            assert len(weeks) == 1 and weeks <= s["weeks"], "week outside domain"
+            assert (min(weeks), p["day"]) not in excluded, "non-teaching date"
         cells[s["id"]] = {
             (w, p["day"], slot)
-            for w in s["weeks"]
+            for w in weeks
             for slot in range(p["slot"], p["slot"] + s["duration_slots"])
         }
     assert all(assignment[sid] == p for sid, p in spec["fixed"].items()), "lock changed"
     for s in spec["sessions"]:
-        assert assignment[s["id"]] not in s.get("blocked_assignments", []), (
-            "blocked booking"
-        )
+        p = assignment[str(s["id"])]
+        cell = {"day": p["day"], "slot": p["slot"], "room": p["room"]}
+        if "weeks" in p:
+            cell["week"] = p["weeks"][0]
+        assert cell not in s.get("blocked_assignments", []), "blocked booking"
     for group in spec["hard"]["exclusive_groups"] + spec["hard"]["room_groups"]:
         used = set()
         for sid in group["session_ids"]:
