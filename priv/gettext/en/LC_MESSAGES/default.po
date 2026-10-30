@@ -4005,3 +4005,8 @@ msgstr "Select two plans to compare."
 #, elixir-autogen, elixir-format
 msgid "Swap"
 msgstr "Swap"
+
+#: lib/neu_zeit_web/live/plan_live/compare.ex:164
+#, elixir-autogen, elixir-format
+msgid "Measure"
+msgstr "Measure"

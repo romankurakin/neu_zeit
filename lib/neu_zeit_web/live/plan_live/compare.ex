@@ -161,7 +161,7 @@ defmodule NeuZeitWeb.PlanLive.Compare do
             rows={@comparison.totals}
             row_id={&"compare-total-#{&1.key}"}
           >
-            <:col :let={row} label="">{metric_label(row.key)}</:col>
+            <:col :let={row} label={gettext("Measure")}>{metric_label(row.key)}</:col>
             <:col :let={row} label={gettext("Before")} numeric>{row.before}</:col>
             <:col :let={row} label={gettext("After")} numeric>{row.after}</:col>
             <:col :let={row} label={gettext("Change")} numeric><.delta value={row.delta} /></:col>

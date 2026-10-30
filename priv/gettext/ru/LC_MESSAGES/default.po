@@ -4044,3 +4044,8 @@ msgstr "Выберите два плана для сравнения."
 #, elixir-autogen, elixir-format
 msgid "Swap"
 msgstr "Поменять местами"
+
+#: lib/neu_zeit_web/live/plan_live/compare.ex:164
+#, elixir-autogen, elixir-format
+msgid "Measure"
+msgstr "Показатель"

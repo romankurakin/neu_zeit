@@ -4005,3 +4005,8 @@ msgstr "Wählen Sie zwei Pläne zum Vergleichen aus."
 #, elixir-autogen, elixir-format
 msgid "Swap"
 msgstr "Tauschen"
+
+#: lib/neu_zeit_web/live/plan_live/compare.ex:164
+#, elixir-autogen, elixir-format
+msgid "Measure"
+msgstr "Kennzahl"
