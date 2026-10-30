@@ -990,6 +990,44 @@ def teacher_and_group_spec():
     return spec
 
 
+def evening_cohort_spec():
+    """Group g has a, b and c in two evening slots. Another term books the second
+    slot for a and b, so a and b alone conflict with that booking too."""
+    spec = small_spec()
+    spec["grid"] = {"days_count": 1, "slots_per_day": 3}
+    spec["rooms"] = [{"id": room, "building_id": "main"} for room in "rst"]
+    evening = [{"day": 1, "slot": slot} for slot in (1, 2)]
+    spec["sessions"] = [
+        {
+            "id": key,
+            "allowed_rooms": [room],
+            "allowed_starts": evening,
+            "weeks": [1],
+            "blocked_assignments": [{"day": 1, "slot": 2, "room": room}]
+            if key != "c"
+            else [],
+        }
+        for key, room in [("a", "r"), ("b", "s"), ("c", "t")]
+    ]
+    spec["hard"] = {
+        "room_groups": [],
+        "exclusive_groups": [{"session_ids": ["a", "b", "c"]}],
+    }
+    spec["soft"]["gap_groups"] = spec["soft"]["active_day_groups"] = []
+    spec["explanation"] = {
+        "rules": [
+            {"kind": "group_load", "id": "g", "session_ids": ["a", "b", "c"]},
+            {
+                "kind": "time_profile",
+                "id": "p",
+                "session_ids": ["a", "b", "c"],
+                "starts": evening,
+            },
+        ]
+    }
+    return spec
+
+
 class ConflictExplanationTest(unittest.TestCase):
     def test_teacher_with_less_availability_than_load_is_named_with_their_sessions(
         self,
@@ -1077,6 +1115,136 @@ class ConflictExplanationTest(unittest.TestCase):
             [{"kind": "allowed_rooms", "id": "lab", "session_ids": ids}],
         )
 
+    def test_forced_room_overlap_is_located_before_building_large_sets(self):
+        spec = small_spec()
+        spec["sessions"].append({"id": "c", "allowed_rooms": ["r"], "weeks": [1]})
+        spec["hard"]["room_groups"][0]["session_ids"].append("c")
+        spec["hard"]["exclusive_groups"] = []
+        spec["fixed"] = {key: {"day": 1, "slot": 1, "room": "r"} for key in ("a", "b")}
+        spec["sessions"][0]["duration_slots"] = 2
+        spec["fixed"]["b"]["slot"] = 2
+        spec["explanation"] = {"rules": []}
+
+        with patch.object(
+            solve, "locate_conflict", wraps=solve.locate_conflict
+        ) as locate:
+            conflict = solve.explain_infeasibility(spec, time.monotonic() + 5, 60)
+
+        self.assertEqual(locate.call_count, 1)
+        self.assertEqual(locate.call_args.args[1], ("a", "b"))
+        self.assertTrue(conflict["minimal"])
+        self.assertEqual(conflict["session_ids"], ["a", "b"])
+        self.assertEqual(
+            [(rule["kind"], rule["id"]) for rule in conflict["rules"]],
+            [("lock", "a"), ("lock", "b")],
+        )
+
+    def test_forced_room_candidates_share_a_week(self):
+        spec = small_spec(weeks=2)
+        for week, session in enumerate(spec["sessions"], 1):
+            session.update(weeks=[week], allowed_starts=[{"day": 1, "slot": 1}])
+        spec["explanation"] = {"rules": []}
+
+        self.assertEqual(
+            list(solve.forced_conflict_candidates(spec, time.monotonic() + 5)), []
+        )
+        spec["sessions"][1]["weeks"] = [1, 2]
+        self.assertEqual(
+            list(solve.forced_conflict_candidates(spec, time.monotonic() + 5)),
+            [("a", "b")],
+        )
+
+    def test_empty_domain_checks_every_room_and_week(self):
+        spec = small_spec()
+        spec["rooms"].append({"id": "q", "building_id": "main"})
+        spec["sessions"] = [spec["sessions"][0]]
+        session = spec["sessions"][0]
+        session.update(
+            allowed_starts=[{"day": 1, "slot": 1}],
+            allowed_rooms=["r", "q"],
+            choose_week=True,
+            weeks=[1, 2],
+            blocked_assignments=[{"day": 1, "slot": 1, "room": "r", "week": 2}],
+        )
+        spec["excluded_cells"] = [{"week": 1, "day": 1}]
+        self.assertEqual(
+            list(solve.forced_conflict_candidates(spec, time.monotonic() + 5)), []
+        )
+        session["blocked_assignments"].append(
+            {"day": 1, "slot": 1, "room": "q", "week": 2}
+        )
+        self.assertEqual(
+            list(solve.forced_conflict_candidates(spec, time.monotonic() + 5)),
+            [("a",)],
+        )
+        # Recurring sessions keep their start on non-teaching dates, and only
+        # bookings without a week restrict their recurring assignment.
+        session["choose_week"] = False
+        self.assertEqual(
+            list(solve.forced_conflict_candidates(spec, time.monotonic() + 5)), []
+        )
+
+    def test_other_sessions_of_the_rules_can_drop_a_rule(self):
+        spec = evening_cohort_spec()
+        located = {("group_load", "g"), ("other_terms", None)}
+
+        conflict = solve.explain_sessions(
+            spec, ["a", "b"], located, time.monotonic() + 10
+        )
+
+        self.assertEqual(
+            [(rule["kind"], rule["id"]) for rule in conflict["rules"]],
+            [("group_load", "g"), ("time_profile", "p")],
+        )
+        self.assertEqual(conflict["session_ids"], ["a", "b", "c"])
+        self.assertTrue(conflict["minimal"])
+
+    def test_conflict_stays_when_wider_sessions_clash_without_rules(self):
+        narrow = solve.ConflictSearch.minimal_rules
+
+        def rule_free_when_wide(search, candidate):
+            return set() if len(search.placed) > 2 else narrow(search, candidate)
+
+        with patch.object(solve.ConflictSearch, "minimal_rules", rule_free_when_wide):
+            conflict = solve.explain_sessions(
+                evening_cohort_spec(),
+                ["a", "b"],
+                {("group_load", "g"), ("other_terms", None)},
+                time.monotonic() + 10,
+            )
+
+        self.assertEqual(
+            [(rule["kind"], rule["id"]) for rule in conflict["rules"]],
+            [("group_load", "g"), ("other_terms", None), ("time_profile", "p")],
+        )
+        self.assertEqual(conflict["session_ids"], ["a", "b"])
+
+    def test_fewest_rules_are_named_when_fewer_sessions_need_more(self):
+        result = solve.cp_sat_solve(evening_cohort_spec(), time.monotonic())
+
+        self.assertEqual(
+            [(rule["kind"], rule["id"]) for rule in result["conflict"]["rules"]],
+            [("group_load", "g"), ("time_profile", "p")],
+        )
+
+    def test_term_model_keeps_allowed_starts_without_time_rules(self):
+        spec = evening_cohort_spec()
+
+        model, rules, placed = solve.conflict_model(spec, relax_starts=False)
+
+        self.assertEqual(
+            sorted(rule["kind"] for rule in rules), ["group_load", "other_terms"]
+        )
+        model.add_assumptions(
+            [rule["literal"] for rule in rules] + list(placed.values())
+        )
+        solver = cp_model.CpSolver()
+        self.assertEqual(solver.solve(model), cp_model.INFEASIBLE)
+
+    def test_building_stops_at_the_deadline(self):
+        with self.assertRaises(TimeoutError):
+            solve.conflict_model(evening_cohort_spec(), deadline=time.monotonic() - 1)
+
     def test_spec_without_rule_identities_reports_no_conflict(self):
         spec = small_spec()
         spec["grid"] = {"days_count": 1, "slots_per_day": 1}
@@ -1097,20 +1265,15 @@ class ConflictExplanationTest(unittest.TestCase):
             solve.explanation_deadline(now + 2, 2), time.monotonic() + 1
         )
         self.assertIsNone(
-            solve.explain_infeasibility(
-                overloaded_teacher_spec(), {"workers": 1}, time.monotonic()
-            )
+            solve.explain_infeasibility(overloaded_teacher_spec(), time.monotonic())
         )
 
     def test_whole_term_is_skipped_when_building_it_could_pass_the_deadline(self):
         spec = teacher_and_group_spec()
-        config = {"workers": 1}
 
-        self.assertIsNone(
-            solve.explain_infeasibility(spec, config, time.monotonic() + 1, 10.0)
-        )
+        self.assertIsNone(solve.explain_infeasibility(spec, time.monotonic() + 1, 10.0))
         self.assertIsNotNone(
-            solve.explain_infeasibility(spec, config, time.monotonic() + 1, 0.0)
+            solve.explain_infeasibility(spec, time.monotonic() + 1, 0.0)
         )
 
     def test_conflict_across_a_teacher_and_a_group_uses_the_whole_term(self):

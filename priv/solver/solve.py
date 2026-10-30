@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import time
-from itertools import product
+from itertools import combinations, product
 from collections import Counter
 from typing import TYPE_CHECKING
 
@@ -354,7 +354,6 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
         if status == cp_model.INFEASIBLE:
             result["conflict"] = explain_infeasibility(
                 spec,
-                solver_config,
                 explanation_deadline(deadline, float(solver_config["time_limit"])),
                 build_seconds,
             )
@@ -725,6 +724,13 @@ MIN_CHECK_SECONDS = 0.01
 # A room without other bookings. It stands in for every room outside a restricted list.
 STAND_IN_ROOM = "*"
 
+# Rules that restrict a session's starts. Allowed starts already apply them.
+TIME_RULES = ("time_profile", "teacher_availability")
+
+# The term model of the explanation builds in about this share of the main
+# model's build time: a fifth to a third on 250- to 1500-session terms.
+TERM_BUILD_SHARE = 0.25
+
 # When several conflicts exist, QuickXplain keeps rules listed first. Rules that
 # are hardest to change come first, so the explanation names rules that can give
 # way. A teacher's load explains a short availability better than a room list.
@@ -745,40 +751,119 @@ def explanation_deadline(deadline, time_limit):
     return now + max(0.0, min(EXPLANATION_SECONDS, time_limit / 2, deadline - now))
 
 
-def explain_infeasibility(spec, solver_config, deadline, build_seconds=0.0):
+def explain_infeasibility(spec, deadline, build_seconds=0.0):
     """Return a small set of rules that cannot hold together, and their sessions.
 
     Each rule an administrator can change, and each session's placement, is
-    guarded by an assumption literal. CP-SAT returns a sufficient set of literals;
-    QuickXplain (Junker, AAAI 2004) shrinks it to a minimal set in preference
-    order. Return None when no conflict with a rule is proven within the budget.
-    `build_seconds` is how long the main model took to build."""
+    guarded by an assumption literal. CP-SAT returns a sufficient set of
+    literals, trying forced local choices before the whole term, with each
+    session's allowed starts as in the main model. Among those sessions the time
+    rules are guarded too, and QuickXplain (Junker, AAAI 2004) shrinks the rules,
+    then the sessions, to a minimal set in preference order. Return None when no
+    conflict with a rule is proven within the budget. `build_seconds` is how long
+    the main model took to build."""
     started = time.monotonic()
     if deadline - started <= MIN_CHECK_SECONDS:
         return None
 
-    workers = int(solver_config["workers"])
-    *groups, whole_term = conflict_candidates(spec)
-
-    for session_ids in groups:
-        # Half of the budget is kept for the whole term.
-        if time.monotonic() - started > (deadline - started) / 2:
+    # Locating the conflict gets half of the budget, shrinking it the rest.
+    halfway = started + (deadline - started) / 2
+    core = None
+    # Empty domains and forced room overlaps need only a few sessions to locate.
+    for session_ids in forced_conflict_candidates(spec, halfway):
+        core = locate_conflict(spec, session_ids, halfway, 0.1)
+        if core is not None:
             break
-        conflict = explain_sessions(spec, session_ids, deadline, workers, 0.05)
-        if conflict is not None:
-            return conflict
-
-    # The whole-term model is larger than the main one. Building it must not pass the deadline.
-    if deadline - time.monotonic() < 2 * build_seconds:
+    if core is None:
+        *groups, whole_term = conflict_candidates(spec)
+        # The term model has the main model's choices without its soft terms.
+        if TERM_BUILD_SHARE * build_seconds < halfway - started:
+            core = locate_conflict(spec, whole_term, halfway, 1.0)
+        # A core over most of the term does not locate the conflict; a crowded set may.
+        if core is None or 2 * len(core[0]) > len(whole_term):
+            for session_ids in groups:
+                if time.monotonic() > halfway:
+                    break
+                local = locate_conflict(spec, session_ids, deadline, 0.05)
+                if local is not None:
+                    core = local
+                    break
+    if core is None:
         return None
-    return explain_sessions(spec, whole_term, deadline, workers, 0.5)
+    try:
+        return explain_sessions(spec, *core, deadline)
+    except TimeoutError:
+        return None
+
+
+def forced_conflict_candidates(spec, deadline):
+    """Yield empty local domains and sessions forced into the same room cell in
+    a shared week.
+
+    These are candidates only: the guarded model must still prove a conflict
+    before any rules are reported."""
+    grid = spec["grid"]
+    days, slots = int(grid["days_count"]), int(grid["slots_per_day"])
+    sessions = normalize_sessions(spec["sessions"], days, slots)
+    fixed = normalize_placements(spec["fixed"], slots)
+    excluded = normalize_excluded_cells(spec.get("excluded_cells", []))
+    forced, forced_weeks = {}, {}
+    for raw, session in zip(spec["sessions"], sessions):
+        if time.monotonic() > deadline:
+            return
+        sid = session["id"]
+        lock = fixed.get(sid)
+        choices = (
+            [(lock["slot_index"], lock["room"])]
+            if lock
+            else product(session["allowed_starts"], candidate_rooms(session))
+        )
+        weeks = lock["weeks"] if lock and session["choose_week"] else session["weeks"]
+        blocked = {
+            (
+                (int(cell["day"]) - 1) * slots + int(cell["slot"]) - 1,
+                normalize_room(cell.get("room")),
+                int(cell["week"]) if "week" in cell else None,
+            )
+            for cell in raw.get("blocked_assignments", [])
+        }
+        usable = []
+        for start, room in choices:
+            if (start, room, None) in blocked:
+                continue
+            if session["choose_week"] and not any(
+                (week, start // slots + 1) not in excluded
+                and (start, room, week) not in blocked
+                for week in weeks
+            ):
+                continue
+            usable.append((start, room))
+            if len(usable) == 2:
+                break
+        if not usable:
+            yield (sid,)
+        elif len(usable) == 1:
+            start, room = usable[0]
+            if room is not None:
+                forced_weeks[sid] = set(weeks)
+                for offset in range(session["duration_slots"]):
+                    forced.setdefault((start + offset, room), []).append(sid)
+    # Sessions in alternate weeks often share a room cell without a conflict.
+    yield from sorted(
+        {
+            tuple(sorted(ids))
+            for ids in forced.values()
+            if any(forced_weeks[a] & forced_weeks[b] for a, b in combinations(ids, 2))
+        },
+        key=lambda ids: (len(ids), ids),
+    )
 
 
 def conflict_candidates(spec):
     """Return teacher, group and room session sets, most crowded first, then all sessions.
 
-    Most conflicts stay within one such set. Its small model is proven much
-    faster than the whole term, where assumptions cannot help presolve."""
+    Most conflicts stay within one such set, so a set can locate a conflict
+    when the whole term cannot be checked in time."""
     grid = spec["grid"]
     sessions = {
         session["id"]: session
@@ -824,38 +909,77 @@ def conflict_candidates(spec):
     return sorted(local, key=lambda ids: (-crowding(ids), ids)) + [whole_term]
 
 
-def explain_sessions(spec, session_ids, deadline, workers, share):
-    """Return a minimal conflict among the given sessions, or None without a proof."""
-    search = ConflictSearch(spec, session_ids, deadline, workers)
+def locate_conflict(spec, session_ids, deadline, share):
+    """Return the sessions and rule keys of a sufficient set of literals when the
+    sessions cannot be placed at their allowed starts, or None without a proof.
+
+    Allowed starts keep the time rules, so the model is as small as the main one."""
+    try:
+        search = ConflictSearch(spec, session_ids, deadline, relax_starts=False)
+    except TimeoutError:
+        return None
     core = search.infeasible(search.literals, share)
     if core is None:
         return None
-
-    narrowed = [
-        session_id
-        for session_id, literal in search.placed.items()
-        if literal.index in core
-    ]
-    if len(narrowed) < len(search.placed):
-        # Sessions outside the core stay unplaced; a smaller model drops them for presolve.
-        search = ConflictSearch(spec, narrowed, deadline, workers)
-        core = search.infeasible(search.literals, 0.5)
-        if core is None:
-            return None
-
-    return search.describe(
-        search.quickxplain(
-            [], False, [literal for literal in search.literals if literal.index in core]
-        )
+    return (
+        [
+            session_id
+            for session_id, literal in search.placed.items()
+            if literal.index in core
+        ],
+        {rule_key(rule) for rule in search.rules if rule["literal"].index in core},
     )
+
+
+def explain_sessions(spec, session_ids, rule_keys, deadline):
+    """Return a minimal conflict among the given sessions, or None without a proof.
+
+    Candidates are the given rules and the time rules of these sessions. Rules
+    are shrunk while every session is placed. The other sessions of the rules
+    left may conflict with fewer of them, so the rules are shrunk again with
+    those sessions placed too. Then sessions are shrunk."""
+    search = ConflictSearch(spec, session_ids, deadline)
+    keys = search.minimal_rules(
+        lambda rule: rule["kind"] in TIME_RULES or rule_key(rule) in rule_keys
+    )
+    if keys is None:
+        return None
+
+    wider = set(session_ids) | rule_sessions(spec, keys)
+    if len(wider) > len(session_ids):
+        now = time.monotonic()
+        try:
+            # Half of the time left stays for the conflict found so far.
+            wide = ConflictSearch(spec, wider, deadline, now + (deadline - now) / 2)
+        except TimeoutError:
+            wide = None
+        wide_keys = wide and wide.minimal_rules(lambda rule: rule_key(rule) in keys)
+        # Without a rule, the wider sessions conflict over room capacity alone.
+        if wide_keys:
+            search, keys = wide, wide_keys
+    return search.minimal_conflict(keys)
+
+
+def rule_key(rule):
+    return (rule["kind"], rule["id"])
+
+
+def rule_sessions(spec, keys):
+    """Return the sessions of the given rules. Term-wide rules list none."""
+    return {
+        str(session_id)
+        for rule in (spec.get("explanation") or {}).get("rules", [])
+        if (rule["kind"], str(rule["id"])) in keys
+        for session_id in rule["session_ids"]
+    }
 
 
 class ConflictSearch:
     """Run infeasibility checks on the guarded model of some sessions."""
 
-    def __init__(self, spec, session_ids, deadline, workers):
+    def __init__(self, spec, session_ids, deadline, built_by=None, relax_starts=True):
         self.model, rules, self.placed = conflict_model(
-            restrict_spec(spec, session_ids)
+            restrict_spec(spec, session_ids), relax_starts, built_by or deadline
         )
         self.rules = sorted(rules, key=lambda rule: RULE_PREFERENCE.index(rule["kind"]))
         # QuickXplain keeps earlier literals, so preferred rules come first.
@@ -863,7 +987,6 @@ class ConflictSearch:
             self.placed.values()
         )
         self.deadline = deadline
-        self.workers = workers
         self.minimal = True
 
     def infeasible(self, literals, share):
@@ -881,13 +1004,48 @@ class ConflictSearch:
         solver.parameters.max_time_in_seconds = max(
             remaining * share, MIN_CHECK_SECONDS
         )
-        solver.parameters.num_search_workers = self.workers
+        # Assumptions force one worker, and presolve would have to keep every
+        # solution, which costs more than these checks. Propagation and the LP
+        # relaxation prove most conflicts at once.
+        solver.parameters.num_workers = 1
+        solver.parameters.cp_model_presolve = False
+        solver.parameters.cp_model_probing_level = 0
+        solver.parameters.symmetry_level = 0
+        solver.parameters.linearization_level = 2
         status = solver.solve(self.model)
         if status == cp_model.INFEASIBLE:
             return set(solver.sufficient_assumptions_for_infeasibility())
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             self.minimal = False
         return None
+
+    def minimal_rules(self, candidate):
+        """Return the keys of a minimal set of candidate rules that conflicts while
+        every session is placed, or None without a proof."""
+        rules = [rule["literal"] for rule in self.rules if candidate(rule)]
+        sessions = list(self.placed.values())
+        core = self.infeasible(rules + sessions, 0.5)
+        if core is None:
+            return None
+        kept = {
+            literal.index
+            for literal in self.quickxplain(
+                sessions, False, [literal for literal in rules if literal.index in core]
+            )
+        }
+        return {rule_key(rule) for rule in self.rules if rule["literal"].index in kept}
+
+    def minimal_conflict(self, keys):
+        """Describe the given rules, which conflict while every session is placed,
+        with a minimal set of their sessions."""
+        rules = [rule["literal"] for rule in self.rules if rule_key(rule) in keys]
+        sessions = list(self.placed.values())
+        core = self.infeasible(rules + sessions, 0.5)
+        if core is not None:
+            sessions = self.quickxplain(
+                rules, False, [literal for literal in sessions if literal.index in core]
+            )
+        return self.describe(rules + sessions)
 
     def quickxplain(self, background, added, candidates):
         """Return a minimal subset of candidates that conflicts with the background.
@@ -938,7 +1096,7 @@ class ConflictSearch:
 
 
 def restrict_spec(spec, session_ids):
-    """Keep the given sessions and the rules and locks that refer to them."""
+    """Keep the given sessions and the rules, groups and locks that refer to them."""
     keep = {str(session_id) for session_id in session_ids}
 
     def only(group):
@@ -951,6 +1109,9 @@ def restrict_spec(spec, session_ids):
             ],
         }
 
+    def among(groups):
+        return [group for group in map(only, groups) if group["session_ids"]]
+
     restricted = {
         **spec,
         "sessions": [
@@ -962,27 +1123,25 @@ def restrict_spec(spec, session_ids):
             if str(session_id) in keep
         },
         "hard": {
-            "room_groups": [only(group) for group in spec["hard"]["room_groups"]],
-            "exclusive_groups": [
-                only(group) for group in spec["hard"]["exclusive_groups"]
-            ],
+            "room_groups": among(spec["hard"]["room_groups"]),
+            "exclusive_groups": among(spec["hard"]["exclusive_groups"]),
         },
     }
     if "explanation" in spec:
-        restricted["explanation"] = {
-            "rules": [only(rule) for rule in spec["explanation"]["rules"]]
-        }
+        restricted["explanation"] = {"rules": among(spec["explanation"]["rules"])}
     return restricted
 
 
-def conflict_model(spec):
+def conflict_model(spec, relax_starts=True, deadline=None):
     """Build the hard rules with one assumption literal per rule an administrator
     can change, and one literal per session that requires its placement.
 
     With every literal true, the model allows the same placements as the main
     model. A false rule literal removes or loosens its rule: starts may use the
     whole grid, and sessions of a restricted room list may use a stand-in room.
-    Looser rules keep every conflict found here a conflict of the real rules."""
+    Looser rules keep every conflict found here a conflict of the real rules.
+    Without `relax_starts`, sessions keep their allowed starts and time rules
+    get no literal. Raise TimeoutError when building passes the deadline."""
     grid = spec["grid"]
     days_count = int(grid["days_count"])
     slots_per_day = int(grid["slots_per_day"])
@@ -1000,7 +1159,7 @@ def conflict_model(spec):
     raw_sessions = []
     for raw in spec["sessions"]:
         raw = dict(raw)
-        if explanation is not None:
+        if explanation is not None and relax_starts:
             # Time rules are guarded below, so every start that fits the grid is a candidate.
             raw.pop("allowed_starts", None)
         if str(raw["id"]) in restricted_rooms:
@@ -1013,10 +1172,12 @@ def conflict_model(spec):
     x = AssignmentVariables(sessions)
     placed = {}
     for session in sessions:
+        stop_at(deadline)
         variables = add_assignment_variables(model, x, session, rooms)
         literal = model.new_bool_var(f"placed_{session['id']}")
-        model.add(sum(variables) == 1).only_enforce_if(literal)
-        model.add(sum(variables) == 0).only_enforce_if(~literal)
+        total = cp_model.LinearExpr.sum(variables) if variables else 0
+        model.add(total == 1).only_enforce_if(literal)
+        model.add(total == 0).only_enforce_if(~literal)
         placed[session["id"]] = literal
 
     rules = []
@@ -1063,6 +1224,7 @@ def conflict_model(spec):
         )
 
     for rule in rule_specs:
+        stop_at(deadline)
         members = [
             sessions_by_id[str(session_id)]
             for session_id in rule["session_ids"]
@@ -1118,9 +1280,12 @@ def conflict_model(spec):
                 }
             )
 
-    add_room_group_constraints(
-        model, x, spec["hard"]["room_groups"], sessions_by_id, slot_count, slots_per_day
-    )
+    seen = set()
+    for group in spec["hard"]["room_groups"]:
+        stop_at(deadline)
+        add_room_group_constraints(
+            model, x, [group], sessions_by_id, slot_count, slots_per_day, seen
+        )
     if explanation is None:
         # Without rule identities, teacher and group overlaps stay fixed.
         add_exclusive_group_constraints(
@@ -1182,6 +1347,12 @@ def conflict_model(spec):
     return model, rules, placed
 
 
+def stop_at(deadline):
+    """Raise TimeoutError once the deadline, if any, has passed."""
+    if deadline is not None and time.monotonic() > deadline:
+        raise TimeoutError("explanation deadline passed")
+
+
 def flat_cells(cells, slots_per_day):
     """Convert 1-based day/slot cells to 0-based flattened grid indexes."""
     return {
@@ -1234,27 +1405,6 @@ def add_exclusive_group_constraints(
             seen,
             enforce,
         )
-
-
-def add_week_overlap_constraints(
-    model, x, sessions, slot_index, rooms, slots_per_day, seen, enforce=None
-):
-    """Add at-most-one constraints for one grid slot over the sessions' rooms.
-
-    `rooms` limits the check to the given rooms. With None, check each session's
-    allowed rooms. With `enforce`, the constraints hold only while that literal
-    is true.
-    """
-    add_overlap_constraints(
-        model,
-        x,
-        sessions,
-        rooms,
-        range(slot_index, slot_index + 1),
-        slots_per_day,
-        seen,
-        enforce,
-    )
 
 
 def add_overlap_constraints(
