@@ -84,7 +84,7 @@ defmodule NeuZeit.Planning.Repairs do
     state = %{positions: ctx.positions, index: ctx.index, moved: [], queue: []}
 
     choices =
-      if not selected.locked and {day, slot} in ctx.starts[selected.id],
+      if not selected.locked and {day, slot} in starts(ctx, selected),
         do: choices(ctx, state, selected, day, slot),
         else: []
 
@@ -109,7 +109,7 @@ defmodule NeuZeit.Planning.Repairs do
     item = ctx.items[id]
     state = %{state | queue: queue}
 
-    for {day, slot} <- ctx.starts[id],
+    for {day, slot} <- starts(ctx, item),
         {room, displaced} <- choices(ctx, state, item, day, slot),
         reduce: found do
       found ->
@@ -416,7 +416,7 @@ defmodule NeuZeit.Planning.Repairs do
     %{
       selected: session.id,
       items: items,
-      starts: Map.new(items, fn {id, item} -> {id, starts(term, grid, item)} end),
+      grid: grid,
       before: before,
       positions: positions,
       index:
@@ -471,7 +471,8 @@ defmodule NeuZeit.Planning.Repairs do
   end
 
   # The restrictions that do not depend on other placements, as in Feasibility.
-  defp starts(term, grid, item) do
+  # Computed when a session moves, since most never do.
+  defp starts(%{term: term, grid: grid}, item) do
     days = length(grid.days)
     last = length(grid.slots) - item.duration + 1
 
@@ -494,18 +495,23 @@ defmodule NeuZeit.Planning.Repairs do
         cells -> MapSet.new(cells, &{&1.day, &1.slot})
       end
 
+    teaching =
+      for day <- 1..days,
+          AutomaticWeeks.errors(term, [
+            %{
+              id: nil,
+              session_id: item.id,
+              session: item.session,
+              week_mask: item.week_mask,
+              day: day
+            }
+          ]) == [],
+          do: day
+
     Enum.filter(cells, fn {day, slot} ->
-      (is_nil(available) or
-         Enum.all?(slot..(slot + item.duration - 1), &MapSet.member?(available, {day, &1}))) and
-        AutomaticWeeks.errors(term, [
-          %{
-            id: nil,
-            session_id: item.id,
-            session: item.session,
-            week_mask: item.week_mask,
-            day: day
-          }
-        ]) == []
+      day in teaching and
+        (is_nil(available) or
+           Enum.all?(slot..(slot + item.duration - 1), &MapSet.member?(available, {day, &1})))
     end)
   end
 
