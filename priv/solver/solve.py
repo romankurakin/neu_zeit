@@ -308,10 +308,15 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
         int(weights.get("active_days", 0)),
     )
 
-    for session_id, placement in current.items():
-        key = (session_id, placement["slot_index"], placement["room"])
-        if key in x:
-            model.add_hint(x[key], 1)
+    warm_assignment = {}
+    if all(session_id in current for session_id in sessions_by_id):
+        for session_id, placement in current.items():
+            key = (session_id, placement["slot_index"], placement["room"])
+            if key in x:
+                model.add_hint(x[key], 1)
+    else:
+        warm_assignment = greedy_assignment(spec, x, fixed, current)
+        add_assignment_hints(model, x, warm_assignment, current)
 
     now = time.monotonic()
     build_seconds = now - started
@@ -325,6 +330,9 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
     full_objective = sum(base_objective_terms + active_day_objective_terms)
     model.minimize(base_objective if use_two_phases else full_objective)
     solver = configured_solver(solver_config, first_phase_time)
+    if warm_assignment:
+        # Partial greedy assignments may need more than the default ten conflicts.
+        solver.parameters.hint_conflict_limit = 1000
     status = solver.solve(model)
 
     # Retry a first phase without a solution using the remaining shared budget.
@@ -406,6 +414,265 @@ def cp_sat_solve(spec: dict, started: float) -> dict:
         "assignment": assignment,
         "backend": "cp_sat",
     }
+
+
+def greedy_assignment(spec, x, fixed, current):
+    """Place constrained sessions first in the cheapest free cells."""
+    slots_per_day = int(spec["grid"]["slots_per_day"])
+    excluded = normalize_excluded_cells(spec.get("excluded_cells", []))
+    groups = {sid: [] for sid in x.sessions}
+    for index, group in enumerate(
+        spec["hard"]["exclusive_groups"] + spec["hard"]["room_groups"]
+    ):
+        room = str(group["room_id"]) if "room_id" in group else None
+        for sid in group["session_ids"]:
+            groups[sid].append((index, room))
+    choices = {sid: [] for sid in x.sessions}
+    for sid, start, room in x:
+        choices[sid].append((start, room))
+    blocked = {}
+    for session in spec["sessions"]:
+        blocked[str(session["id"])] = {
+            (
+                (int(cell["day"]) - 1) * slots_per_day + int(cell["slot"]) - 1,
+                normalize_room(cell.get("room")),
+                int(cell["week"]) if "week" in cell else None,
+            )
+            for cell in session.get("blocked_assignments", [])
+        }
+    order = sorted(
+        x.sessions,
+        key=lambda sid: (
+            sid not in fixed,
+            sid not in current,
+            len(choices[sid])
+            * (len(x.sessions[sid]["weeks"]) if x.sessions[sid]["choose_week"] else 1),
+            -len(groups[sid]),
+            sid,
+        ),
+    )
+    occupied = {}
+    assignment = {}
+    costs = GreedyCosts(spec, x, current)
+    for sid in order:
+        session = x.sessions[sid]
+        old = fixed.get(sid, current.get(sid))
+        candidates = choices[sid]
+        if old is not None:
+            preferred = (old["slot_index"], old["room"])
+            candidates = sorted(candidates, key=lambda cell: cell != preferred)
+            if sid in fixed:
+                candidates = [cell for cell in candidates if cell == preferred]
+        weeks = sorted(session["weeks"]) if session["choose_week"] else [None]
+        if session["choose_week"] and old is not None:
+            weeks = sorted(weeks, key=lambda week: week not in old["weeks"])
+            if sid in fixed:
+                weeks = [week for week in weeks if week in old["weeks"]]
+        best = None
+        best_cost = None
+        best_cells = []
+        for start, room in candidates:
+            if (start, room, None) in blocked[sid]:
+                continue
+            resources = [
+                index
+                for index, target in groups[sid]
+                if target is None or target == room
+            ]
+            mask = ((1 << session["duration_slots"]) - 1) << start
+            for week in weeks:
+                if week is not None and (
+                    (week, start // slots_per_day + 1) in excluded
+                    or (start, room, week) in blocked[sid]
+                ):
+                    continue
+                occupied_weeks = session["weeks"] if week is None else [week]
+                cells = [(index, w) for index in resources for w in occupied_weeks]
+                if any(occupied.get(cell, 0) & mask for cell in cells):
+                    continue
+                cost = costs.delta(sid, start, room, week)
+                if best_cost is None or cost < best_cost:
+                    best = (start, room, week)
+                    best_cost = cost
+                    best_cells = cells
+        if best is not None:
+            assignment[sid] = best
+            mask = ((1 << session["duration_slots"]) - 1) << best[0]
+            for cell in best_cells:
+                occupied[cell] = occupied.get(cell, 0) | mask
+            costs.place(sid, *best)
+    return assignment
+
+
+def mask_gaps(mask):
+    """Count empty slots between the first and last occupied slots."""
+    if not mask:
+        return 0
+    return mask.bit_length() - (mask & -mask).bit_length() + 1 - mask.bit_count()
+
+
+class GreedyCosts:
+    """Track soft costs of a partial assignment without changing the model."""
+
+    def __init__(self, spec, x, current):
+        self.sessions = x.sessions
+        self.slots_per_day = int(spec["grid"]["slots_per_day"])
+        days_count = int(spec["grid"]["days_count"])
+        soft = spec["soft"]
+        self.weights = soft["weights"]
+        self.room_buildings = {
+            str(room["id"]): str(room["building_id"]) for room in spec["rooms"]
+        }
+        self.starts = {}
+        self.current = {}
+        for sid, old in current.items():
+            key = (sid, old["slot_index"], old["room"])
+            if key in x:
+                weeks = old.get("weeks", [])
+                week = (
+                    weeks[0]
+                    if len(weeks) == 1 and (*key, weeks[0]) in x.weekly
+                    else None
+                )
+                self.current[sid] = (*key[1:], week)
+
+        # Identical recurring weeks share state but retain their combined weight.
+        grouped = {}
+        for index, (field, metric) in enumerate(
+            [
+                ("gap_groups", "gaps"),
+                ("active_day_groups", "active_days"),
+                ("building_groups", "building"),
+            ]
+        ):
+            weight = int(self.weights.get(metric, 0))
+            if weight <= 0 or (metric == "gaps" and self.slots_per_day < 3):
+                continue
+            groups = soft.get(
+                field, soft["gap_groups"] if metric == "active_days" else []
+            )
+            for group in groups:
+                ids = tuple(sorted(group["session_ids"]))
+                if len(ids) < 2:
+                    continue
+                week = int(group["week"]) if x.weekly else None
+                if week is not None and all(
+                    week in x.sessions[sid]["weeks"]
+                    and not x.sessions[sid]["choose_week"]
+                    for sid in ids
+                ):
+                    week = None
+                grouped.setdefault((week, ids), [0, 0, 0])[index] += weight
+        self.groups = {sid: [] for sid in x.sessions}
+        for (week, ids), weights in grouped.items():
+            masks = [0] * days_count
+            buildings = [set() for _ in range(days_count)]
+            for sid in ids:
+                if week is None or week in x.sessions[sid]["weeks"]:
+                    self.groups[sid].append((week, weights, masks, buildings))
+
+        self.partners = {sid: [] for sid in x.sessions}
+        if int(self.weights.get("sequence", 0)) > 0:
+            for pair in soft["sequence_pairs"]:
+                self.partners[pair["left"]].append(pair["right"])
+                self.partners[pair["right"]].append(pair["left"])
+        self.excluded = {}
+        for week, day in normalize_excluded_cells(spec.get("excluded_cells", [])):
+            self.excluded.setdefault(day - 1, set()).add(week)
+
+        workloads = {}
+        for sid, session in x.sessions.items():
+            if session["choose_week"]:
+                workloads.setdefault(session["workload"], []).append(sid)
+        self.balance = {}
+        self.positions = {}
+        for ids in workloads.values():
+            weeks = sorted(set().union(*(x.sessions[sid]["weeks"] for sid in ids)))
+            scale, count = len(weeks), len(ids)
+            terms = {week: [[0, count]] for week in weeks}
+            if 1 < count < scale:
+                window_size = max(2, round(scale / count))
+                for offset in range(scale - window_size + 1):
+                    term = [0, window_size * count]
+                    for week in weeks[offset : offset + window_size]:
+                        terms[week].append(term)
+            positions = set()
+            for sid in ids:
+                self.balance[sid] = (scale, terms)
+                self.positions[sid] = positions
+
+    def delta(self, sid, start, room, week):
+        session = self.sessions[sid]
+        day, slot = divmod(start, self.slots_per_day)
+        mask = ((1 << session["duration_slots"]) - 1) << slot
+        building = self.room_buildings.get(room)
+        cost = 0
+        for group_week, weights, masks, buildings in self.groups[sid]:
+            if group_week is not None and week is not None and group_week != week:
+                continue
+            before = masks[day]
+            cost += weights[0] * (mask_gaps(before | mask) - mask_gaps(before))
+            cost += weights[1] * (before == 0)
+            used = buildings[day]
+            if building is not None and used and building not in used:
+                cost += weights[2]
+        for partner in self.partners[sid]:
+            if partner in self.starts:
+                cost += int(self.weights["sequence"]) * slot_distance_penalty(
+                    start,
+                    session["duration_slots"],
+                    self.starts[partner],
+                    self.sessions[partner]["duration_slots"],
+                    self.slots_per_day,
+                )
+        if sid in self.current:
+            old_start, old_room, old_week = self.current[sid]
+            moved = (start, room) != (old_start, old_room) or (
+                old_week is not None and week != old_week
+            )
+            cost += max(0, int(self.weights.get("perturbation", 0))) * moved
+        if not session["choose_week"]:
+            cost += max(0, int(self.weights.get("excluded_days", 0))) * len(
+                session["weeks"] & self.excluded.get(day, set())
+            )
+        if sid in self.balance:
+            scale, terms = self.balance[sid]
+            cost += int(self.weights.get("weekly_balance", 100)) * sum(
+                abs(scale * (count + 1) - target) - abs(scale * count - target)
+                for count, target in terms[week]
+            )
+            cost += (start, room) not in self.positions[sid]
+        return cost
+
+    def place(self, sid, start, room, week):
+        day, slot = divmod(start, self.slots_per_day)
+        mask = ((1 << self.sessions[sid]["duration_slots"]) - 1) << slot
+        building = self.room_buildings.get(room)
+        for group_week, _weights, masks, buildings in self.groups[sid]:
+            if group_week is not None and week is not None and group_week != week:
+                continue
+            masks[day] |= mask
+            if building is not None:
+                buildings[day].add(building)
+        self.starts[sid] = start
+        if sid in self.balance:
+            for term in self.balance[sid][1][week]:
+                term[0] += 1
+            self.positions[sid].add((start, room))
+
+
+def add_assignment_hints(model, x, assignment, current):
+    """Hint every choice of placed sessions, leaving unplaced sessions free."""
+    for (sid, start, room), variable in x.items():
+        if sid in assignment:
+            model.add_hint(variable, int((start, room) == assignment[sid][:2]))
+        elif sid in current:
+            old = current[sid]
+            if (start, room) == (old["slot_index"], old["room"]):
+                model.add_hint(variable, 1)
+    for (sid, start, room, week), variable in x.weekly.items():
+        if sid in assignment:
+            model.add_hint(variable, int((start, room, week) == assignment[sid]))
 
 
 def add_assignment_variables(model, x, session, rooms):

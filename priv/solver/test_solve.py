@@ -63,6 +63,417 @@ class FixedSearch:
         return getattr(self.solver, name)
 
 
+class WarmStartTests(unittest.TestCase):
+    def seed(self, spec):
+        grid = spec["grid"]
+        sessions = solve.normalize_sessions(
+            spec["sessions"], grid["days_count"], grid["slots_per_day"]
+        )
+        model = cp_model.CpModel()
+        x = solve.AssignmentVariables(sessions)
+        rooms = [str(room["id"]) for room in spec["rooms"]]
+        for session in sessions:
+            model.add(
+                sum(solve.add_assignment_variables(model, x, session, rooms)) == 1
+            )
+        fixed = solve.normalize_placements(spec["fixed"], grid["slots_per_day"])
+        current = solve.normalize_placements(spec["current"], grid["slots_per_day"])
+        assignment = solve.greedy_assignment(spec, x, fixed, current)
+        solve.add_assignment_hints(model, x, assignment, current)
+        return assignment, model, x
+
+    def validate(self, spec, assignment):
+        from benchmark_quality import validate
+
+        placements = {}
+        for sid, (start, room, week) in assignment.items():
+            placement = solve.slot_to_day_slot(
+                start, spec["grid"]["slots_per_day"], room
+            )
+            if week is not None:
+                placement["weeks"] = [week]
+            placements[sid] = placement
+        validate(spec, placements)
+
+    def test_complete_seed_preserves_locks_current_and_duration(self):
+        spec = small_spec(2)
+        spec["soft"]["weights"]["perturbation"] = 5
+        spec["sessions"][0]["duration_slots"] = 2
+        spec["fixed"] = {"b": {"day": 1, "slot": 1, "room": "r"}}
+        spec["current"] = {
+            "a": {"day": 2, "slot": 2, "room": "r"},
+            "b": {"day": 2, "slot": 1, "room": "r"},
+        }
+
+        assignment, model, x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment, {"b": (0, "r", None), "a": (4, "r", None)})
+        self.assertEqual(len(model.proto.solution_hint.vars), len(x))
+        self.assertEqual(sum(model.proto.solution_hint.values), 2)
+        self.assertEqual(self.seed(spec)[0], assignment)
+
+    def test_week_choices_obey_bookings_dates_and_recurring_occupancy(self):
+        spec = small_spec()
+        spec["grid"] = {"days_count": 1, "slots_per_day": 1}
+        spec["sessions"][0].update(
+            choose_week=True,
+            weeks=[1, 2, 3, 4],
+            blocked_assignments=[{"day": 1, "slot": 1, "room": "r", "week": 3}],
+        )
+        spec["fixed"] = {"b": {"day": 1, "slot": 1, "room": "r"}}
+        spec["current"] = {"a": {"day": 1, "slot": 1, "room": "r", "weeks": [2]}}
+        spec["excluded_cells"] = [{"week": 2, "day": 1}]
+
+        assignment, model, x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["a"], (0, "r", 4))
+        self.assertEqual(len(model.proto.solution_hint.vars), len(x) + len(x.weekly))
+        self.assertEqual(sum(model.proto.solution_hint.values), 3)
+
+    def test_duration_conflict_moves_a_current_placement(self):
+        spec = small_spec()
+        spec["sessions"][0]["duration_slots"] = 2
+        spec["fixed"] = {"a": {"day": 1, "slot": 1, "room": "r"}}
+        spec["current"] = {"b": {"day": 1, "slot": 2, "room": "r"}}
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (2, "r", None))
+
+    def test_fewer_choices_take_priority_over_session_id(self):
+        spec = small_spec()
+        spec["sessions"][1]["allowed_starts"] = [{"day": 1, "slot": 1}]
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment, {"b": (0, "r", None), "a": (1, "r", None)})
+
+    def test_movable_lock_keeps_its_week_and_current_week_is_preferred(self):
+        spec = small_spec(2)
+        spec["grid"] = {"days_count": 1, "slots_per_day": 1}
+        for session in spec["sessions"]:
+            session["choose_week"] = True
+        spec["fixed"] = {"b": {"day": 1, "slot": 1, "room": "r", "weeks": [2]}}
+        spec["current"] = {"a": {"day": 1, "slot": 1, "room": "r", "weeks": [1]}}
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment, {"b": (0, "r", 2), "a": (0, "r", 1)})
+
+    def test_online_sessions_share_a_cell_only_without_exclusive_groups(self):
+        spec = small_spec()
+        spec["grid"] = {"days_count": 1, "slots_per_day": 1}
+        for session in spec["sessions"]:
+            session.update(delivery_mode="online", allowed_rooms=[])
+        assignment, _model, _x = self.seed(spec)
+        self.assertEqual(len(assignment), 1)
+
+        spec["hard"]["exclusive_groups"] = []
+        assignment, _model, _x = self.seed(spec)
+        self.validate(spec, assignment)
+        self.assertEqual(assignment, {"a": (0, None, None), "b": (0, None, None)})
+
+    def test_partial_seed_leaves_unplaced_sessions_without_zero_hints(self):
+        spec = small_spec()
+        spec["sessions"][1]["blocked_assignments"] = [
+            {"day": day, "slot": slot, "room": "r"}
+            for day in (1, 2)
+            for slot in (1, 2, 3)
+        ]
+
+        assignment, model, x = self.seed(spec)
+
+        self.assertEqual(set(assignment), {"a"})
+        hints = dict(
+            zip(model.proto.solution_hint.vars, model.proto.solution_hint.values)
+        )
+        self.assertEqual(
+            set(hints), {var.index for (sid, _, _), var in x.items() if sid == "a"}
+        )
+        self.assertEqual(sum(hints.values()), 1)
+
+    def test_empty_seed_retains_current_hints_and_the_stage_one_model(self):
+        spec = small_spec()
+        spec["current"] = {"a": {"day": 2, "slot": 1, "room": "r"}}
+        models = []
+        limits = []
+        original = solve.configured_solver
+
+        def recording(config, limit):
+            solver = original(config, limit)
+            run = solver.solve
+
+            def measured(model):
+                models.append(model.clone())
+                limits.append(solver.parameters.hint_conflict_limit)
+                return run(model)
+
+            solver.solve = measured
+            return solver
+
+        with patch.object(solve, "configured_solver", side_effect=recording):
+            solve.cp_sat_solve(spec, time.monotonic())
+        seeded = models[0]
+        self.assertEqual(limits[0], 1000)
+        models.clear()
+        limits.clear()
+        with (
+            patch.object(solve, "greedy_assignment", return_value={}),
+            patch.object(solve, "configured_solver", side_effect=recording),
+        ):
+            result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(limits[0], cp_model.CpSolver().parameters.hint_conflict_limit)
+        unseeded = models[0]
+        hint = unseeded.proto.solution_hint
+        self.assertEqual(list(hint.values), [1])
+        self.assertEqual(unseeded.proto.variables[hint.vars[0]].name, "x_a_3_r")
+        seeded.clear_hints()
+        unseeded.clear_hints()
+        self.assertEqual(str(seeded.proto), str(unseeded.proto))
+
+    def test_stage_one_can_improve_a_complete_seed(self):
+        with patch.object(
+            solve,
+            "greedy_assignment",
+            return_value={"a": (0, "r", None), "b": (2, "r", None)},
+        ):
+            result = solve.cp_sat_solve(small_spec(), time.monotonic())
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["objective"], 2)
+
+    def test_empty_seed_keeps_the_unknown_retry_and_stage_two(self):
+        first = unittest.mock.Mock()
+        first.solve.return_value = cp_model.UNKNOWN
+        retry = FixedSearch({"a": 0, "b": 1})
+        compact = FixedSearch({"a": 0, "b": 1})
+        with (
+            patch.object(solve, "greedy_assignment", return_value={}),
+            patch.object(
+                solve, "configured_solver", side_effect=[first, retry, compact]
+            ) as configured,
+        ):
+            result = solve.cp_sat_solve(small_spec(), time.monotonic())
+
+        self.assertEqual(configured.call_count, 3)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["objective"], 2)
+
+    def test_complete_current_keeps_its_existing_hints(self):
+        spec = small_spec()
+        spec["current"] = {
+            "b": {"day": 1, "slot": 2, "room": "r"},
+            "a": {"day": 1, "slot": 1, "room": "r"},
+        }
+        hints = []
+        original = solve.configured_solver
+
+        def recording(config, limit):
+            solver = original(config, limit)
+            run = solver.solve
+
+            def measured(model):
+                hints.append(
+                    [
+                        (model.proto.variables[index].name, value)
+                        for index, value in zip(
+                            model.proto.solution_hint.vars,
+                            model.proto.solution_hint.values,
+                        )
+                    ]
+                )
+                return run(model)
+
+            solver.solve = measured
+            return solver
+
+        with (
+            patch.object(solve, "greedy_assignment") as greedy,
+            patch.object(solve, "configured_solver", side_effect=recording),
+        ):
+            result = solve.cp_sat_solve(spec, time.monotonic())
+
+        greedy.assert_not_called()
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(hints[0], [("x_b_1_r", 1), ("x_a_0_r", 1)])
+
+    def test_cheapest_cell_joins_a_day_without_a_gap(self):
+        spec = small_spec()
+        spec["fixed"] = {"a": {"day": 2, "slot": 3, "room": "r"}}
+        spec["sessions"][1]["allowed_starts"] = [
+            {"day": 1, "slot": 1},
+            {"day": 2, "slot": 1},
+            {"day": 2, "slot": 2},
+        ]
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (4, "r", None))
+
+    def test_cheapest_room_keeps_the_groups_building(self):
+        spec = small_spec()
+        spec["rooms"].append({"id": "annex", "building_id": "annex"})
+        spec["sessions"][1].update(
+            allowed_rooms=["annex", "r"], allowed_starts=[{"day": 1, "slot": 2}]
+        )
+        spec["fixed"] = {"a": {"day": 1, "slot": 1, "room": "r"}}
+        spec["soft"]["building_groups"] = spec["soft"]["gap_groups"]
+        spec["soft"]["weights"]["building"] = 10
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (1, "r", None))
+
+    def test_repeated_week_cost_can_outweigh_perturbation(self):
+        for weeks, expected in [(1, 0), (2, 4)]:
+            with self.subTest(weeks=weeks):
+                spec = small_spec(weeks)
+                spec["fixed"] = {"a": {"day": 2, "slot": 1, "room": "r"}}
+                spec["current"] = {"b": {"day": 1, "slot": 1, "room": "r"}}
+                spec["soft"]["weights"]["perturbation"] = 3
+
+                assignment, _model, _x = self.seed(spec)
+
+                self.validate(spec, assignment)
+                self.assertEqual(assignment["b"], (expected, "r", None))
+
+    def test_sequence_uses_the_partners_duration(self):
+        spec = small_spec()
+        spec["sessions"][0]["duration_slots"] = 2
+        spec["fixed"] = {"a": {"day": 2, "slot": 1, "room": "r"}}
+        spec["soft"]["weights"].update(gaps=0, active_days=0, sequence=8)
+        spec["soft"]["sequence_pairs"] = [{"left": "a", "right": "b"}]
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (5, "r", None))
+
+    def test_recurring_meeting_avoids_excluded_days(self):
+        spec = small_spec(2)
+        spec["fixed"] = {"a": {"day": 1, "slot": 1, "room": "r"}}
+        spec["excluded_cells"] = [{"week": 1, "day": 1}, {"week": 2, "day": 1}]
+        spec["soft"]["weights"]["excluded_days"] = 10
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (3, "r", None))
+
+    def test_movable_meetings_only_join_their_chosen_weeks_groups(self):
+        spec = small_spec(2)
+        for session in spec["sessions"]:
+            session["choose_week"] = True
+        spec["fixed"] = {"a": {"day": 2, "slot": 1, "room": "r", "weeks": [2]}}
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (4, "r", 2))
+
+    def test_weekly_balance_reuses_a_position_in_another_week(self):
+        spec = small_spec(2)
+        for session in spec["sessions"]:
+            session.update(choose_week=True, workload="course")
+        spec["fixed"] = {"a": {"day": 2, "slot": 1, "room": "r", "weeks": [1]}}
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (3, "r", 2))
+
+    def test_active_days_default_to_gap_groups_and_ignore_singletons(self):
+        spec = small_spec()
+        del spec["soft"]["active_day_groups"]
+        spec["soft"]["gap_groups"].append({"week": 1, "session_ids": ["b"]})
+        spec["fixed"] = {"a": {"day": 2, "slot": 1, "room": "r"}}
+
+        assignment, _model, x = self.seed(spec)
+        costs = solve.GreedyCosts(spec, x, {})
+
+        self.assertEqual(assignment["b"], (4, "r", None))
+        self.assertEqual(costs.delta("b", 0, "r", None), 2)
+
+    def test_zero_weights_keep_the_first_free_candidate(self):
+        spec = small_spec()
+        spec["soft"]["weights"] = {key: 0 for key in spec["soft"]["weights"]}
+        spec["fixed"] = {"a": {"day": 2, "slot": 1, "room": "r"}}
+
+        assignment, _model, _x = self.seed(spec)
+
+        self.validate(spec, assignment)
+        self.assertEqual(assignment["b"], (0, "r", None))
+
+    def test_workload_increment_matches_balance_intervals_and_positions(self):
+        spec = small_spec(5)
+        for session in spec["sessions"]:
+            session.update(choose_week=True, workload="course")
+        spec["soft"]["weights"] = {key: 0 for key in spec["soft"]["weights"]}
+        _assignment, model, x = self.seed(spec)
+        costs = solve.GreedyCosts(spec, x, {})
+        cells = {"a": (0, "r", 2), "b": (0, "r", 4)}
+        # Empty weeks and four two-week windows each start below their target.
+        total = 100 * (5 * 2 + 4 * 4)
+        for sid, cell in cells.items():
+            total += costs.delta(sid, *cell)
+            costs.place(sid, *cell)
+        terms = solve.automatic_workload_terms(
+            model, x, list(x.sessions.values()), 100, set()
+        )
+        for key, variable in x.weekly.items():
+            model.add(variable == int(key[1:] == cells[key[0]]))
+        model.minimize(sum(terms))
+        solver = cp_model.CpSolver()
+        solver.parameters.num_search_workers = 1
+
+        status = solver.solve(model)
+
+        self.assertEqual(status, cp_model.OPTIMAL)
+        self.assertEqual(total, solver.objective_value)
+
+    def test_incremental_group_costs_match_complete_weekly_metrics(self):
+        from benchmark_quality import metrics
+
+        spec = small_spec(2)
+        spec["rooms"].append({"id": "annex", "building_id": "annex"})
+        for session in spec["sessions"]:
+            session.update(choose_week=True, allowed_rooms=["r", "annex"])
+        spec["sessions"].append({"id": "c", "weeks": [1, 2], "allowed_rooms": ["r"]})
+        for group in spec["soft"]["gap_groups"]:
+            group["session_ids"] = ["a", "b", "c"]
+        spec["soft"]["building_groups"] = spec["soft"]["gap_groups"]
+        spec["soft"]["weights"].update(
+            building=10, sequence=8, perturbation=3, excluded_days=10
+        )
+        spec["soft"]["sequence_pairs"] = [{"left": "a", "right": "c"}]
+        spec["current"] = {"b": {"day": 2, "slot": 1, "room": "r", "weeks": [1]}}
+        spec["excluded_cells"] = [{"week": 2, "day": 1}]
+        _assignment, _model, x = self.seed(spec)
+        current = solve.normalize_placements(spec["current"], 3)
+        costs = solve.GreedyCosts(spec, x, current)
+        cells = {"a": (0, "r", 1), "b": (4, "annex", 2), "c": (2, "r", None)}
+        total, placements = 0, {}
+        for sid, (start, room, week) in cells.items():
+            total += costs.delta(sid, start, room, week)
+            costs.place(sid, start, room, week)
+            placements[sid] = solve.slot_to_day_slot(start, 3, room)
+            if week is not None:
+                placements[sid]["weeks"] = [week]
+        self.validate(spec, cells)
+
+        # Each one-meeting workload has unchanged balance and one used position.
+        self.assertEqual(total - 2, metrics(spec, placements)["weighted_cost"])
+
+
 class SearchTests(unittest.TestCase):
     def test_online_sessions_share_a_time_without_a_fictitious_room_conflict(self):
         spec = small_spec()
@@ -112,6 +523,17 @@ class SearchTests(unittest.TestCase):
             result = solve.cp_sat_solve(small_spec(), time.monotonic())
         self.assertEqual(result["objective"], 2)
         self.assertEqual({p["day"] for p in result["assignment"].values()}, {1})
+
+    def test_second_phase_cannot_trade_base_cost_for_fewer_active_days(self):
+        spec = small_spec()
+        spec["soft"]["weights"]["active_days"] = 10
+        first = FixedSearch({"a": 0, "b": 3})
+        higher_base = FixedSearch({"a": 0, "b": 2})
+        with patch.object(solve, "configured_solver", side_effect=[first, higher_base]):
+            result = solve.cp_sat_solve(spec, time.monotonic())
+
+        self.assertEqual(result["objective"], 20)
+        self.assertEqual({p["day"] for p in result["assignment"].values()}, {1, 2})
 
     def test_expired_budget_does_not_start_search(self):
         with patch.object(solve, "configured_solver") as configured:
