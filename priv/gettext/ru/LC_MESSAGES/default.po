@@ -3896,47 +3896,47 @@ msgstr[0] "и ещё %{count}"
 msgstr[1] "и ещё %{count}"
 msgstr[2] "и ещё %{count}"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:449
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:452
 #, elixir-autogen, elixir-format
 msgid "Apply"
 msgstr "Применить"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:445
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:448
 #, elixir-autogen, elixir-format
 msgid "Groups affected: %{groups}"
 msgstr "Затронутые группы: %{groups}"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:431
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:434
 #, elixir-autogen, elixir-format
 msgid "Move %{session} to %{day} %{time}, %{room}"
 msgstr "Перенести %{session} на %{day} %{time}, %{room}"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:420
-#, elixir-autogen, elixir-format
-msgid "Moving up to two unlocked sessions does not free this start."
-msgstr "Перенос до двух незакреплённых занятий не освобождает это начало."
-
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:421
+#, elixir-autogen, elixir-format
+msgid "Moving up to %{count} unlocked sessions does not free this start."
+msgstr "Перенос до %{count} незакреплённых занятий не освобождает это начало."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:424
 #, elixir-autogen, elixir-format
 msgid "No option found yet."
 msgstr "Вариант пока не найден."
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:457
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:460
 #, elixir-autogen, elixir-format
 msgid "Search for %{seconds} s"
 msgstr "Искать %{seconds} с"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:454
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:457
 #, elixir-autogen, elixir-format
 msgid "Search stopped after %{seconds} s."
 msgstr "Поиск остановлен через %{seconds} с."
 
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:416
 #, elixir-autogen, elixir-format
-msgid "Searching for up to two moves."
-msgstr "Поиск вариантов с переносом до двух занятий."
+msgid "Searching for moves that free this start."
+msgstr "Поиск переносов, которые освобождают это начало."
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:480
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:483
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: %{count} point better"
 msgid_plural "Soft constraints: %{count} points better"
@@ -3944,7 +3944,7 @@ msgstr[0] "Мягкие ограничения: на %{count} балл лучш�
 msgstr[1] "Мягкие ограничения: на %{count} балла лучше"
 msgstr[2] "Мягкие ограничения: на %{count} баллов лучше"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:472
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:475
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: %{count} point worse"
 msgid_plural "Soft constraints: %{count} points worse"
@@ -3952,7 +3952,7 @@ msgstr[0] "Мягкие ограничения: на %{count} балл хуже"
 msgstr[1] "Мягкие ограничения: на %{count} балла хуже"
 msgstr[2] "Мягкие ограничения: на %{count} баллов хуже"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:468
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:471
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: no change"
 msgstr "Мягкие ограничения: без изменений"

@@ -413,11 +413,14 @@ defmodule NeuZeitWeb.PlanLive.BoardEditor do
       <h4 class="font-semibold">{gettext("Suggested moves")}</h4>
       <p :if={!@result} role="status" class="flex items-center gap-2 type-detail">
         <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-        {gettext("Searching for up to two moves.")}
+        {gettext("Searching for moves that free this start.")}
       </p>
       <p :if={@result && @result.repairs == []} class="type-detail">
         {if @result.complete,
-          do: gettext("Moving up to two unlocked sessions does not free this start."),
+          do:
+            gettext("Moving up to %{count} unlocked sessions does not free this start.",
+              count: NeuZeit.Planning.Repairs.max_moves()
+            ),
           else: gettext("No option found yet.")}
       </p>
       <div

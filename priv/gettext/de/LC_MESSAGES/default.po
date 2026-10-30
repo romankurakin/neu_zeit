@@ -3859,61 +3859,61 @@ msgid_plural "and %{count} more"
 msgstr[0] "und %{count} weitere"
 msgstr[1] "und %{count} weitere"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:449
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:452
 #, elixir-autogen, elixir-format
 msgid "Apply"
 msgstr "Übernehmen"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:445
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:448
 #, elixir-autogen, elixir-format
 msgid "Groups affected: %{groups}"
 msgstr "Betroffene Gruppen: %{groups}"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:431
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:434
 #, elixir-autogen, elixir-format
 msgid "Move %{session} to %{day} %{time}, %{room}"
 msgstr "%{session} auf %{day} %{time}, %{room} verlegen"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:420
-#, elixir-autogen, elixir-format
-msgid "Moving up to two unlocked sessions does not free this start."
-msgstr "Das Verlegen von bis zu zwei nicht fixierten Einheiten macht diese Anfangszeit nicht frei."
-
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:421
+#, elixir-autogen, elixir-format
+msgid "Moving up to %{count} unlocked sessions does not free this start."
+msgstr "Das Verlegen von bis zu %{count} nicht fixierten Einheiten macht diese Anfangszeit nicht frei."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:424
 #, elixir-autogen, elixir-format
 msgid "No option found yet."
 msgstr "Noch keine Möglichkeit gefunden."
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:457
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:460
 #, elixir-autogen, elixir-format
 msgid "Search for %{seconds} s"
 msgstr "%{seconds} s suchen"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:454
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:457
 #, elixir-autogen, elixir-format
 msgid "Search stopped after %{seconds} s."
 msgstr "Suche nach %{seconds} s beendet."
 
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:416
 #, elixir-autogen, elixir-format
-msgid "Searching for up to two moves."
-msgstr "Suche nach bis zu zwei Verlegungen."
+msgid "Searching for moves that free this start."
+msgstr "Suche nach Verlegungen, die diese Anfangszeit frei machen."
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:480
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:483
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: %{count} point better"
 msgid_plural "Soft constraints: %{count} points better"
 msgstr[0] "Weiche Regeln: %{count} Punkt besser"
 msgstr[1] "Weiche Regeln: %{count} Punkte besser"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:472
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:475
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: %{count} point worse"
 msgid_plural "Soft constraints: %{count} points worse"
 msgstr[0] "Weiche Regeln: %{count} Punkt schlechter"
 msgstr[1] "Weiche Regeln: %{count} Punkte schlechter"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:468
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:471
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: no change"
 msgstr "Weiche Regeln: unverändert"

@@ -2,10 +2,11 @@ defmodule NeuZeit.Planning.Repairs do
   @moduledoc """
   Suggests repairs for a start that other placements block.
 
-  A repair places the selected session at the start and moves up to two other
-  unlocked placements, so that the result passes the hard checks. Locked
-  placements never move. The search follows the suggestions of UniTime (Müller,
-  Murray and Rudová, PATAT 2010): depth-first, limited by moves and by time.
+  A repair places the selected session at the start and moves other unlocked
+  placements, so that the result passes the hard checks. Locked placements
+  never move. The search follows the suggestions of UniTime (Müller, Murray and
+  Rudová, PATAT 2010): depth-first, limited by moves and by time. It allows one
+  move, then two, and more only while no repair is found.
 
   Repairs are ranked by moves, then by the change in the soft penalty that the
   solver minimizes: gaps, active days, buildings per day, related blocks,
@@ -18,14 +19,22 @@ defmodule NeuZeit.Planning.Repairs do
   alias NeuZeit.Planning.{Placement, SharedResources}
   alias NeuZeit.Scheduling.TermDates
 
+  # Each added move multiplies the search. With seven, a start that no repair
+  # frees on a board of 600 sessions is settled well within the time limit.
+  @max_moves 7
+
+  @doc "The most moves of other placements a repair has by default."
+  def max_moves, do: @max_moves
+
   @doc """
   Returns repairs for placing `session` at `{day, slot}`.
 
   The result is `%{repairs: repairs, complete: boolean}`.
   `complete` is false when `:timeout` (milliseconds, default 5000) ended the
-  search before every option was checked. Options: `:max_moves` (default 2) and
-  `:limit` (default 5). The caller passes the session with the week set it is
-  edited for, as `Feasibility.cells_for/3` expects.
+  search before every option that could change the result was checked.
+  Options: `:max_moves` (default `max_moves/0`) and `:limit` (default 5). The
+  caller passes the session with the week set it is edited for, as
+  `Feasibility.cells_for/3` expects.
 
   Each repair has the session's `room`, the other `moves`, the affected
   `groups`, the soft `penalty` change (lower is better) and the `changes` for
@@ -54,23 +63,17 @@ defmodule NeuZeit.Planning.Repairs do
   # Searches a loaded board until `:deadline`, in monotonic milliseconds.
   def search(board, session, day, slot, opts) do
     ctx = context(board, session, Keyword.fetch!(opts, :deadline))
-    max_moves = Keyword.get(opts, :max_moves, 2)
+    limit = Keyword.get(opts, :limit, 5)
 
-    # One move first, so a short limit still returns the smallest repairs.
     {solutions, complete} =
-      Enum.reduce_while(1..max_moves//1, {%{}, true}, fn moves, {found, _complete} ->
-        case explore(%{ctx | max_moves: moves}, day, slot, found) do
-          {:done, found} -> {:cont, {found, true}}
-          {:stopped, found} -> {:halt, {found, false}}
-        end
-      end)
+      deepen(ctx, day, slot, 1, %{}, Keyword.get(opts, :max_moves, @max_moves), limit)
 
     %{
       repairs:
         solutions
         |> Map.values()
         |> Enum.sort_by(&rank/1)
-        |> Enum.take(Keyword.get(opts, :limit, 5))
+        |> Enum.take(limit)
         |> Enum.map(&present(ctx, &1)),
       complete: complete,
       explored: :counters.get(ctx.explored, 1)
@@ -78,6 +81,29 @@ defmodule NeuZeit.Planning.Repairs do
   end
 
   # Search
+
+  # One move first, so a short limit still returns the smallest repairs.
+  # Repairs with more moves rank after those found, so a deeper pass runs only
+  # while fewer than `limit` were found, and past two moves only while none was.
+  # A pass that never reached its move budget has seen every repair there is.
+  defp deepen(ctx, day, slot, moves, found, max_moves, limit) do
+    if moves > max_moves or map_size(found) >= limit or
+         (moves > 2 and map_size(found) > 0) do
+      {found, true}
+    else
+      :counters.put(ctx.cut, 1, 0)
+
+      case explore(%{ctx | max_moves: moves}, day, slot, found) do
+        {:stopped, found} ->
+          {found, false}
+
+        {:done, found} ->
+          if :counters.get(ctx.cut, 1) == 0,
+            do: {found, true},
+            else: deepen(ctx, day, slot, moves + 1, found, max_moves, limit)
+      end
+    end
+  end
 
   defp explore(ctx, day, slot, found) do
     selected = ctx.items[ctx.selected]
@@ -105,6 +131,12 @@ defmodule NeuZeit.Planning.Repairs do
 
   defp search(ctx, %{queue: []} = state, found), do: record(ctx, state, found)
 
+  defp search(ctx, %{queue: [id | queue]} = state, found)
+       when ctx.max_moves > 2 and queue != [] do
+    item = ctx.items[id]
+    search_starts(ctx, %{state | queue: queue}, item, starts(ctx, item), found, true)
+  end
+
   defp search(ctx, %{queue: [id | queue]} = state, found) do
     item = ctx.items[id]
     state = %{state | queue: queue}
@@ -116,6 +148,41 @@ defmodule NeuZeit.Planning.Repairs do
         if System.monotonic_time(:millisecond) >= ctx.deadline, do: throw({:deadline, found})
         search(ctx, place(ctx, state, item, {day, slot, room}, displaced), found)
     end
+  end
+
+  # Deep passes cut a state once another queued session has no choice: moves
+  # cannot give it one, as vacating a blocker uses the move it saves. Sessions
+  # keep their FIFO order, since the room shortcut in choices/5 depends on it.
+  defp search_starts(_ctx, _state, _item, [], found, _check?), do: found
+
+  defp search_starts(ctx, state, item, [{day, slot} | starts], found, check?) do
+    options = choices(ctx, state, item, day, slot)
+
+    cond do
+      options == [] ->
+        search_starts(ctx, state, item, starts, found, check?)
+
+      check? and not Enum.all?(state.queue, &placeable?(ctx, state, &1, found)) ->
+        found
+
+      true ->
+        found =
+          Enum.reduce(options, found, fn {room, displaced}, found ->
+            if System.monotonic_time(:millisecond) >= ctx.deadline, do: throw({:deadline, found})
+            search(ctx, place(ctx, state, item, {day, slot, room}, displaced), found)
+          end)
+
+        search_starts(ctx, state, item, starts, found, false)
+    end
+  end
+
+  defp placeable?(ctx, state, id, found) do
+    item = ctx.items[id]
+
+    Enum.any?(starts(ctx, item), fn {day, slot} ->
+      if System.monotonic_time(:millisecond) >= ctx.deadline, do: throw({:deadline, found})
+      choices(ctx, state, item, day, slot) != []
+    end)
   end
 
   # Rooms at one start with the placements each would displace. When a room is
@@ -146,12 +213,22 @@ defmodule NeuZeit.Planning.Repairs do
     end
   end
 
-  # The selected session stays at its target, and each placement moves at most once.
+  # The selected session stays at its target, and each placement moves at most
+  # once. A choice over the move budget is counted, since a deeper pass takes it.
   defp movable?(ctx, state, displaced) do
-    length(state.moved) + length(displaced) <= ctx.max_moves and
-      Enum.all?(displaced, fn id ->
+    cond do
+      not Enum.all?(displaced, fn id ->
         id != ctx.selected and not ctx.items[id].locked and id not in state.moved
-      end)
+      end) ->
+        false
+
+      length(state.moved) + length(displaced) <= ctx.max_moves ->
+        true
+
+      true ->
+        :counters.add(ctx.cut, 1, 1)
+        false
+    end
   end
 
   defp place(ctx, state, item, position, displaced) do
@@ -436,6 +513,7 @@ defmodule NeuZeit.Planning.Repairs do
       term: term,
       deadline: deadline,
       explored: :counters.new(1, []),
+      cut: :counters.new(1, []),
       max_moves: 0
     }
   end

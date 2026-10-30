@@ -3859,61 +3859,61 @@ msgid_plural "and %{count} more"
 msgstr[0] "and %{count} more"
 msgstr[1] "and %{count} more"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:449
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:452
 #, elixir-autogen, elixir-format
 msgid "Apply"
 msgstr "Apply"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:445
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:448
 #, elixir-autogen, elixir-format
 msgid "Groups affected: %{groups}"
 msgstr "Groups affected: %{groups}"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:431
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:434
 #, elixir-autogen, elixir-format
 msgid "Move %{session} to %{day} %{time}, %{room}"
 msgstr "Move %{session} to %{day} %{time}, %{room}"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:420
-#, elixir-autogen, elixir-format
-msgid "Moving up to two unlocked sessions does not free this start."
-msgstr "Moving up to two unlocked sessions does not free this start."
-
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:421
+#, elixir-autogen, elixir-format
+msgid "Moving up to %{count} unlocked sessions does not free this start."
+msgstr "Moving up to %{count} unlocked sessions does not free this start."
+
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:424
 #, elixir-autogen, elixir-format
 msgid "No option found yet."
 msgstr "No option found yet."
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:457
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:460
 #, elixir-autogen, elixir-format
 msgid "Search for %{seconds} s"
 msgstr "Search for %{seconds} s"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:454
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:457
 #, elixir-autogen, elixir-format
 msgid "Search stopped after %{seconds} s."
 msgstr "Search stopped after %{seconds} s."
 
 #: lib/neu_zeit_web/live/plan_live/board_editor.ex:416
 #, elixir-autogen, elixir-format
-msgid "Searching for up to two moves."
-msgstr "Searching for up to two moves."
+msgid "Searching for moves that free this start."
+msgstr "Searching for moves that free this start."
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:480
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:483
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: %{count} point better"
 msgid_plural "Soft constraints: %{count} points better"
 msgstr[0] "Soft constraints: %{count} point better"
 msgstr[1] "Soft constraints: %{count} points better"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:472
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:475
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: %{count} point worse"
 msgid_plural "Soft constraints: %{count} points worse"
 msgstr[0] "Soft constraints: %{count} point worse"
 msgstr[1] "Soft constraints: %{count} points worse"
 
-#: lib/neu_zeit_web/live/plan_live/board_editor.ex:468
+#: lib/neu_zeit_web/live/plan_live/board_editor.ex:471
 #, elixir-autogen, elixir-format
 msgid "Soft constraints: no change"
 msgstr "Soft constraints: no change"

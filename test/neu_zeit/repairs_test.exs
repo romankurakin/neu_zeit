@@ -48,6 +48,9 @@ defmodule NeuZeit.Planning.RepairsTest do
 
   defp moves(repair), do: Enum.map(repair.moves, &{&1.session.id, &1.day, &1.slot})
 
+  defp placement(ctx, session),
+    do: Enum.find(Planning.list_placements(ctx.plan.id), &(&1.session_id == session.id))
+
   defp positions(plan) do
     plan.id
     |> Planning.list_placements()
@@ -108,6 +111,18 @@ defmodule NeuZeit.Planning.RepairsTest do
     test "reports a search stopped by its time limit", ctx do
       assert %{complete: false} = Repairs.suggest(ctx.selected, ctx.plan.id, 1, 1, timeout: 0)
     end
+
+    test "skips longer repairs once enough shorter ones are found", ctx do
+      other = session(ctx, rooms: [ctx.room])
+      place(ctx, other, 2, 1)
+      short = Repairs.suggest(ctx.selected, ctx.plan.id, 1, 1, limit: 1)
+      long = Repairs.suggest(ctx.selected, ctx.plan.id, 1, 1, limit: 100)
+
+      assert short.complete
+      assert [%{moves: [_]}] = short.repairs
+      assert short.explored < long.explored
+      assert Enum.any?(long.repairs, &match?(%{moves: [_, _]}, &1))
+    end
   end
 
   describe "two moves" do
@@ -153,6 +168,86 @@ defmodule NeuZeit.Planning.RepairsTest do
       {:ok, _} = Planning.update_placement(placement, %{"locked" => true})
 
       assert %{repairs: [], complete: true} = Repairs.suggest(ctx.selected, ctx.plan.id, 1, 1)
+    end
+  end
+
+  describe "longer chains" do
+    # Each session of the chain can only take the next start, where the next
+    # session of the same teacher waits. The first shares the selected group.
+    defp chain(ctx, profiles) do
+      teacher = teacher_fixture()
+      selected = session(ctx, [])
+
+      sessions =
+        for {starts, index} <- Enum.with_index(profiles) do
+          cohorts = if index == 0, do: selected.cohorts, else: [cohort_fixture()]
+
+          session =
+            session(ctx,
+              teacher: teacher,
+              cohorts: cohorts,
+              slot_profile_id: profile(ctx, starts).id
+            )
+
+          place(ctx, session, 1, index + 1)
+          session
+        end
+
+      {selected, sessions}
+    end
+
+    defp links(count), do: for(slot <- 1..count, do: [{1, slot}, {1, slot + 1}])
+
+    test "moves three placements when no smaller repair exists", ctx do
+      {selected, [first, second, third]} = chain(ctx, links(3))
+      result = Repairs.suggest(selected, ctx.plan.id, 1, 1)
+
+      assert result.complete
+      assert [repair] = result.repairs
+      assert moves(repair) == [{first.id, 1, 2}, {second.id, 1, 3}, {third.id, 1, 4}]
+      assert {:ok, _ids} = Planning.change_placements(ctx.plan.id, repair.changes)
+      assert Planning.check_plan(ctx.plan.id) == []
+    end
+
+    test "allows only two moves when asked", ctx do
+      {selected, _sessions} = chain(ctx, links(3))
+
+      assert %{repairs: [], complete: true} =
+               Repairs.suggest(selected, ctx.plan.id, 1, 1, max_moves: 2)
+    end
+
+    test "searches a third move only when no smaller repair exists", ctx do
+      {selected, [first, second, _third]} =
+        chain(ctx, [[{1, 1}, {1, 2}], [{1, 2}, {1, 3}, {1, 5}], [{1, 3}, {1, 4}]])
+
+      result = Repairs.suggest(selected, ctx.plan.id, 1, 1)
+
+      assert result.complete
+      assert [repair] = result.repairs
+      assert moves(repair) == [{first.id, 1, 2}, {second.id, 1, 5}]
+    end
+
+    test "keeps adding moves while no repair is found", ctx do
+      {selected, sessions} = chain(ctx, links(5))
+      result = Repairs.suggest(selected, ctx.plan.id, 1, 1)
+
+      assert result.complete
+      assert [repair] = result.repairs
+
+      assert moves(repair) ==
+               for({session, slot} <- Enum.with_index(sessions, 2), do: {session.id, 1, slot})
+    end
+
+    test "stops once no move budget was reached", ctx do
+      {selected, sessions} = chain(ctx, links(2))
+
+      {:ok, _} =
+        Planning.update_placement(placement(ctx, List.last(sessions)), %{"locked" => true})
+
+      assert %{repairs: [], complete: true, explored: explored} =
+               Repairs.suggest(selected, ctx.plan.id, 1, 1)
+
+      assert explored == 1
     end
   end
 
@@ -248,6 +343,95 @@ defmodule NeuZeit.Planning.RepairsTest do
     assert moves(repair) == [{blocker.id, 5, 1}]
     # The seminar now follows the lecture: three slots apart before, so 8 * -3.
     assert repair.penalty == -24
+  end
+
+  describe "queued sessions" do
+    setup ctx do
+      room = hd(ctx.rooms)
+
+      selected =
+        session(ctx,
+          rooms: [room],
+          duration_slots: 3,
+          slot_profile_id: profile(ctx, [{1, 1}]).id
+        )
+
+      first = session(ctx, slot_profile_id: profile(ctx, [{1, 1}, {1, 4}, {1, 5}]).id)
+      second = session(ctx, rooms: [room], slot_profile_id: profile(ctx, [{1, 2}, {1, 4}]).id)
+      place(ctx, first, 1, 1)
+      place(ctx, second, 1, 2)
+      %{selected: selected, first: first, second: second, room: room}
+    end
+
+    test "keeps FIFO room choices when several sessions wait", ctx do
+      last = session(ctx, rooms: [ctx.room], slot_profile_id: profile(ctx, [{1, 3}, {1, 6}]).id)
+      place(ctx, last, 1, 3)
+
+      result = Repairs.suggest(ctx.selected, ctx.plan.id, 1, 1)
+
+      assert result.complete
+
+      assert Enum.map(result.repairs, &moves/1) == [
+               [{ctx.first.id, 1, 1}, {ctx.second.id, 1, 4}, {last.id, 1, 6}],
+               [{ctx.first.id, 1, 5}, {ctx.second.id, 1, 4}, {last.id, 1, 6}]
+             ]
+
+      assert Enum.map(result.repairs, &hd(&1.moves).room.id) == [
+               List.last(ctx.rooms).id,
+               ctx.room.id
+             ]
+    end
+
+    test "cuts a state when a later queued session has no choice", ctx do
+      last = session(ctx, rooms: [ctx.room], slot_profile_id: profile(ctx, [{1, 3}]).id)
+      place(ctx, last, 1, 3)
+
+      assert %{repairs: [], complete: true, explored: 1} =
+               Repairs.suggest(ctx.selected, ctx.plan.id, 1, 1)
+    end
+  end
+
+  test "a queued session can use a room that another pending move vacates", ctx do
+    [room, other_room] = ctx.rooms
+    teacher = teacher_fixture()
+
+    selected =
+      session(ctx,
+        teacher: teacher,
+        rooms: [room],
+        duration_slots: 2,
+        slot_profile_id: profile(ctx, [{1, 1}]).id
+      )
+
+    first =
+      session(ctx,
+        teacher: teacher,
+        rooms: [other_room],
+        slot_profile_id: profile(ctx, [{1, 1}, {1, 3}]).id
+      )
+
+    second = session(ctx, rooms: [room], slot_profile_id: profile(ctx, [{1, 2}, {1, 3}]).id)
+
+    last =
+      session(ctx,
+        teacher: teacher,
+        rooms: [room],
+        slot_profile_id: profile(ctx, [{1, 3}, {1, 4}]).id
+      )
+
+    place(ctx, first, 1, 1, %{room_id: other_room.id})
+    place(ctx, second, 1, 2)
+    place(ctx, last, 1, 3)
+
+    assert %{repairs: [], complete: true} =
+             Repairs.suggest(selected, ctx.plan.id, 1, 1, max_moves: 2)
+
+    assert %{repairs: [repair], complete: true} =
+             Repairs.suggest(selected, ctx.plan.id, 1, 1)
+
+    assert moves(repair) == [{first.id, 1, 3}, {second.id, 1, 3}, {last.id, 1, 4}]
+    assert {:ok, _ids} = Planning.change_placements(ctx.plan.id, repair.changes)
+    assert Planning.check_plan(ctx.plan.id) == []
   end
 
   test "two sessions can exchange rooms and starts", ctx do
