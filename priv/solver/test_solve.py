@@ -156,6 +156,82 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(repeated["objective"], once["objective"] * 16)
         self.assertEqual(counts[0], single)
 
+    def test_a_movable_meeting_elsewhere_keeps_other_weeks_shared(self):
+        def with_generated_meeting(weeks):
+            spec = small_spec(weeks)
+            spec["rooms"].append({"id": "lab", "building_id": "main"})
+            spec["sessions"].append(
+                {
+                    "id": "c",
+                    "allowed_rooms": ["lab"],
+                    "weeks": [1],
+                    "choose_week": True,
+                    "workload": "lab",
+                    "allowed_starts": [{"day": 1, "slot": 1}],
+                }
+            )
+            return spec
+
+        counts = []
+        original = solve.configured_solver
+
+        def recording(config, limit):
+            solver = original(config, limit)
+            run = solver.solve
+
+            def measured(model):
+                counts.append(len(model.proto.variables))
+                return run(model)
+
+            solver.solve = measured
+            return solver
+
+        with patch.object(solve, "configured_solver", side_effect=recording):
+            once = solve.cp_sat_solve(small_spec(), time.monotonic())
+            counts.clear()
+            single = solve.cp_sat_solve(with_generated_meeting(1), time.monotonic())
+            single_variables = counts[0]
+            counts.clear()
+            repeated = solve.cp_sat_solve(with_generated_meeting(16), time.monotonic())
+        # The generated meeting's only cost is its one recurring position.
+        self.assertEqual(single["objective"], once["objective"] + 1)
+        self.assertEqual(repeated["objective"], once["objective"] * 16 + 1)
+        self.assertEqual(counts[0], single_variables)
+
+    def test_weeks_with_a_movable_meeting_keep_their_own_expression(self):
+        sessions = solve.normalize_sessions(
+            [
+                {"id": "a", "allowed_rooms": ["r"], "weeks": [1, 2, 3]},
+                {"id": "b", "allowed_rooms": ["r"], "weeks": [1, 2, 3]},
+                {
+                    "id": "c",
+                    "allowed_rooms": ["r"],
+                    "weeks": [1, 2],
+                    "choose_week": True,
+                },
+            ],
+            1,
+            2,
+        )
+        x = solve.AssignmentVariables(sessions)
+        model = cp_model.CpModel()
+        for session in sessions:
+            solve.add_assignment_variables(model, x, session, ["r"])
+        groups = [{"week": week, "session_ids": ["a", "b"]} for week in (1, 2, 3)]
+        groups += [{"week": week, "session_ids": ["a", "c"]} for week in (1, 2)]
+
+        shared = solve.weekly_group_variables(x, groups)
+
+        self.assertEqual(
+            [(ids, count) for _variables, ids, count in shared],
+            [(("a", "b"), 3), (("a", "c"), 1), (("a", "c"), 1)],
+        )
+        self.assertIs(shared[0][0], x)
+        self.assertEqual(
+            [variables[("c", 0, "r")] for variables, _ids, _count in shared[1:]],
+            [x.weekly[("c", 0, "r", 1)], x.weekly[("c", 0, "r", 2)]],
+        )
+
 
 class EnumerationTests(unittest.TestCase):
     def test_small_models_match_exhaustive_search(self):

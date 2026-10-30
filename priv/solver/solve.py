@@ -993,17 +993,29 @@ def weighted_groups(groups):
 
 
 def weekly_group_variables(x, groups):
-    """Keep week identity when a meeting can move between weeks."""
-    if getattr(x, "weekly", {}):
-        grouped = Counter(
-            (int(group["week"]), tuple(sorted(group["session_ids"])))
-            for group in groups
+    """Keep week identity when a meeting can move between weeks.
+
+    A week whose sessions all meet in it and none can move has the same
+    variables as every other such week, so those weeks share one expression."""
+    if not getattr(x, "weekly", {}):
+        return [(x, ids, count) for ids, count in weighted_groups(groups)]
+
+    grouped = Counter()
+    for group in groups:
+        week = int(group["week"])
+        ids = tuple(sorted(group["session_ids"]))
+        shared = all(
+            week in x.sessions[session_id]["weeks"]
+            and not x.sessions[session_id]["choose_week"]
+            for session_id in ids
         )
-        return [
-            (x.for_week(week), ids, count)
-            for (week, ids), count in sorted(grouped.items())
-        ]
-    return [(x, ids, count) for ids, count in weighted_groups(groups)]
+        grouped[(None if shared else week, ids)] += 1
+    return [
+        (x if week is None else x.for_week(week), ids, count)
+        for (week, ids), count in sorted(
+            grouped.items(), key=lambda item: (item[0][0] or 0, item[0][1])
+        )
+    ]
 
 
 def automatic_workload_terms(model, x, sessions, weight, existing_ids):
