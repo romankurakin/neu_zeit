@@ -329,12 +329,52 @@ defmodule NeuZeit.Planning.RepairsTest do
     place(ctx, second, 3, 1, %{week_mask: [2]})
     place(ctx, blocker, 2, 1, %{room_id: other_room.id})
 
-    assert [repair] = Repairs.suggest(%{second | week_mask: [2]}, ctx.plan.id, 2, 1).repairs
+    assert [repair, other] =
+             Repairs.suggest(%{second | week_mask: [2]}, ctx.plan.id, 2, 1).repairs
+
     assert repair.room.id == room.id
     assert moves(repair) == [{blocker.id, 4, 1}]
     # The teacher's week 2 keeps two active days, and both meetings now share
     # one time and room.
     assert repair.penalty == -1
+    assert {other.room.id, other.penalty} == {other_room.id, 0}
+  end
+
+  # As above, with the first meeting in the other room of the building. Both
+  # rooms are free, and only that one saves a time and room.
+  test "tries the room where another meeting of the requirement is held", ctx do
+    [room, other_room] = ctx.rooms
+    teacher = teacher_fixture()
+    component = component_fixture(rooms: ctx.rooms)
+    cohorts = [cohort_fixture()]
+
+    [first, second] =
+      for _ <- 1..2 do
+        session_fixture(
+          term: ctx.term,
+          component: component,
+          teacher: teacher,
+          cohorts: cohorts,
+          automatic_weeks: true,
+          week_mask: [1, 2]
+        )
+      end
+
+    blocker =
+      session(ctx,
+        teacher: teacher,
+        week_mask: [2],
+        slot_profile_id: profile(ctx, [{2, 1}, {4, 1}]).id
+      )
+
+    place(ctx, first, 2, 1, %{week_mask: [1], room_id: other_room.id})
+    place(ctx, second, 3, 1, %{week_mask: [2]})
+    place(ctx, blocker, 2, 1)
+
+    assert [best, other] = Repairs.suggest(%{second | week_mask: [2]}, ctx.plan.id, 2, 1).repairs
+    assert {best.room.id, best.penalty} == {other_room.id, -1}
+    assert {other.room.id, other.penalty} == {room.id, 0}
+    assert moves(best) == [{blocker.id, 4, 1}]
   end
 
   # A lecture and a seminar of one sequence group, each a generated meeting of
@@ -398,10 +438,14 @@ defmodule NeuZeit.Planning.RepairsTest do
 
       assert Enum.map(result.repairs, &moves/1) == [
                [{ctx.first.id, 1, 1}, {ctx.second.id, 1, 4}, {last.id, 1, 6}],
+               [{ctx.first.id, 1, 4}, {ctx.second.id, 1, 4}, {last.id, 1, 6}],
                [{ctx.first.id, 1, 5}, {ctx.second.id, 1, 4}, {last.id, 1, 6}]
              ]
 
+      # At 1/4 the first session leaves the room to the second, which can use
+      # no other.
       assert Enum.map(result.repairs, &hd(&1.moves).room.id) == [
+               List.last(ctx.rooms).id,
                List.last(ctx.rooms).id,
                ctx.room.id
              ]
@@ -455,6 +499,29 @@ defmodule NeuZeit.Planning.RepairsTest do
              Repairs.suggest(selected, ctx.plan.id, 1, 1)
 
     assert moves(repair) == [{first.id, 1, 3}, {second.id, 1, 3}, {last.id, 1, 4}]
+    assert {:ok, _ids} = Planning.change_placements(ctx.plan.id, repair.changes)
+    assert Planning.check_plan(ctx.plan.id) == []
+  end
+
+  # The selected session takes its current room, the only one the last
+  # displaced session can use. It changes to the other free room of the building.
+  test "a later move can take a placed session's room when it changes room", ctx do
+    [room, other_room] = ctx.rooms
+    teacher = teacher_fixture()
+    profile = profile(ctx, [{1, 1}, {1, 3}])
+
+    selected =
+      session(ctx, teacher: teacher, slot_profile_id: profile(ctx, [{1, 1}, {2, 1}]).id)
+
+    blocker = session(ctx, teacher: teacher, rooms: [room], slot_profile_id: profile.id)
+    last = session(ctx, rooms: [room], slot_profile_id: profile.id)
+    place(ctx, selected, 2, 1)
+    place(ctx, blocker, 1, 1)
+    place(ctx, last, 1, 3)
+
+    assert %{repairs: [repair], complete: true} = Repairs.suggest(selected, ctx.plan.id, 1, 1)
+    assert repair.room.id == other_room.id
+    assert moves(repair) == [{blocker.id, 1, 3}, {last.id, 1, 1}]
     assert {:ok, _ids} = Planning.change_placements(ctx.plan.id, repair.changes)
     assert Planning.check_plan(ctx.plan.id) == []
   end

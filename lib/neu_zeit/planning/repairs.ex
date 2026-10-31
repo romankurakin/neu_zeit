@@ -116,11 +116,11 @@ defmodule NeuZeit.Planning.Repairs do
 
     # A free room needs no repair. The inspector offers it directly.
     found =
-      if Enum.any?(choices, fn {_room, displaced} -> displaced == [] end) do
+      if Enum.any?(choices, fn {_room, displaced, _shifts} -> displaced == [] end) do
         found
       else
-        Enum.reduce(choices, found, fn {room, displaced}, found ->
-          search(ctx, place(ctx, state, selected, {day, slot, room}, displaced), found)
+        Enum.reduce(choices, found, fn {room, displaced, shifts}, found ->
+          search(ctx, place(ctx, state, selected, {day, slot, room}, displaced, shifts), found)
         end)
       end
 
@@ -142,11 +142,11 @@ defmodule NeuZeit.Planning.Repairs do
     state = %{state | queue: queue}
 
     for {day, slot} <- starts(ctx, item),
-        {room, displaced} <- choices(ctx, state, item, day, slot),
+        {room, displaced, shifts} <- choices(ctx, state, item, day, slot),
         reduce: found do
       found ->
         if System.monotonic_time(:millisecond) >= ctx.deadline, do: throw({:deadline, found})
-        search(ctx, place(ctx, state, item, {day, slot, room}, displaced), found)
+        search(ctx, place(ctx, state, item, {day, slot, room}, displaced, shifts), found)
     end
   end
 
@@ -167,9 +167,9 @@ defmodule NeuZeit.Planning.Repairs do
 
       true ->
         found =
-          Enum.reduce(options, found, fn {room, displaced}, found ->
+          Enum.reduce(options, found, fn {room, displaced, shifts}, found ->
             if System.monotonic_time(:millisecond) >= ctx.deadline, do: throw({:deadline, found})
-            search(ctx, place(ctx, state, item, {day, slot, room}, displaced), found)
+            search(ctx, place(ctx, state, item, {day, slot, room}, displaced, shifts), found)
           end)
 
         search_starts(ctx, state, item, starts, found, false)
@@ -185,9 +185,11 @@ defmodule NeuZeit.Planning.Repairs do
     end)
   end
 
-  # Rooms at one start with the placements each would displace. When a room is
-  # free, occupied rooms only add moves, and free rooms in the same building
-  # have the same cost.
+  # Rooms at one start with the placements each would displace and the placed
+  # sessions it would shift to another room. When a room is free, occupied
+  # rooms only add moves. Free rooms in one building have the same cost unless
+  # another meeting of the requirement is held in one at that time, so one of
+  # each kind is kept, preferably one that shifts no session.
   defp choices(ctx, state, item, day, slot) do
     time = occupants(ctx, state, item, day, slot, time_resources(item))
 
@@ -195,23 +197,80 @@ defmodule NeuZeit.Planning.Repairs do
       rooms =
         for room <- item.rooms,
             external_free?(ctx, item, {day, slot, room}),
-            do: {room, occupants(ctx, state, item, day, slot, room_resources(room)) -- time}
+            choice = room_choice(ctx, state, item, {day, slot, room}, time),
+            do: choice
 
-      case Enum.filter(rooms, fn {_room, extra} -> extra == [] end) do
+      case Enum.filter(rooms, fn {_room, extra, _shifts} -> extra == [] end) do
         [] ->
           rooms
-          |> Enum.map(fn {room, extra} -> {room, time ++ extra} end)
-          |> Enum.filter(fn {_room, displaced} -> movable?(ctx, state, displaced) end)
+          |> Enum.map(fn {room, extra, shifts} -> {room, time ++ extra, shifts} end)
+          |> Enum.filter(fn {_room, displaced, _shifts} -> movable?(ctx, state, displaced) end)
 
         free ->
+          shared = shared(ctx, state, item, {day, slot})
+
           free
-          |> Enum.uniq_by(fn {room, _extra} -> ctx.buildings[room] end)
-          |> Enum.map(fn {room, _extra} -> {room, time} end)
+          |> Enum.sort_by(fn {_room, _extra, shifts} -> shifts != [] end)
+          |> Enum.uniq_by(fn {room, _extra, _shifts} -> {ctx.buildings[room], room in shared} end)
+          |> Enum.map(fn {room, _extra, shifts} -> {room, time, shifts} end)
       end
     else
       []
     end
   end
+
+  # A room with its other occupants, less the placed sessions among them, which
+  # shift to another room. Nil when one of those cannot.
+  defp room_choice(ctx, state, item, {day, slot, room}, time) do
+    case occupants(ctx, state, item, day, slot, room_resources(room)) -- time do
+      [] ->
+        {room, [], []}
+
+      extra ->
+        {placed, extra} = Enum.split_with(extra, &placed?(ctx, state, &1))
+        if shifts = shifts(ctx, state, placed, room), do: {room, extra, shifts}
+    end
+  end
+
+  defp placed?(ctx, state, id), do: id == ctx.selected or id in state.moved
+
+  # A session this repair already placed can leave a room for another free room
+  # of its building, so the room a free choice took does not block later moves.
+  # Nil when one of them cannot.
+  defp shifts(_ctx, _state, [], _room), do: []
+
+  defp shifts(ctx, state, placed, room) do
+    Enum.reduce_while(placed, {state.index, []}, fn id, {index, shifts} ->
+      item = ctx.items[id]
+      {day, slot, ^room} = position = state.positions[id]
+      index = vacate(index, item, position)
+
+      free =
+        Enum.find(item.rooms, fn other ->
+          other != room and ctx.buildings[other] == ctx.buildings[room] and
+            external_free?(ctx, item, {day, slot, other}) and
+            occupants(ctx, %{state | index: index}, item, day, slot, room_resources(other)) == []
+        end)
+
+      if free,
+        do: {:cont, {occupy(index, item, {day, slot, free}), [{id, free} | shifts]}},
+        else: {:halt, nil}
+    end)
+    |> case do
+      {_index, shifts} -> Enum.reverse(shifts)
+      nil -> nil
+    end
+  end
+
+  # Rooms where another meeting of the item's requirement is held at the start.
+  defp shared(ctx, state, %{session: %{automatic_weeks: true}} = item, {day, slot}) do
+    for id <- ctx.meetings[ctx.workloads[item.id]],
+        id != item.id,
+        {^day, ^slot, room} <- [state.positions[id]],
+        do: room
+  end
+
+  defp shared(_ctx, _state, _item, _start), do: []
 
   # The selected session stays at its target, and each placement moves at most
   # once. A choice over the move budget is counted, since a deeper pass takes it.
@@ -231,7 +290,7 @@ defmodule NeuZeit.Planning.Repairs do
     end
   end
 
-  defp place(ctx, state, item, position, displaced) do
+  defp place(ctx, state, item, position, displaced, shifts) do
     :counters.add(ctx.explored, 1, 1)
 
     index =
@@ -239,9 +298,16 @@ defmodule NeuZeit.Planning.Repairs do
         vacate(index, ctx.items[id], state.positions[id])
       end)
 
+    {index, positions} =
+      Enum.reduce(shifts, {index, state.positions}, fn {id, room}, {index, positions} ->
+        {day, slot, _room} = old = positions[id]
+        index = index |> vacate(ctx.items[id], old) |> occupy(ctx.items[id], {day, slot, room})
+        {index, Map.put(positions, id, {day, slot, room})}
+      end)
+
     %{
       state
-      | positions: state.positions |> Map.drop(displaced) |> Map.put(item.id, position),
+      | positions: positions |> Map.drop(displaced) |> Map.put(item.id, position),
         index: occupy(index, item, position),
         moved: state.moved ++ displaced,
         queue: state.queue ++ displaced
@@ -559,10 +625,11 @@ defmodule NeuZeit.Planning.Repairs do
     do: item(placement.session, placement, placement.week_mask, room_ids)
 
   defp item(session, placement, week_mask, room_ids) do
+    # Sorted, as the database returns allowed rooms in no fixed order.
     allowed =
       case session.course_component.allowed_rooms do
         [] -> room_ids
-        rooms -> Enum.map(rooms, & &1.id)
+        rooms -> rooms |> Enum.map(& &1.id) |> Enum.sort()
       end
 
     # The current room comes first, so a free room keeps the session where it is.
