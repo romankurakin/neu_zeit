@@ -1,6 +1,8 @@
 defmodule NeuZeit.Solver.PlanRunsTest do
   use NeuZeit.DataCase, async: false
 
+  import ExUnit.CaptureLog
+
   alias NeuZeit.{Catalog, Planning}
   alias NeuZeit.Solver.PlanRuns
 
@@ -69,5 +71,22 @@ defmodule NeuZeit.Solver.PlanRunsTest do
     expected = if match?({:ok, _}, result), do: {:ok, :complete}, else: result
     assert PlanRuns.last_result(plan.id) == expected
     refute PlanRuns.running?(plan.id)
+  end
+
+  test "logs the start, outcome and duration of a run", %{plan: plan} do
+    # Tests log at warning. This module runs alone, so raising the level is safe.
+    previous_level = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: previous_level) end)
+    :ok = PlanRuns.subscribe(plan.id)
+
+    log =
+      capture_log([level: :info], fn ->
+        {:ok, _started} = PlanRuns.start_solve(plan.id)
+        assert_receive {:solve_finished, _plan_id, _result}, 30_000
+      end)
+
+    assert log =~ "solver run started plan_id=#{plan.id}"
+    assert log =~ ~r/solver run finished plan_id=#{plan.id} outcome=\S+ duration_ms=\d+/
   end
 end

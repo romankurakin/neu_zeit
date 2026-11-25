@@ -8,6 +8,8 @@ defmodule NeuZeit.Solver.PlanRuns do
 
   use GenServer
 
+  require Logger
+
   alias NeuZeit.Planning.Solving
   alias Phoenix.PubSub
 
@@ -59,6 +61,7 @@ defmodule NeuZeit.Solver.PlanRuns do
       {:reply, {:error, :already_running}, state}
     else
       started_at = DateTime.utc_now()
+      Logger.info("solver run started plan_id=#{plan_id}")
 
       task =
         Task.Supervisor.async_nolink(__MODULE__.Tasks, fn ->
@@ -75,6 +78,7 @@ defmodule NeuZeit.Solver.PlanRuns do
             Map.put(state.runs, plan_id, %{
               ref: task.ref,
               started_at: started_at,
+              started_ms: System.monotonic_time(:millisecond),
               waiter: if(mode == :wait, do: from)
             }),
           refs: Map.put(state.refs, task.ref, plan_id),
@@ -118,6 +122,7 @@ defmodule NeuZeit.Solver.PlanRuns do
         state
 
       {plan_id, refs} ->
+        log_finish(plan_id, state.runs[plan_id], result)
         if waiter = state.runs[plan_id].waiter, do: GenServer.reply(waiter, result)
         broadcast(plan_id, {:solve_finished, plan_id, result})
         # The UI needs the outcome, not a retained copy of every placement.
@@ -128,4 +133,21 @@ defmodule NeuZeit.Solver.PlanRuns do
   end
 
   defp broadcast(plan_id, message), do: PubSub.broadcast(@pubsub, topic(plan_id), message)
+
+  # Every outcome is logged at info. Solver failures and crashed tasks are
+  # already reported at error level where they happen.
+  defp log_finish(plan_id, run, result) do
+    duration_ms = System.monotonic_time(:millisecond) - run.started_ms
+
+    Logger.info(
+      "solver run finished plan_id=#{plan_id} outcome=#{outcome(result)} duration_ms=#{duration_ms}"
+    )
+  end
+
+  defp outcome({:ok, _result}), do: "ok"
+  defp outcome({:error, %{errors: [%{type: type} | _]}}) when is_binary(type), do: type
+  defp outcome({:error, %{"status" => status}}) when is_binary(status), do: status
+  defp outcome({:error, {kind, _detail}}) when is_atom(kind), do: kind
+  defp outcome({:error, kind}) when is_atom(kind), do: kind
+  defp outcome(_result), do: "error"
 end
