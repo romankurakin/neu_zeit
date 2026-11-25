@@ -22,7 +22,7 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:$${PORT:-4000}/ > /dev/null"]
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:$${PORT:-4000}/health > /dev/null"]
       interval: 5s
       timeout: 3s
       start_period: 120s

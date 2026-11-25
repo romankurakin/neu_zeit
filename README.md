@@ -48,6 +48,8 @@ docker compose -f compose.prod.yaml run --rm migrate && \
   docker compose -f compose.prod.yaml up -d application
 ```
 
+`GET /health` answers 200 when the application can query PostgreSQL and 503 when it cannot. Compose health checks use it.
+
 ## Oracle demonstration host
 
 [Oracle setup and commands](deploy/oracle/README.md). Resource Manager creates Always Free infrastructure; Run Command deploys Docker Compose releases without SSH. Repeat deployments preserve PostgreSQL. Undeploy deletes the Oracle demo and its backups.

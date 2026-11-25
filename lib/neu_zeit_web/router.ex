@@ -15,6 +15,11 @@ defmodule NeuZeitWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Health checks send no session and may send any Accept header.
+  scope "/", NeuZeitWeb do
+    get "/health", HealthController, :show, log: false
+  end
+
   scope "/", NeuZeitWeb do
     pipe_through :browser
 

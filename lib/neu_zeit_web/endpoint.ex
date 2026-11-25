@@ -41,7 +41,7 @@ defmodule NeuZeitWeb.Endpoint do
     raise_on_missing_only: code_reloading?
 
   plug Plug.RequestId
-  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: {__MODULE__, :log_level, []}
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
@@ -52,4 +52,10 @@ defmodule NeuZeitWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
   plug NeuZeitWeb.Router
+
+  # Container health checks call /health every few seconds. Keep them out of
+  # the request log. A failed check logs its own warning.
+  @doc false
+  def log_level(%{path_info: ["health"]}), do: false
+  def log_level(_conn), do: :info
 end
