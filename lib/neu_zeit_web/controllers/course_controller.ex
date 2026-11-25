@@ -6,13 +6,29 @@ defmodule NeuZeitWeb.CourseController do
 
   action_fallback NeuZeitWeb.FallbackController
 
-  def index(conn, %{"locale" => locale}) when is_binary(locale) do
-    json(conn, %{data: ApiJSON.data(Catalog.list_courses(locale))})
+  # The course catalog is not tied to a term and grows every year, so this
+  # list is paged. Lists scoped to a term or plan stay whole: checking a
+  # timetable needs all of their records.
+  def index(conn, params) do
+    with {:ok, page} <- RequestParams.page(params),
+         {:ok, search} <- RequestParams.search(params) do
+      {courses, total} =
+        Catalog.page_courses(
+          limit: page.limit,
+          offset: page.offset,
+          search: search,
+          locale: locale(params)
+        )
+
+      json(conn, %{
+        data: ApiJSON.data(courses),
+        meta: %{total: total, limit: page.limit, offset: page.offset}
+      })
+    end
   end
 
-  def index(conn, _params) do
-    json(conn, %{data: ApiJSON.data(Catalog.list_courses())})
-  end
+  defp locale(%{"locale" => locale}) when is_binary(locale), do: locale
+  defp locale(_params), do: nil
 
   def create(conn, params) do
     with {:ok, course} <- Catalog.create_course(params["course"] || params) do

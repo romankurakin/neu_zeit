@@ -90,18 +90,71 @@ defmodule NeuZeit.Catalog do
     )
   end
 
-  def list_courses(locale) when is_binary(locale) do
-    Repo.all(
-      from c in Course,
-        left_join: t in CourseTranslation,
-        on: t.course_id == c.id and t.locale == ^locale,
-        order_by: [fragment("coalesce(?, ?)", t.title, c.title), c.id],
-        select: %{
-          id: c.id,
-          code: c.code,
-          title: fragment("coalesce(?, ?)", t.title, c.title)
-        }
+  @doc """
+  Lists one page of courses and counts all courses that match.
+
+  Options: `:limit` and `:offset` (required), `:search` (part of the code or
+  title, case-insensitive, matched literally) and `:locale`. With a locale,
+  each course is a map of id, code and the title in that locale, falling back
+  to the base title; results are ordered by that title.
+  """
+  def page_courses(opts) do
+    locale = Keyword.get(opts, :locale)
+
+    matching =
+      from(c in Course, as: :course)
+      |> join_course_translation(locale)
+      |> search_courses(Keyword.get(opts, :search), locale)
+
+    courses =
+      matching
+      |> order_and_select_courses(locale)
+      |> limit(^Keyword.fetch!(opts, :limit))
+      |> offset(^Keyword.fetch!(opts, :offset))
+      |> Repo.all()
+
+    {courses, Repo.aggregate(matching, :count)}
+  end
+
+  defp join_course_translation(query, nil), do: query
+
+  defp join_course_translation(query, locale) do
+    join(query, :left, [course: c], t in CourseTranslation,
+      as: :translation,
+      on: t.course_id == c.id and t.locale == ^locale
     )
+  end
+
+  defp search_courses(query, nil, _locale), do: query
+
+  defp search_courses(query, search, nil) do
+    pattern = like_pattern(search)
+    where(query, [course: c], ilike(c.title, ^pattern) or ilike(c.code, ^pattern))
+  end
+
+  defp search_courses(query, search, _locale) do
+    pattern = like_pattern(search)
+
+    where(
+      query,
+      [course: c, translation: t],
+      ilike(fragment("coalesce(?, ?)", t.title, c.title), ^pattern) or ilike(c.code, ^pattern)
+    )
+  end
+
+  # Escapes LIKE wildcards so that % and _ in a search match themselves.
+  defp like_pattern(text), do: "%" <> String.replace(text, ["\\", "%", "_"], &("\\" <> &1)) <> "%"
+
+  defp order_and_select_courses(query, nil) do
+    from [course: c] in query,
+      order_by: [c.title, c.id],
+      preload: [:translations, components: [teaching_type: :translations]]
+  end
+
+  defp order_and_select_courses(query, _locale) do
+    from [course: c, translation: t] in query,
+      order_by: [fragment("coalesce(?, ?)", t.title, c.title), c.id],
+      select: %{id: c.id, code: c.code, title: fragment("coalesce(?, ?)", t.title, c.title)}
   end
 
   def get_course!(id),
