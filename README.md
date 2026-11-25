@@ -4,6 +4,8 @@
 
 Create, check and publish teaching timetables.
 
+The `application` container runs the Phoenix server: the LiveView interface, the JSON API under `/api` and the timetable solver, a Python OR-Tools CP-SAT script that the server starts for each calculation. The `database` container runs PostgreSQL; the application applies migrations on start (development) or through the `migrate` service (production).
+
 ## Development
 
 Requires Docker with Compose.
@@ -31,10 +33,17 @@ docker compose run --rm application mix ecto.reset
 docker compose up --wait --wait-timeout 600 application
 ```
 
+To fill an empty database with fictional demonstration data (a term, rooms, teachers, groups, 20 courses, teaching load and a draft plan):
+
+```sh
+docker compose exec application mix run priv/repo/seeds.exs
+```
+
 ## Checks and dependencies
 
 ```sh
 docker compose exec application mix precommit   # Format, Ruff, tests
+docker compose exec application mix test --cover # Tests with a coverage report in cover/
 docker compose exec application mix dialyzer    # Elixir type analysis
 docker compose exec application mix npm.install # Update npm.lock after package.json edits
 ```
@@ -51,6 +60,8 @@ docker compose -f compose.prod.yaml run --rm migrate && \
 ```
 
 `GET /health` answers 200 when the application can query PostgreSQL and 503 when it cannot. Compose health checks use it.
+
+The log records every request except health checks with its duration, and every solver run with its outcome and duration.
 
 ## Oracle demonstration host
 
