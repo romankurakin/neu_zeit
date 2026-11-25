@@ -1,5 +1,7 @@
 # NeuZeit
 
+[![Checks](https://github.com/romankurakin/neu_zeit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/romankurakin/neu_zeit/actions/workflows/checks.yml?query=branch%3Amain)
+
 Create, check and publish teaching timetables.
 
 ## Development

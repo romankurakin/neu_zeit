@@ -54,4 +54,5 @@ RUN uv sync --locked --no-dev --project /app/lib/neu_zeit-*/priv/solver \
     && chown -R nobody:root /opt/python /opt/solver-venv /tmp/uv-cache
 ENV UV_OFFLINE=1 UV_NO_SYNC=1
 USER nobody
+EXPOSE 4000
 CMD ["/app/bin/server"]
